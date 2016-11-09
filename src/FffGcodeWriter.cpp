@@ -207,7 +207,7 @@ void FffGcodeWriter::processStartingCode(SliceDataStorage& storage)
     {
         if (getSettingBoolean("material_bed_temp_prepend")) 
         {
-            if (getSettingBoolean("machine_heated_bed") && getSettingInDegreeCelsius("material_bed_temperature_layer_0") > 0)
+            if (getSettingBoolean("machine_heated_bed"))
             {
                 gcode.writeBedTemperatureCommand(getSettingInDegreeCelsius("material_bed_temperature_layer_0"), getSettingBoolean("material_bed_temp_wait"));
             }
