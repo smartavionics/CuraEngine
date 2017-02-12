@@ -127,6 +127,8 @@ private:
     unsigned int layer_nr; //!< for sending travel data
 
     int initial_bed_temp; //!< bed temperature at the beginning of the print.
+
+    double last_meshgroup_layer_height; //!< used to report basic layer height in RepRap gcode file.
 protected:
     /*!
      * Convert an E value to a value in mm (if it wasn't already in mm) for the current extruder.
