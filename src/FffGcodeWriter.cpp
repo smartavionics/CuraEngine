@@ -434,7 +434,7 @@ void FffGcodeWriter::processStartingCode(const SliceDataStorage& storage, const 
                     }
                     else
                     {
-                        extruder_temp = train.getSettingInDegreeCelsius("material_standby_temperature")
+                        extruder_temp = train.getSettingInDegreeCelsius("material_standby_temperature");
                     }
                     gcode.writeTemperatureCommand(extruder_nr, extruder_temp);
                 }
@@ -451,7 +451,7 @@ void FffGcodeWriter::processStartingCode(const SliceDataStorage& storage, const 
                     }
                     else
                     {
-                        extruder_temp = train.getSettingInDegreeCelsius("material_standby_temperature")
+                        extruder_temp = train.getSettingInDegreeCelsius("material_standby_temperature");
                     }
                     gcode.writeTemperatureCommand(extruder_nr, extruder_temp, true);
                 }
