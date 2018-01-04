@@ -39,6 +39,8 @@ public:
 
     bool spiralize; //!< Whether to gradually increment the z position during the printing of this path. A sequence of spiralized paths should start at the given layer height and end in one layer higher.
 
+    bool combed; //!< Whether path is part of a combed travel move or not
+
     TimeMaterialEstimates estimates; //!< Naive time and material estimates
 
     /*!

@@ -287,8 +287,9 @@ public:
      * 
      * \param p location to go to
      * \param speed movement speed
+     * \param extrusion_amount can be non-zero (+ve or -ve) at start/end of combing travel move
      */
-    void writeTravel(Point p, double speed);
+    void writeTravel(Point p, double speed, double extrusion_amount = 0);
 
     /*!
      * Coordinates are build plate coordinates, which might be offsetted when extruder offsets are encoded in the gcode.
@@ -306,8 +307,9 @@ public:
      * 
      * \param p location to go to
      * \param speed movement speed
+     * \param extrusion_amount can be non-zero (+ve or -ve) at start/end of combing travel move
      */
-    void writeTravel(Point3 p, double speed);
+    void writeTravel(Point3 p, double speed, double extrusion_amount = 0);
 
     /*!
      * Go to a X/Y location with the extrusion Z
@@ -330,8 +332,9 @@ private:
      * \param y build plate y
      * \param z build plate z
      * \param speed movement speed
+     * \param extrusion_amount can be non-zero (+ve or -ve) at start/end of combing travel move
      */
-    void writeTravel(int x, int y, int z, double speed);
+    void writeTravel(int x, int y, int z, double speed, double extrusion_amount = 0);
 
     /*!
      * Perform un-z-hop

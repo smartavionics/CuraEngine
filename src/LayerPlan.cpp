@@ -335,6 +335,7 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract)
                 }
                 last_planned_position = combPath.back();
             }
+            path->combed = true;
         }
     }
     
@@ -921,9 +922,91 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
             if (path.config->isTravelPath())
             { // early comp for travel paths, which are handled more simply
-                for(unsigned int point_idx = 0; point_idx < path.points.size(); point_idx++)
+                double combing_retract_distance = 0;
+                double combing_retract_speed = 0;
+                double combing_retract_travel_distance = 0;
+                double travel_path_length = 0;
+                if (!path.retract && path.combed)
                 {
-                    gcode.writeTravel(path.points[point_idx], speed);
+                    combing_retract_distance = 2;//train->getSettingInMillimeters("travel_combing_retract_distance");
+                    combing_retract_speed = 50;//train->getSettingInMillimetersPerSecond("travel_combing_retract_speed");
+                    if (combing_retract_speed > 0)
+                    {
+                        combing_retract_travel_distance = combing_retract_distance / combing_retract_speed * speed;
+                        Point p0 = gcode.getPositionXY();
+                        for (Point p1 : path.points)
+                        {
+                            travel_path_length += vSizeMM(p1 - p0);
+                            p0 = p1;
+                        }
+                        if(travel_path_length > 0)
+                        {
+                            if (travel_path_length < 2 * combing_retract_travel_distance)
+                            {
+                                // travel path is not long enough to warrant doing the retract/unretract
+                                combing_retract_travel_distance = 0;
+                            }
+                        }
+                    }
+                }
+
+                if (combing_retract_travel_distance > 0)
+                {
+                    double retract_travel_length = combing_retract_travel_distance;
+                    double unretract_travel_length = combing_retract_travel_distance;
+                    Point p0 = gcode.getPositionXY();
+                    double distance_to_go = travel_path_length;
+                    for(unsigned int point_idx = 0; point_idx < path.points.size(); point_idx++)
+                    {
+                        Point p1 = path.points[point_idx];
+                        double seg_length = vSizeMM(p1 - p0);
+                        if (retract_travel_length > 0)
+                        {
+                            if (seg_length > retract_travel_length)
+                            {
+                                Point p2 = p0 + (retract_travel_length / seg_length * (p1 - p0));
+                                gcode.writeTravel(p2, speed, -combing_retract_distance * retract_travel_length / combing_retract_travel_distance);
+                                p0 = p2;
+                                distance_to_go -= retract_travel_length;
+                                seg_length = vSizeMM(p1 - p0);
+                                retract_travel_length = 0;
+                            }
+                            else
+                            {
+                                gcode.writeTravel(p1, speed, -combing_retract_distance * seg_length / combing_retract_travel_distance);
+                                retract_travel_length -= seg_length;
+                            }
+                        }
+                        if (retract_travel_length == 0 && unretract_travel_length > 0)
+                        {
+                            double unretract_length_this_seg = unretract_travel_length - (distance_to_go - seg_length);
+                            if (seg_length > unretract_length_this_seg)
+                            {
+                                Point p2 = p0 + ((1 - unretract_length_this_seg / seg_length) * (p1 - p0));
+                                gcode.writeTravel(p2, speed);
+                                gcode.writeTravel(p1, speed, combing_retract_distance * unretract_length_this_seg / combing_retract_travel_distance);
+                                unretract_travel_length -= unretract_length_this_seg;
+                            }
+                            else
+                            {
+                                gcode.writeTravel(p1, speed, combing_retract_distance * seg_length / combing_retract_travel_distance);
+                                unretract_travel_length -= seg_length;
+                            }
+                        }
+                        else
+                        {
+                            gcode.writeTravel(p1, speed);
+                        }
+                        p0 = p1;
+                        distance_to_go -= seg_length;
+                    }
+                }
+                else
+                {
+                    for(unsigned int point_idx = 0; point_idx < path.points.size(); point_idx++)
+                    {
+                        gcode.writeTravel(path.points[point_idx], speed);
+                    }
                 }
                 continue;
             }

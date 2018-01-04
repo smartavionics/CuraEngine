@@ -518,23 +518,23 @@ void GCodeExport::writeDelay(double timeAmount)
     estimateCalculator.addTime(timeAmount);
 }
 
-void GCodeExport::writeTravel(Point p, double speed)
+void GCodeExport::writeTravel(Point p, double speed, double extrusion_amount)
 {
-    writeTravel(Point3(p.X, p.Y, current_layer_z), speed);
+    writeTravel(Point3(p.X, p.Y, current_layer_z), speed, extrusion_amount);
 }
 void GCodeExport::writeExtrusion(Point p, double speed, double extrusion_mm3_per_mm, PrintFeatureType feature, bool update_extrusion_offset)
 {
     writeExtrusion(Point3(p.X, p.Y, current_layer_z), speed, extrusion_mm3_per_mm, feature, update_extrusion_offset);
 }
 
-void GCodeExport::writeTravel(Point3 p, double speed)
+void GCodeExport::writeTravel(Point3 p, double speed, double extrusion_amount)
 {
     if (flavor == EGCodeFlavor::BFB)
     {
         writeMoveBFB(p.x, p.y, p.z + isZHopped, speed, 0.0, PrintFeatureType::MoveCombing);
         return;
     }
-    writeTravel(p.x, p.y, p.z + isZHopped, speed);
+    writeTravel(p.x, p.y, p.z + isZHopped, speed, extrusion_amount);
 }
 
 void GCodeExport::writeExtrusion(Point3 p, double speed, double extrusion_mm3_per_mm, PrintFeatureType feature, bool update_extrusion_offset)
@@ -611,7 +611,7 @@ void GCodeExport::writeMoveBFB(int x, int y, int z, double speed, double extrusi
     estimateCalculator.plan(TimeEstimateCalculator::Position(INT2MM(currentPosition.x), INT2MM(currentPosition.y), INT2MM(currentPosition.z), eToMm(current_e_value)), speed, feature);
 }
 
-void GCodeExport::writeTravel(int x, int y, int z, double speed)
+void GCodeExport::writeTravel(int x, int y, int z, double speed, double extrusion_amount)
 {
     if (currentPosition.x == x && currentPosition.y == y && currentPosition.z == z)
         return;
@@ -628,7 +628,7 @@ void GCodeExport::writeTravel(int x, int y, int z, double speed)
     CommandSocket::sendLineTo(travel_move_type, Point(x, y), display_width, layer_height, speed);
 
     *output_stream << "G0";
-    writeFXYZE(speed, x, y, z, current_e_value, travel_move_type);
+    writeFXYZE(speed, x, y, z, current_e_value + extrusion_amount, travel_move_type);
 }
 
 void GCodeExport::writeExtrusion(int x, int y, int z, double speed, double extrusion_mm3_per_mm, PrintFeatureType feature, bool update_extrusion_offset)
