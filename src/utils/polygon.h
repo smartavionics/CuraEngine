@@ -69,10 +69,18 @@ public:
 
     ConstPolygonRef& operator=(const ConstPolygonRef& other) =delete; // Cannot assign to a const object
 
-    unsigned int size() const
-    {
-        return path->size();
-    }
+    /*!
+     * Gets the number of vertices in this polygon.
+     * \return The number of vertices in this polygon.
+     */
+    size_t size() const;
+
+    /*!
+     * Returns whether there are any vertices in this polygon.
+     * \return ``true`` if the polygon has no vertices at all, or ``false`` if
+     * it does have vertices.
+     */
+    bool empty() const;
 
     const Point& operator[] (unsigned int index) const
     {

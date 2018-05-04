@@ -156,6 +156,7 @@ set(engine_TEST_UTILS
     PolygonUtilsTest
     PolygonTest
     StringTest
+    UnionFindTest
 )
 
 # Generating ProtoBuf protocol
