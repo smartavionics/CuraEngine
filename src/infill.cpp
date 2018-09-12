@@ -237,9 +237,9 @@ void Infill::multiplyInfill(Polygons& result_polygons, Polygons& result_lines)
 void Infill::generateGyroidInfill(Polygons& result_lines)
 {
     // generate infill based on the gyroid equation: sin_x * cos_y + sin_y * cos_z + sin_z * cos_x = 0
-
+    // kudos to the author of the Slic3r implementation which this is based on
     const int pitch = line_distance * 2;
-    const int step = std::max(100, pitch / 50);
+    const int step = std::max(100, pitch / 10);
     const double z_rads = 2 * M_PI * z / pitch;
     const double cos_z = std::cos(z_rads);
     const double sin_z = std::sin(z_rads);
@@ -265,8 +265,8 @@ void Infill::generateGyroidInfill(Polygons& result_lines)
             even_line_coords.push_back(even_x_rads / M_PI * pitch);
         }
         const unsigned num_coords = odd_line_coords.size();
-        unsigned n = 1;
-        for (coord_t x = (std::floor(aabb.min.X / pitch) - 1) * pitch; x <= aabb.max.X; x += pitch/2)
+        unsigned n = 0;
+        for (coord_t x = (std::floor(aabb.min.X / pitch) - 1.25) * pitch; x <= aabb.max.X; x += pitch/2)
         {
             bool is_first_point = true;
             Point last;
@@ -304,7 +304,7 @@ void Infill::generateGyroidInfill(Polygons& result_lines)
             even_line_coords.push_back(even_y_rads / M_PI * pitch);
         }
         const unsigned num_coords = odd_line_coords.size();
-        unsigned n = 1;
+        unsigned n = 0;
         for (coord_t y = (std::floor(aabb.min.Y / pitch) - 1) * pitch; y <= aabb.max.Y; y += pitch/2)
         {
             bool is_first_point = true;
@@ -326,9 +326,6 @@ void Infill::generateGyroidInfill(Polygons& result_lines)
         }
     }
 
-#if 1
-    result_lines = result;
-#else
     Polygons poly_lines = in_outline.offset(outline_offset).intersectionPolyLines(result);
 
     for (PolygonRef poly_line : poly_lines)
@@ -338,7 +335,6 @@ void Infill::generateGyroidInfill(Polygons& result_lines)
             result_lines.addLine(poly_line[point_idx - 1], poly_line[point_idx]);
         }
     }
-#endif
 }
 
 void Infill::generateConcentricInfill(Polygons& result, int inset_value)
