@@ -223,9 +223,8 @@ private:
     /*!
      * Generate gyroid infill
      * \param result (output) The resulting polygons
-     * \param line_distance The distance between the gyroid walls
      */
-    void generateGyroidInfill(Polygons& result, int line_distance);
+    void generateGyroidInfill(Polygons& result);
 
     /*!
      * Generate sparse concentric infill
