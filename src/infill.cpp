@@ -238,6 +238,10 @@ void Infill::generateGyroidInfill(Polygons& result_lines)
 {
     // generate infill based on the gyroid equation: sin_x * cos_y + sin_y * cos_z + sin_z * cos_x = 0
     // kudos to the author of the Slic3r implementation which this is based on
+
+    const Polygons outline = in_outline.offset(outline_offset);
+    const AABB aabb(outline);
+
     const int pitch = line_distance * 2.41; // this produces similar density to the "line" infill pattern
     int num_steps = 4;
     int step = pitch / num_steps;
@@ -249,7 +253,6 @@ void Infill::generateGyroidInfill(Polygons& result_lines)
     const double z_rads = 2 * M_PI * z / pitch;
     const double cos_z = std::cos(z_rads);
     const double sin_z = std::sin(z_rads);
-    AABB aabb(in_outline);
     std::vector<coord_t> odd_line_coords;
     std::vector<coord_t> even_line_coords;
     Polygons result;
@@ -332,7 +335,7 @@ void Infill::generateGyroidInfill(Polygons& result_lines)
         }
     }
 
-    Polygons poly_lines = in_outline.offset(outline_offset).intersectionPolyLines(result);
+    Polygons poly_lines = outline.intersectionPolyLines(result);
 
     for (PolygonRef poly_line : poly_lines)
     {
