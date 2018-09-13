@@ -266,7 +266,7 @@ void Infill::generateGyroidInfill(Polygons& result_lines)
         }
         const unsigned num_coords = odd_line_coords.size();
         unsigned n = 0;
-        for (coord_t x = (std::floor(aabb.min.X / pitch) - 1.25) * pitch; x <= aabb.max.X; x += pitch/2)
+        for (coord_t x = (std::floor(aabb.min.X / pitch) - 2.25) * pitch; x <= aabb.max.X; x += pitch/2)
         {
             bool is_first_point = true;
             Point last;
