@@ -420,7 +420,7 @@ void InsetOrderOptimizer::processOuterWallInsets(const bool include_outer, const
             }
 
             // useful diagnostic aid, please don't delete
-            //gcode_layer.addWalls(boundary, mesh, mesh_config.infill_config[0], mesh_config.bridge_insetX_config, nullptr);
+            //gcode_layer.addWalls(boundary, mesh, mesh_config.infill_config[0], mesh_config.bridge_insetX_config, nullptr, ZSeamConfig(), 0, 0.1);
         };
 
         if (outer_inset_first)
