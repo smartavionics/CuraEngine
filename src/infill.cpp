@@ -6,7 +6,6 @@
 
 #include "infill.h"
 #include "functional"
-#include "utils/linearAlg2D.h"
 #include "utils/polygonUtils.h"
 #include "utils/logoutput.h"
 #include "utils/UnionFind.h"
