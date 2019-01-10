@@ -418,9 +418,6 @@ void InsetOrderOptimizer::processOuterWallInsets(const bool include_outer, const
                 const bool always_retract = false;
                 gcode_layer.addWall(part_inner_walls[wall_idx], orderOptimizer.polyStart[wall_idx], mesh, mesh_config.insetX_config, mesh_config.bridge_insetX_config, wall_overlapper_x, wall_0_wipe_dist, flow_ratio, always_retract);
             }
-
-            // useful diagnostic aid, please don't delete
-            //gcode_layer.addWalls(boundary, mesh, mesh_config.infill_config[0], mesh_config.bridge_insetX_config, nullptr, ZSeamConfig(), 0, 0.1);
         };
 
         if (outer_inset_first)
@@ -536,6 +533,14 @@ bool InsetOrderOptimizer::processInsetsWithOptimizedOrdering()
                 inset_polys[inset_level].push_back(part.insets[inset_level][poly_idx]);
             }
         }
+    }
+
+    if (false)
+    {
+        // useful diagnostic aid, please don't delete
+        Polygons boundary(*gcode_layer.getCombBoundaryInside());
+        boundary.simplify(100, 100);
+        gcode_layer.addWalls(boundary, mesh, mesh_config.infill_config[0], mesh_config.bridge_insetX_config, nullptr, ZSeamConfig(), 0, 0.1);
     }
 
     // if the print has thin walls due to the distance from a hole to the outer wall being smaller than a line width, it will produce a nicer finish on
