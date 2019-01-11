@@ -2187,6 +2187,12 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
     while (gap_polygons.size() > 0)
     {
+        ClosestPolygonPoint cpp = PolygonUtils::findClosest(gcode_layer.getLastPlannedPositionOrStartingPosition(), gap_polygons);
+        if (cpp.isValid())
+        {
+            next_poly_index = cpp.poly_idx;
+        }
+
         ConstPolygonRef poly = gap_polygons[next_poly_index];
 
         if (std::abs(poly.area()) > (500 * 500))
@@ -2240,6 +2246,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
             }
             if (mid_points.size() > 1)
             {
+                // create an area polygon for each segment, it's a hull like shape formed from the begin, end and mid points at each end of the segment
                 std::vector<Polygon> areas;
                 for (unsigned point_index = 0; point_index < begin_points.size(); ++point_index)
                 {
@@ -2252,11 +2259,16 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     {
                         areas.back().add(mid_points[next_point_index]);
                     }
-                    Point next_end_point(begin_points[next_point_index] + (end_points[point_index] - begin_points[point_index]));
+                    // make the width constant based on the maximum width of the two ends
+                    const coord_t hull_width = std::max(vSize(end_points[point_index] - begin_points[point_index]), vSize(end_points[next_point_index] - begin_points[next_point_index]));
+//                    const coord_t hull_width = (vSize(end_points[point_index] - begin_points[point_index]) + vSize(end_points[next_point_index] - begin_points[next_point_index])) / 2;
+                    const Point seg_width_vec(normal(end_points[point_index] - begin_points[point_index], hull_width));
+                    const Point next_end_point(begin_points[next_point_index] + seg_width_vec);
                     areas.back().add(next_end_point);
-                    areas.back().add(end_points[point_index]);
+                    const Point end_point(begin_points[point_index] + seg_width_vec);
+                    areas.back().add(end_point);
                     // add the current mid point if it makes the area bigger
-                    if (LinearAlg2D::getAngleLeft(next_end_point, end_points[point_index], mid_points[point_index]) > M_PI * 0.55)
+                    if (LinearAlg2D::getAngleLeft(next_end_point, end_point, mid_points[point_index]) > M_PI * 0.55)
                     {
                         areas.back().add(mid_points[point_index]);
                     }
@@ -2279,7 +2291,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     }
                 }
 
-                Point start(mid_points[start_point_index]);
+                Point start_mid_point(mid_points[start_point_index]);
                 bool travel_needed = true;
 
                 for (unsigned n = 0; n < mid_points.size(); ++n)
@@ -2299,9 +2311,9 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     }
     #endif
 
-                    if (overlap.size() > 0 && overlap.area() > segment.area() * 0.5)
+                    if (overlap.size() > 0 && overlap.area() > segment.area() * 0.4)
                     {
-                        start = next_mid_point;
+                        start_mid_point = next_mid_point;
                         travel_needed = true;
                         continue;
                     }
@@ -2309,36 +2321,48 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     // consider the segment filled even if the flow is too low to actually do the fill
                     all_filled_segments = all_filled_segments.unionPolygons(segment);
 
-                    const float flow = (widths[point_index] + widths[next_point_index]) / (2.0f * gap_config.getLineWidth());
-                    if (flow > min_flow)
+                    std::function<void(const Point&, const Point&, const coord_t, const coord_t)> addLine = [&](const Point& start, const Point& end, const coord_t start_width, const coord_t end_width) -> void
                     {
-                        if (travel_needed)
+                        const coord_t avg_width = (start_width + end_width) / 2;
+                        // split the line if it is longer than a min length and the flow required at each end differs appreciably
+                        const coord_t min_len = 2000;
+                        const float max_flow_ratio = 1.2;
+                        const float flow_ratio = (float)std::max(start_width, end_width) / std::min(start_width, end_width);
+                        if (vSize2(end - start) >= min_len * min_len && flow_ratio >= max_flow_ratio)
                         {
-                            gcode_layer.addTravel(start);
-                            travel_needed = false;
+                            std::cerr << gcode_layer.getLayerNr() << ": len = " << vSize(end-start) << ", start_width = " << start_width << ", end_width = " << end_width << "\n";
+                            const Point avg_point(start + (end - start) / 2);
+                            addLine(start, avg_point, start_width, avg_width);
+                            addLine(avg_point, end, avg_width, end_width);
                         }
-                        gcode_layer.addExtrusionMove(next_mid_point, gap_config, SpaceFillType::Lines, flow);
-                    }
-                    else
-                    {
-                        travel_needed = true;
-                    }
-                    start = next_mid_point;
+                        else
+                        {
+                            const float flow = (float)avg_width / gap_config.getLineWidth();
+                            if (flow > min_flow)
+                            {
+                                if (travel_needed)
+                                {
+                                    gcode_layer.addTravel(start);
+                                    travel_needed = false;
+                                }
+                                gcode_layer.addExtrusionMove(end, gap_config, SpaceFillType::Lines, flow);
+                            }
+                            else
+                            {
+                                travel_needed = true;
+                            }
+                        }
+                    };
+
+                    addLine(start_mid_point, next_mid_point, widths[point_index], widths[next_point_index]);
+
+                    start_mid_point = next_mid_point;
                 }
             }
         }
 
         gap_polygons.remove(next_poly_index);
         next_poly_index = 0;
-
-        if (gap_polygons.size() > 1)
-        {
-            ClosestPolygonPoint cpp = PolygonUtils::findClosest(gcode_layer.getLastPlannedPositionOrStartingPosition(), gap_polygons);
-            if (cpp.isValid())
-            {
-                next_poly_index = cpp.poly_idx;
-            }
-        }
     }
 }
 
