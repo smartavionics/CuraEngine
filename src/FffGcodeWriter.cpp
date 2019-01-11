@@ -2205,8 +2205,13 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
             std::vector<coord_t> widths;
             for (unsigned n = 0; n < poly.size(); ++n)
             {
+#if 0
+                gcode_layer.addTravel(poly[(n + poly.size() - 1) % poly.size()]);
+                gcode_layer.addExtrusionMove(poly[n], gap_config, SpaceFillType::Lines);
+                continue;
+#endif
                 Polygons lines;
-                Point point_inside(PolygonUtils::getBoundaryPointWithOffset(poly, n, -avg_width * 5));
+                Point point_inside(PolygonUtils::getBoundaryPointWithOffset(poly, n, -avg_width * 3));
                 // adjust the width when point_inside isn't normal to the direction of the next line segment
                 // if we don't do this, the resulting line width is too big where the gap polygon has sharp(ish) corners
                 const double len_scale = std::abs(std::sin(LinearAlg2D::getAngleLeft(point_inside, poly[n], poly[(n + 1) % poly.size()])));
@@ -2221,18 +2226,6 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 {
                     Point clipped(lines[0][1]);
                     coord_t line_len = vSize(lines[0][1] - lines[0][0]) * len_scale;
-                    if (!is_outline)
-                    {
-                        if (line_len > 3 * avg_width)
-                        {
-                            // this should only be true when we have a vertex whose normal is directly lined up
-                            // with another part of the gap polygon, i.e. a T shaped gap where the horizontal
-                            // feature contains a vertex that is directly above the vertical feature and so the normal
-                            // for that vertex is located somewhere down the length of the vertical feature.
-                            line_len = avg_width;
-                            clipped = lines[0][0] + normal(lines[0][1] - lines[0][0], line_len);
-                        }
-                    }
     #if 0
                     gcode_layer.addTravel(lines[0][0]);
                     gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines);
@@ -2325,14 +2318,27 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     {
                         const coord_t avg_width = (start_width + end_width) / 2;
                         // split the line if it is longer than a min length and the flow required at each end differs appreciably
-                        const coord_t min_len = 2000;
+                        const coord_t min_len = 500;
                         const float max_flow_ratio = 1.2;
                         const float flow_ratio = (float)std::max(start_width, end_width) / std::min(start_width, end_width);
                         if (vSize2(end - start) >= min_len * min_len && flow_ratio >= max_flow_ratio)
                         {
-                            const Point avg_point(start + (end - start) / 2);
-                            addLine(start, avg_point, start_width, avg_width);
-                            addLine(avg_point, end, avg_width, end_width);
+                            const Point split_point(start + (end - start) / 2);
+                            coord_t split_width = avg_width;
+                            if (!is_outline)
+                            {
+                                // measure the gap width at split_point and use that rather than avg_width
+                                const Point half_line(normal(turn90CCW(end - start), avg_width * 2));
+                                Polygons lines;
+                                lines.addLine(split_point + half_line, split_point - half_line);
+                                lines = gaps.intersectionPolyLines(lines);
+                                if (lines.size() > 0)
+                                {
+                                    split_width = vSize(lines[0][1] - lines[0][0]);
+                                }
+                            }
+                            addLine(start, split_point, start_width, split_width);
+                            addLine(split_point, end, split_width, end_width);
                         }
                         else
                         {
