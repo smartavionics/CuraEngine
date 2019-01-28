@@ -2320,7 +2320,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         const coord_t min_len = 500;
                         const float max_flow_ratio = 1.2;
                         const float flow_ratio = (float)std::max(start_width, end_width) / std::min(start_width, end_width);
-                        if (vSize2(end - start) >= min_len * min_len && flow_ratio >= max_flow_ratio)
+                        if (flow_ratio >= max_flow_ratio && vSize2(end - start) >= min_len * min_len)
                         {
                             const Point split_point(start + (end - start) / 2);
                             coord_t split_width = estimated_width;
@@ -2333,7 +2333,9 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                                 lines = gaps.intersectionPolyLines(lines);
                                 if (lines.size() > 0)
                                 {
-                                    // don't allow the gap to grow too much
+                                    // Limit amount the line width can grow when the line is split.
+                                    // If we don't do this then it is possible that the line width could become too large because
+                                    // it was measured in a place that appeared to be wide (like at a T junction).
                                     split_width = std::min(vSize(lines[0][1] - lines[0][0]), (coord_t)(estimated_width * (max_flow_ratio / 2 + 0.5f)));
                                 }
                             }
