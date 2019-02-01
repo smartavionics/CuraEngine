@@ -2370,6 +2370,31 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     const unsigned next_point_index = (point_index + 1) % mid_points.size();
                     const Point& next_mid_point(mid_points[next_point_index]);
 
+                    // in this scenario, skip the very short line that would occur at *
+                    // we do this because (a) the direction of that short line is pretty random
+                    // and (b) the overlap area for that line will tend to overlap other lines' areas
+                    // which will stop them being output
+                    //
+                    //   2--------------1------ <<
+                    //   |\     /       |
+                    //   | \   /        |
+                    //   |  \ /         |
+                    //   |   *##########@###
+                    //   |  / \         |
+                    //   | /   \        |
+                    //   |/     \       |
+                    //   3--------------------- >>
+                    //
+                    // the distance between the mid points for vertex bisectors 2 and 3 should be much smaller
+                    // than the width of the gap at vertex 2 in this situation
+
+                    if (vSize(start_mid_point - next_mid_point) < widths[point_index] / 10)
+                    {
+                        start_mid_point = next_mid_point;
+                        travel_needed = true;
+                        continue;
+                    }
+
                     Polygons segment;
                     segment.add(areas[point_index]);
                     Polygons overlap(segment.intersection(all_filled_segments));
