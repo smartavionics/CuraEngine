@@ -2469,19 +2469,29 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         }
                         else if (overlap_area > segment_area * 0.2)
                         {
+                            const double seg_len = vSize(start_mid_point - next_mid_point);
                             Polygons lines;
                             lines.addLine(start_mid_point, next_mid_point);
                             lines = segment.difference(overlap).intersectionPolyLines(lines);
-                            for (unsigned ln = 0; ln < lines.size(); ++ln)
+                            if (lines.size())
                             {
-                                if (vSize(lines[ln][1] - lines[ln][0]) > widths[point_index] * 0.2)
+                                for (unsigned ln = 0; ln < lines.size(); ++ln)
                                 {
-                                    addLine(lines[ln][0], lines[ln][1], widths[point_index], widths[next_point_index]);
+                                    if (vSize(lines[ln][1] - lines[ln][0]) > widths[point_index] * 0.2)
+                                    {
+                                        const coord_t w0 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[ln][0] - start_mid_point) / seg_len;
+                                        const coord_t w1 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[ln][1] - start_mid_point) / seg_len;
+                                        addLine(lines[ln][0], lines[ln][1], w0, w1);
+                                    }
+                                    else
+                                    {
+                                        travel_needed = true;
+                                    }
                                 }
-                                else
-                                {
-                                    travel_needed = true;
-                                }
+                            }
+                            else
+                            {
+                                travel_needed = true;
                             }
                             start_mid_point = next_mid_point;
                             continue;
