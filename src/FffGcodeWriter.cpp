@@ -2296,16 +2296,16 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 }
             }
 
-            if (false)
+#if 0
+            // diagnostic - print middle of gap lines
+            for (unsigned n = 0; n < widths.size(); ++n)
             {
-                // diagnostic - print middle of gap lines
-                for (unsigned n = 0; n < widths.size(); ++n)
-                {
-                    gcode_layer.addTravel(begin_points[n]);
-                    gcode_layer.addExtrusionMove(mid_points[n] + (mid_points[n] - begin_points[n]), gap_config, SpaceFillType::Lines);
-                }
+                gcode_layer.addTravel(begin_points[n]);
+                gcode_layer.addExtrusionMove(mid_points[n] + (mid_points[n] - begin_points[n]), gap_config, SpaceFillType::Lines, 0.1);
             }
-            else if (mid_points.size() > 1)
+#endif
+
+            if (mid_points.size() > 1)
             {
                 // create an area polygon for each segment, it's a hull like shape formed from the begin, end and mid points at each end of the segment
                 std::vector<Polygon> areas;
@@ -2372,6 +2372,31 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     const unsigned point_index = (start_point_index + n) % mid_points.size();
                     const unsigned next_point_index = (point_index + 1) % mid_points.size();
                     const Point& next_mid_point(mid_points[next_point_index]);
+
+                    // in this scenario, skip the very short line that would occur at *
+                    // we do this because (a) the direction of that short line is pretty random
+                    // and (b) the overlap area for that line will tend to overlap other lines' areas
+                    // which will stop them being output
+                    //
+                    //   2--------------1------ <<
+                    //   |\     /       |
+                    //   | \   /        |
+                    //   |  \ /         |
+                    //   |   *##########@###
+                    //   |  / \         |
+                    //   | /   \        |
+                    //   |/     \       |
+                    //   3--------------------- >>
+                    //
+                    // the distance between the mid points for vertex bisectors 2 and 3 should be much smaller
+                    // than the width of the gap at vertex 2 in this situation
+
+                    if (vSize(start_mid_point - next_mid_point) < widths[point_index] / 10)
+                    {
+                        start_mid_point = next_mid_point;
+                        travel_needed = true;
+                        continue;
+                    }
 
                     Polygons segment;
                     segment.add(areas[point_index]);
@@ -2447,19 +2472,29 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         }
                         else if (overlap_area > segment_area * 0.2)
                         {
+                            const double seg_len = vSize(start_mid_point - next_mid_point);
                             Polygons lines;
                             lines.addLine(start_mid_point, next_mid_point);
                             lines = segment.difference(overlap).intersectionPolyLines(lines);
-                            for (unsigned ln = 0; ln < lines.size(); ++ln)
+                            if (lines.size())
                             {
-                                if (vSize(lines[ln][1] - lines[ln][0]) > widths[point_index] * 0.2)
+                                for (unsigned ln = 0; ln < lines.size(); ++ln)
                                 {
-                                    addLine(lines[ln][0], lines[ln][1], widths[point_index], widths[next_point_index]);
+                                    if (vSize(lines[ln][1] - lines[ln][0]) > widths[point_index] * 0.2)
+                                    {
+                                        const coord_t w0 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[ln][0] - start_mid_point) / seg_len;
+                                        const coord_t w1 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[ln][1] - start_mid_point) / seg_len;
+                                        addLine(lines[ln][0], lines[ln][1], w0, w1);
+                                    }
+                                    else
+                                    {
+                                        travel_needed = true;
+                                    }
                                 }
-                                else
-                                {
-                                    travel_needed = true;
-                                }
+                            }
+                            else
+                            {
+                                travel_needed = true;
                             }
                             start_mid_point = next_mid_point;
                             continue;
