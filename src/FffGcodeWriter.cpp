@@ -2318,8 +2318,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         areas.back().add(mid_points[next_point_index]);
                     }
                     // make the width constant based on the maximum width of the two ends
-                    const coord_t hull_width = std::max(vSize(end_points[point_index] - begin_points[point_index]), vSize(end_points[next_point_index] - begin_points[next_point_index]));
-//                    const coord_t hull_width = (vSize(end_points[point_index] - begin_points[point_index]) + vSize(end_points[next_point_index] - begin_points[next_point_index])) / 2;
+                    const coord_t hull_width = std::max(widths[point_index], widths[next_point_index]);
                     const Point seg_width_vec(normal(end_points[point_index] - begin_points[point_index], hull_width));
                     const Point next_end_point(begin_points[next_point_index] + seg_width_vec);
                     areas.back().add(next_end_point);
