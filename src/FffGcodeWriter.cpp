@@ -2293,16 +2293,16 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 }
             }
 
-            if (false)
+#if 0
+            // diagnostic - print middle of gap lines
+            for (unsigned n = 0; n < widths.size(); ++n)
             {
-                // diagnostic - print middle of gap lines
-                for (unsigned n = 0; n < widths.size(); ++n)
-                {
-                    gcode_layer.addTravel(begin_points[n]);
-                    gcode_layer.addExtrusionMove(mid_points[n] + (mid_points[n] - begin_points[n]), gap_config, SpaceFillType::Lines);
-                }
+                gcode_layer.addTravel(begin_points[n]);
+                gcode_layer.addExtrusionMove(mid_points[n] + (mid_points[n] - begin_points[n]), gap_config, SpaceFillType::Lines, 0.1);
             }
-            else if (mid_points.size() > 1)
+#endif
+
+            if (mid_points.size() > 1)
             {
                 // create an area polygon for each segment, it's a hull like shape formed from the begin, end and mid points at each end of the segment
                 std::vector<Polygon> areas;
