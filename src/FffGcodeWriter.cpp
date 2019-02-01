@@ -2381,13 +2381,6 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     }
     #endif
 
-                    if (overlap.size() > 0 && overlap.area() > segment.area() * 0.4)
-                    {
-                        start_mid_point = next_mid_point;
-                        travel_needed = true;
-                        continue;
-                    }
-
                     // consider the segment filled even if the flow is too low to actually do the fill
                     all_filled_segments = all_filled_segments.unionPolygons(segment);
 
@@ -2438,6 +2431,37 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             }
                         }
                     };
+
+                    if (overlap.size() > 0)
+                    {
+                        double overlap_area = overlap.area();
+                        double segment_area = segment.area();
+                        if (overlap_area > segment_area * 0.9)
+                        {
+                            start_mid_point = next_mid_point;
+                            travel_needed = true;
+                            continue;
+                        }
+                        else if (overlap_area > segment_area * 0.2)
+                        {
+                            Polygons lines;
+                            lines.addLine(start_mid_point, next_mid_point);
+                            lines = segment.difference(overlap).intersectionPolyLines(lines);
+                            for (unsigned ln = 0; ln < lines.size(); ++ln)
+                            {
+                                if (vSize(lines[ln][1] - lines[ln][0]) > widths[point_index] * 0.2)
+                                {
+                                    addLine(lines[ln][0], lines[ln][1], widths[point_index], widths[next_point_index]);
+                                }
+                                else
+                                {
+                                    travel_needed = true;
+                                }
+                            }
+                            start_mid_point = next_mid_point;
+                            continue;
+                        }
+                    }
 
                     addLine(start_mid_point, next_mid_point, widths[point_index], widths[next_point_index]);
 
