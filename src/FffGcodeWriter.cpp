@@ -2202,8 +2202,9 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
             for (unsigned n = 0; n < poly.size(); ++n)
             {
 #if 0
+                // diagnostic - print gap outline
                 gcode_layer.addTravel(poly[(n + poly.size() - 1) % poly.size()]);
-                gcode_layer.addExtrusionMove(poly[n], gap_config, SpaceFillType::Lines);
+                gcode_layer.addExtrusionMove(poly[n], gap_config, SpaceFillType::Lines, 0.1);
                 continue;
 #endif
                 Polygons lines;
@@ -2218,8 +2219,9 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     Point clipped(lines[0][1]);
                     coord_t line_len = vSize(lines[0][1] - lines[0][0]) * len_scale;
     #if 0
+                    // diagnostic - print vertex bisector lines
                     gcode_layer.addTravel(lines[0][0]);
-                    gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines);
+                    gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines, 0.1);
     #else
                     widths.push_back(line_len);
                     begin_points.emplace_back(poly[n]);
@@ -2288,13 +2290,19 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             mid_points[n] = begin_points[n] + normal(mid_points[n] - begin_points[n], widths[n] / 2);
                         }
                     }
-    #if 0
-                    gcode_layer.addTravel(begin_points[n]);
-                    gcode_layer.addExtrusionMove(mid_points[n] + (mid_points[n] - begin_points[n]), gap_config, SpaceFillType::Lines);
-    #endif
                 }
             }
-            if (mid_points.size() > 1)
+
+            if (false)
+            {
+                // diagnostic - print middle of gap lines
+                for (unsigned n = 0; n < widths.size(); ++n)
+                {
+                    gcode_layer.addTravel(begin_points[n]);
+                    gcode_layer.addExtrusionMove(mid_points[n] + (mid_points[n] - begin_points[n]), gap_config, SpaceFillType::Lines);
+                }
+            }
+            else if (mid_points.size() > 1)
             {
                 // create an area polygon for each segment, it's a hull like shape formed from the begin, end and mid points at each end of the segment
                 std::vector<Polygon> areas;
@@ -2328,6 +2336,19 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 setExtruder_addPrime(storage, gcode_layer, extruder_nr);
                 gcode_layer.setIsInside(true); // going to print stuff inside print object
 
+#if 0
+                // diagnostic - print area outlines
+                for (unsigned n = 0; n < areas.size(); ++n)
+                {
+                    gcode_layer.addTravel(areas[n][0]);
+                    for (unsigned p = 1; p < areas[n].size(); ++p)
+                    {
+                        gcode_layer.addExtrusionMove(areas[n][p], gap_config, SpaceFillType::Lines, 0.1);
+                    }
+                    gcode_layer.addExtrusionMove(areas[n][0], gap_config, SpaceFillType::Lines, 0.1);
+                }
+#endif
+
                 const Point origin(gcode_layer.getLastPlannedPositionOrStartingPosition());
                 coord_t min_dist2 = vSize2(origin - mid_points[0]);
                 unsigned start_point_index = 0;
@@ -2357,7 +2378,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
     #if 0
                     if (gcode_layer.getLayerNr() == 0)
                     {
-                        std::cerr << point_index << ": overlap % = " << 100 * overlap.area() / segment.area() << "\n";
+                        std::cerr << point_index << ": overlap % = " << 100 * overlap.area() / segment.area() << " is_outline = " << is_outline << "\n";
                     }
     #endif
 
