@@ -2167,8 +2167,6 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 {
     const Ratio min_flow = std::max(Ratio(0.2), mesh.settings.get<Ratio>("wall_min_flow"));
 
-    Polygons all_filled_segments;
-
     if (!gaps.polyLineLength())
     {
         return;
@@ -2181,6 +2179,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
         return;
     }
 
+    Polygons all_filled_areas;
     Polygons gap_polygons(gaps);
     unsigned next_poly_index = 0;
 
@@ -2221,16 +2220,16 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 {
                     Point clipped(lines[0][1]);
                     coord_t line_len = vSize(lines[0][1] - lines[0][0]) * len_scale;
-    #if 0
+#if 0
                     // diagnostic - print vertex bisector lines
                     gcode_layer.addTravel(lines[0][0]);
                     gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines, 0.1);
-    #else
+#else
                     widths.push_back(line_len);
                     begin_points.emplace_back(poly[n]);
                     end_points.emplace_back(poly[n] + normal(turn90CCW(poly[(n + 1) % poly.size()] - poly[n]), line_len));
                     mid_points.emplace_back((lines[0][0] + clipped) / 2);
-    #endif
+#endif
                 }
             }
             if (is_outline && widths.size() > 1) {
@@ -2351,29 +2350,12 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 }
 #endif
 
-                const Point origin(gcode_layer.getLastPlannedPositionOrStartingPosition());
-                coord_t min_dist2 = vSize2(origin - mid_points[0]);
-                unsigned start_point_index = 0;
-                for (unsigned n = 1; n < mid_points.size(); ++n)
-                {
-                    coord_t dist2 = vSize2(origin - mid_points[n]);
-                    if (dist2 < min_dist2)
-                    {
-                        min_dist2 = dist2;
-                        start_point_index = n;
-                    }
-                }
-
-                Point start_mid_point(mid_points[start_point_index]);
-                bool travel_needed = true;
+                // detect the mid points that we want to avoid using
+                std::vector<bool> ignore_points(mid_points.size(), false);
 
                 for (unsigned n = 0; n < mid_points.size(); ++n)
                 {
-                    const unsigned point_index = (start_point_index + n) % mid_points.size();
-                    const unsigned next_point_index = (point_index + 1) % mid_points.size();
-                    const Point& next_mid_point(mid_points[next_point_index]);
-
-                    // in this scenario, skip the very short line that would occur at *
+                    // in this scenario, we want to skip the very short line that would occur at *
                     // we do this because (a) the direction of that short line is pretty random
                     // and (b) the overlap area for that line will tend to overlap other lines' areas
                     // which will stop them being output
@@ -2391,91 +2373,146 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     // the distance between the mid points for vertex bisectors 2 and 3 should be much smaller
                     // than the width of the gap at vertex 2 in this situation
 
-                    if (vSize(start_mid_point - next_mid_point) < widths[point_index] / 10)
+                    if (vSize(mid_points[n] - mid_points[(n + 1) % mid_points.size()]) < widths[n] / 10)
+                    {
+                        ignore_points[n] = true;
+                    }
+                }
+
+                // start at the mid point that is closest to the current location
+                const Point origin(gcode_layer.getLastPlannedPositionOrStartingPosition());
+                unsigned start_point_index = 0;
+                while (start_point_index < mid_points.size() && ignore_points[start_point_index])
+                {
+                    ++start_point_index;
+                }
+                if (start_point_index < mid_points.size())
+                {
+                    coord_t min_dist2 = vSize2(origin - mid_points[start_point_index]);
+                    for (unsigned n = start_point_index + 1; n < mid_points.size(); ++n)
+                    {
+                        if (!ignore_points[n])
+                        {
+                            coord_t dist2 = vSize2(origin - mid_points[n]);
+                            if (dist2 < min_dist2)
+                            {
+                                min_dist2 = dist2;
+                                start_point_index = n;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // avoid array bounds error in (impossible?) situation where all points are ignored
+                    start_point_index = 0;
+                }
+
+                // bit of subtlety here - due to the way that the overlap areas are computed it is possible that
+                // when the line segment before the chosen start point is associated with a sharp corner, its filled
+                // area may not overlap (much) with the filled area for chosen first line and so that will cause an unwanted travel
+                // back to print the last line segment - we can avoid the unwanted travel by detecting when the mid point for the
+                // last line segment falls inside the area for the first line segment and simply start at the last line segment instead
+                unsigned last_point_index = (start_point_index + mid_points.size() - 1) % mid_points.size();
+                if (!ignore_points[last_point_index] && areas[start_point_index].inside(mid_points[last_point_index]))
+                {
+                    start_point_index = last_point_index;
+                }
+
+                Point start_mid_point(mid_points[start_point_index]);
+                bool travel_needed = true;
+
+                // helper function that adds a line between two points - if the line width at each end alters appreciably, the line is sub-divided
+                std::function<void(const Point&, const Point&, const coord_t, const coord_t)> addLine = [&](const Point& start, const Point& end, const coord_t start_width, const coord_t end_width) -> void
+                {
+                    const coord_t estimated_width = (start_width + end_width) / 2;
+                    // split the line if it is longer than a min length and the flow required at each end differs appreciably
+                    const coord_t min_len = 500;
+                    const float max_flow_ratio = 1.2;
+                    const float flow_ratio = (float)std::max(start_width, end_width) / std::min(start_width, end_width);
+                    if (flow_ratio >= max_flow_ratio && vSize2(end - start) >= min_len * min_len)
+                    {
+                        const Point split_point(start + (end - start) / 2);
+                        coord_t split_width = estimated_width;
+                        if (!is_outline)
+                        {
+                            // measure the gap width at split_point and use that rather than estimated_width
+                            const Point half_line(normal(turn90CCW(end - start), estimated_width * 2));
+                            Polygons lines;
+                            lines.addLine(split_point + half_line, split_point - half_line);
+                            lines = gaps.intersectionPolyLines(lines);
+                            if (lines.size() > 0)
+                            {
+                                // Limit amount the line width can grow when the line is split.
+                                // If we don't do this then it is possible that the line width could become too large because
+                                // it was measured in a place that appeared to be wide (like at a T junction).
+                                split_width = std::min(vSize(lines[0][1] - lines[0][0]), (coord_t)(estimated_width * (max_flow_ratio / 2 + 0.5f)));
+                            }
+                        }
+                        addLine(start, split_point, start_width, split_width);
+                        addLine(split_point, end, split_width, end_width);
+                    }
+                    else
+                    {
+                        const float flow = (float)estimated_width / gap_config.getLineWidth();
+                        if (flow > min_flow)
+                        {
+                            if (travel_needed)
+                            {
+                                gcode_layer.addTravel(start);
+                                travel_needed = false;
+                            }
+                            gcode_layer.addExtrusionMove(end, gap_config, SpaceFillType::Lines, flow);
+                        }
+                        else
+                        {
+                            travel_needed = true;
+                        }
+                    }
+                };
+
+                // output the lines between the mid points
+                for (unsigned n = 0; n < mid_points.size(); ++n)
+                {
+                    const unsigned point_index = (start_point_index + n) % mid_points.size();
+                    const unsigned next_point_index = (point_index + 1) % mid_points.size();
+                    const Point& next_mid_point(mid_points[next_point_index]);
+
+                    if (ignore_points[point_index])
                     {
                         start_mid_point = next_mid_point;
                         travel_needed = true;
                         continue;
                     }
 
-                    Polygons segment;
-                    segment.add(areas[point_index]);
-                    Polygons overlap(segment.intersection(all_filled_segments));
+                    Polygons filled; // area filled by this line
+                    filled.add(areas[point_index]);
+                    Polygons overlap(filled.intersection(all_filled_areas));
 
-    #if 0
+#if 0
                     if (gcode_layer.getLayerNr() == 0)
                     {
-                        std::cerr << point_index << ": overlap % = " << 100 * overlap.area() / segment.area() << " is_outline = " << is_outline << "\n";
+                        std::cerr << point_index << ": overlap % = " << 100 * overlap.area() / filled.area() << " is_outline = " << is_outline << "\n";
                     }
-    #endif
+#endif
 
-                    // consider the segment filled even if the flow is too low to actually do the fill
-                    all_filled_segments = all_filled_segments.unionPolygons(segment);
-
-                    std::function<void(const Point&, const Point&, const coord_t, const coord_t)> addLine = [&](const Point& start, const Point& end, const coord_t start_width, const coord_t end_width) -> void
-                    {
-                        const coord_t estimated_width = (start_width + end_width) / 2;
-                        // split the line if it is longer than a min length and the flow required at each end differs appreciably
-                        const coord_t min_len = 500;
-                        const float max_flow_ratio = 1.2;
-                        const float flow_ratio = (float)std::max(start_width, end_width) / std::min(start_width, end_width);
-                        if (flow_ratio >= max_flow_ratio && vSize2(end - start) >= min_len * min_len)
-                        {
-                            const Point split_point(start + (end - start) / 2);
-                            coord_t split_width = estimated_width;
-                            if (!is_outline)
-                            {
-                                // measure the gap width at split_point and use that rather than estimated_width
-                                const Point half_line(normal(turn90CCW(end - start), estimated_width * 2));
-                                Polygons lines;
-                                lines.addLine(split_point + half_line, split_point - half_line);
-                                lines = gaps.intersectionPolyLines(lines);
-                                if (lines.size() > 0)
-                                {
-                                    // Limit amount the line width can grow when the line is split.
-                                    // If we don't do this then it is possible that the line width could become too large because
-                                    // it was measured in a place that appeared to be wide (like at a T junction).
-                                    split_width = std::min(vSize(lines[0][1] - lines[0][0]), (coord_t)(estimated_width * (max_flow_ratio / 2 + 0.5f)));
-                                }
-                            }
-                            addLine(start, split_point, start_width, split_width);
-                            addLine(split_point, end, split_width, end_width);
-                        }
-                        else
-                        {
-                            const float flow = (float)estimated_width / gap_config.getLineWidth();
-                            if (flow > min_flow)
-                            {
-                                if (travel_needed)
-                                {
-                                    gcode_layer.addTravel(start);
-                                    travel_needed = false;
-                                }
-                                gcode_layer.addExtrusionMove(end, gap_config, SpaceFillType::Lines, flow);
-                            }
-                            else
-                            {
-                                travel_needed = true;
-                            }
-                        }
-                    };
+                    // consider the area filled even if the flow is too low to actually do the fill
+                    all_filled_areas = all_filled_areas.unionPolygons(filled);
 
                     if (overlap.size() > 0)
                     {
                         double overlap_area = overlap.area();
-                        double segment_area = segment.area();
-                        if (overlap_area > segment_area * 0.9)
+                        double filled_area = filled.area();
+                        if (overlap_area > filled_area * 0.9)
                         {
-                            start_mid_point = next_mid_point;
                             travel_needed = true;
-                            continue;
                         }
-                        else if (overlap_area > segment_area * 0.2)
+                        else if (overlap_area > filled_area * 0.2)
                         {
                             const double seg_len = vSize(start_mid_point - next_mid_point);
                             Polygons lines;
                             lines.addLine(start_mid_point, next_mid_point);
-                            lines = segment.difference(overlap).intersectionPolyLines(lines);
+                            lines = filled.difference(overlap).intersectionPolyLines(lines);
                             if (lines.size())
                             {
                                 for (unsigned ln = 0; ln < lines.size(); ++ln)
@@ -2496,12 +2533,16 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             {
                                 travel_needed = true;
                             }
-                            start_mid_point = next_mid_point;
-                            continue;
+                        }
+                        else
+                        {
+                            addLine(start_mid_point, next_mid_point, widths[point_index], widths[next_point_index]);
                         }
                     }
-
-                    addLine(start_mid_point, next_mid_point, widths[point_index], widths[next_point_index]);
+                    else
+                    {
+                        addLine(start_mid_point, next_mid_point, widths[point_index], widths[next_point_index]);
+                    }
 
                     start_mid_point = next_mid_point;
                 }
