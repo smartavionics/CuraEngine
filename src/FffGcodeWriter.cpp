@@ -2164,8 +2164,6 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 {
     const Ratio min_flow = std::max(Ratio(0.2), mesh.settings.get<Ratio>("wall_min_flow"));
 
-    Polygons all_filled_segments;
-
     if (!gaps.polyLineLength())
     {
         return;
@@ -2178,6 +2176,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
         return;
     }
 
+    Polygons all_filled_areas;
     Polygons gap_polygons(gaps);
     unsigned next_poly_index = 0;
 
@@ -2218,16 +2217,16 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 {
                     Point clipped(lines[0][1]);
                     coord_t line_len = vSize(lines[0][1] - lines[0][0]) * len_scale;
-    #if 0
+#if 0
                     // diagnostic - print vertex bisector lines
                     gcode_layer.addTravel(lines[0][0]);
                     gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines, 0.1);
-    #else
+#else
                     widths.push_back(line_len);
                     begin_points.emplace_back(poly[n]);
                     end_points.emplace_back(poly[n] + normal(turn90CCW(poly[(n + 1) % poly.size()] - poly[n]), line_len));
                     mid_points.emplace_back((lines[0][0] + clipped) / 2);
-    #endif
+#endif
                 }
             }
             if (is_outline && widths.size() > 1) {
