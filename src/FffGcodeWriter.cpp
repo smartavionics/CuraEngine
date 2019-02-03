@@ -2556,7 +2556,7 @@ void FffGcodeWriter::processPerimeterGaps(const SliceDataStorage& storage, Layer
     if (true)
     {
         const bool is_outline = false;
-        fillNarrowGaps(storage, gcode_layer, mesh, extruder_nr, perimeter_gaps, perimeter_gap_config, is_outline, added_something);
+        fillNarrowGaps(storage, gcode_layer, mesh, extruder_nr, perimeter_gaps.offset(mesh.settings.get<coord_t>("skin_overlap_mm")), perimeter_gap_config, is_outline, added_something);
         return;
     }
 
