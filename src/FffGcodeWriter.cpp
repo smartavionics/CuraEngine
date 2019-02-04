@@ -2207,10 +2207,9 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 // diagnostic - print gap outline
                 gcode_layer.addTravel(poly[(n + poly.size() - 1) % poly.size()]);
                 gcode_layer.addExtrusionMove(poly[n], gap_config, SpaceFillType::Lines, 0.1);
-                continue;
 #endif
                 Polygons lines;
-                Point point_inside(PolygonUtils::getBoundaryPointWithOffset(poly, n, -avg_width * 3));
+                Point point_inside(PolygonUtils::getBoundaryPointWithOffset(poly, n, -avg_width * 5));
                 // adjust the width when point_inside isn't normal to the direction of the next line segment
                 // if we don't do this, the resulting line width is too big where the gap polygon has sharp(ish) corners
                 const double len_scale = std::abs(std::sin(LinearAlg2D::getAngleLeft(point_inside, poly[n], poly[(n + 1) % poly.size()])));
@@ -2218,17 +2217,23 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 lines = gaps.intersectionPolyLines(lines);
                 if (lines.size() > 0)
                 {
-                    Point clipped(lines[0][1]);
-                    coord_t line_len = vSize(lines[0][1] - lines[0][0]) * len_scale;
+                    // find clipped line segment that starts/ends close to poly[n]
+                    unsigned ln = 0;
+                    while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - poly[n]) > 100 && vSize2(lines[ln][1] - poly[n]) > 100)
+                    {
+                        ++ln;
+                    }
+                    Point clipped(lines[ln][1]);
+                    coord_t line_len = vSize(lines[ln][1] - lines[ln][0]) * len_scale;
 #if 0
                     // diagnostic - print vertex bisector lines
-                    gcode_layer.addTravel(lines[0][0]);
+                    gcode_layer.addTravel(lines[ln][0]);
                     gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines, 0.1);
 #else
                     widths.push_back(line_len);
                     begin_points.emplace_back(poly[n]);
                     end_points.emplace_back(poly[n] + normal(turn90CCW(poly[(n + 1) % poly.size()] - poly[n]), line_len));
-                    mid_points.emplace_back((lines[0][0] + clipped) / 2);
+                    mid_points.emplace_back((lines[ln][0] + clipped) / 2);
 #endif
                 }
             }
@@ -2247,49 +2252,59 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         coord_t next_width = widths[next_index];
                         // first we determine what we think are the widths at the next and previous points so we can compare the current
                         // point's width
-                        if (prev_width > 2 * avg_width)
+                        if (prev_width > 1.1 * avg_width)
                         {
                             // the width at the previous point is also large so see what the width is half way between that point and the current point
-                            const Point split((mid_points[prev_index] + mid_points[n]) / 2);
-                            const Point vec(normal(turn90CCW(mid_points[n] - mid_points[prev_index]), prev_width * 2));
+                            const Point split((begin_points[prev_index] + begin_points[n]) / 2);
                             Polygons lines;
-                            lines.addLine(split + vec, split - vec);
+                            lines.addLine(split, split + normal(turn90CCW(begin_points[n] - begin_points[prev_index]), prev_width));
                             lines = gaps.intersectionPolyLines(lines);
                             if (lines.size() > 0)
                             {
-                                const coord_t width = vSize(lines[0][1] - lines[0][0]);
+                                unsigned ln = 0;
+                                while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - split) > 100 && vSize2(lines[ln][1] - split) > 100)
+                                {
+                                    ++ln;
+                                }
+                                const coord_t width = vSize(lines[ln][1] - lines[ln][0]);
                                 // if the width is more reasonable, use it instead
-                                if (width < 2 * avg_width)
+                                if (width < prev_width)
                                 {
                                     prev_width = width;
                                 }
                             }
                         }
-                        if (next_width > 2 * avg_width)
+                        if (next_width > 1.1 * avg_width)
                         {
                             // the width at the next point is also large so see what the width is half way between that point and the current point
-                            const Point split((mid_points[next_index] + mid_points[n]) / 2);
-                            const Point vec(normal(turn90CCW(mid_points[next_index] - mid_points[n]), next_width * 2));
+                            const Point split((begin_points[next_index] + begin_points[n]) / 2);
                             Polygons lines;
-                            lines.addLine(split + vec, split - vec);
+                            lines.addLine(split, split + normal(turn90CCW(begin_points[next_index] - begin_points[n]), next_width));
                             lines = gaps.intersectionPolyLines(lines);
                             if (lines.size() > 0)
                             {
-                                const coord_t width = vSize(lines[0][1] - lines[0][0]);
+                                unsigned ln = 0;
+                                while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - split) > 100 && vSize2(lines[ln][1] - split) > 100)
+                                {
+                                    ++ln;
+                                }
+                                const coord_t width = vSize(lines[ln][1] - lines[ln][0]);
                                 // if the width is more reasonable, use it instead
-                                if (width < 2 * avg_width)
+                                if (width < next_width)
                                 {
                                     next_width = width;
                                 }
                             }
                         }
                         // now see if the current width is much different to the neighbouring points' widths and
-                        // if it is, use the average of the neighbours' widths and recalculate the end and mid points
-                        if (widths[n] > 2 * prev_width && widths[n] > 2 * next_width)
+                        // if it is, use the neighbours' widths and recalculate the end and mid points
+                        const coord_t new_width = (prev_width < 2 * avg_width && next_width < 2 * avg_width) ? (prev_width + next_width) / 2 : std::min(prev_width, next_width);
+                        if (widths[n] > new_width)
                         {
-                            widths[n] = (prev_width + next_width) / 2;
+                            widths[n] = new_width;
                             end_points[n] = begin_points[n] + normal(turn90CCW(begin_points[next_index] - begin_points[n]), widths[n]);
-                            mid_points[n] = begin_points[n] + normal(mid_points[n] - begin_points[n], widths[n] / 2);
+                            const double len_scale = std::abs(std::sin(LinearAlg2D::getAngleLeft(mid_points[n], begin_points[n], begin_points[next_index])));
+                            mid_points[n] = begin_points[n] + normal(mid_points[n] - begin_points[n], widths[n] / (2 * len_scale));
                         }
                     }
                 }
@@ -2297,10 +2312,10 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
 #if 0
             // diagnostic - print middle of gap lines
-            for (unsigned n = 0; n < widths.size(); ++n)
+            gcode_layer.addTravel(mid_points[0]);
+            for (unsigned n = 0; n <= widths.size(); ++n)
             {
-                gcode_layer.addTravel(begin_points[n]);
-                gcode_layer.addExtrusionMove(mid_points[n] + (mid_points[n] - begin_points[n]), gap_config, SpaceFillType::Lines, 0.1);
+                gcode_layer.addExtrusionMove(mid_points[(n + 1) % mid_points.size()], gap_config, SpaceFillType::Lines, 0.1);
             }
 #endif
 
