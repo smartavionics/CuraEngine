@@ -2204,7 +2204,6 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 // diagnostic - print gap outline
                 gcode_layer.addTravel(poly[(n + poly.size() - 1) % poly.size()]);
                 gcode_layer.addExtrusionMove(poly[n], gap_config, SpaceFillType::Lines, 0.1);
-                continue;
 #endif
                 Polygons lines;
                 Point point_inside(PolygonUtils::getBoundaryPointWithOffset(poly, n, -avg_width * 3));
@@ -2294,10 +2293,10 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
 #if 0
             // diagnostic - print middle of gap lines
-            for (unsigned n = 0; n < widths.size(); ++n)
+            gcode_layer.addTravel(mid_points[0]);
+            for (unsigned n = 0; n <= widths.size(); ++n)
             {
-                gcode_layer.addTravel(begin_points[n]);
-                gcode_layer.addExtrusionMove(mid_points[n] + (mid_points[n] - begin_points[n]), gap_config, SpaceFillType::Lines, 0.1);
+                gcode_layer.addExtrusionMove(mid_points[(n + 1) % mid_points.size()], gap_config, SpaceFillType::Lines, 0.1);
             }
 #endif
 
