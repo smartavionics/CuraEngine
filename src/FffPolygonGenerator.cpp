@@ -513,13 +513,6 @@ void FffPolygonGenerator::processOutlineGaps(SliceDataStorage& storage)
                     }
                     Polygons outline_gaps = outer.difference(inner);
                     outline_gaps.removeSmallAreas(2 * INT2MM(wall_line_width_0) * INT2MM(wall_line_width_0)); // remove small outline gaps to reduce blobs on outside of model
-                    if (outline_gaps.size() > 0 && inner.size() > 0)
-                    {
-                        // shrink outline gaps a tiny amount to remove any little spikes that can be created where the thin wall meets the normal wall
-                        outline_gaps = outline_gaps.offset(-wall_line_width_0 * 0.1);
-                        // expand outline gaps slightly to avoid gaps where the thin walls meet the normal wall
-                        outline_gaps = outline_gaps.offset(wall_line_width_0 / 2).intersection(outer);
-                    }
                     part.outline_gaps.add(outline_gaps);
                 }
             }
