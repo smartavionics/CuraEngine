@@ -2393,7 +2393,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 #if 0
             // diagnostic - print middle of gap lines
             gcode_layer.addTravel(mid_points[0]);
-            for (unsigned n = 0; n <= widths.size(); ++n)
+            for (unsigned n = 0; n <= mid_points.size(); ++n)
             {
                 gcode_layer.addExtrusionMove(mid_points[(n + 1) % mid_points.size()], gap_config, SpaceFillType::Lines, 0.1);
             }
@@ -2514,7 +2514,6 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     start_point_index = last_point_index;
                 }
 
-                Point start_mid_point(mid_points[start_point_index]);
                 bool travel_needed = true;
 
                 // helper function that adds a line between two points - if the line width at each end alters appreciably, the line is sub-divided
@@ -2565,6 +2564,8 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         }
                     }
                 };
+
+                Point start_mid_point(mid_points[start_point_index]);
 
                 // output the lines between the mid points
                 for (unsigned n = 0; n < mid_points.size(); ++n)
