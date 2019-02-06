@@ -2260,7 +2260,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 // So here we try and determine what would be a sensible width to use instead
                 for (unsigned n = 0; n < widths.size(); ++n)
                 {
-                    if (widths[n] > 2 * avg_width)
+                    if (widths[n] > 1.5 * avg_width)
                     {
                         const unsigned prev_index = ((n + widths.size()) - 1) % widths.size();
                         const unsigned next_index = (n + 1) % widths.size();
@@ -2314,7 +2314,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         }
                         // now see if the current width is much different to the neighbouring points' widths and
                         // if it is, use the neighbours' widths and recalculate the end and mid points
-                        const coord_t new_width = (prev_width < 2 * avg_width && next_width < 2 * avg_width) ? (prev_width + next_width) / 2 : std::min(prev_width, next_width);
+                        const coord_t new_width = (prev_width < 1.5 * avg_width && next_width < 1.5 * avg_width) ? (prev_width + next_width) / 2 : std::min(prev_width, next_width);
                         if (widths[n] > new_width)
                         {
                             widths[n] = new_width;
