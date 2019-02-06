@@ -2190,32 +2190,41 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
         PolygonRef poly = gap_polygons[next_poly_index];
 
+        // fill areas greater than 0.25 mm^2
         if (std::abs(poly.area()) > (500 * 500))
         {
-            // fill areas greater than 0.25 mm^2
 
-            std::vector<Point> begin_points;
-            std::vector<Point> end_points;
-            std::vector<Point> mid_points;
-            std::vector<coord_t> widths;
+            // first remove points that are at the apex of short narrow spikes - these can be created where the thin wall meets normal wall
             for (unsigned n = 0; n < poly.size(); ++n)
             {
                 const Point& prev_point = poly[(n + poly.size() - 1) % poly.size()];
                 const Point& next_point = poly[(n + 1) % poly.size()];
                 const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, poly[n], next_point);
 
-                // remove points that are at the apex of short narrow spikes - these can be created where the thin wall meets normal wall
                 if (corner_rads < 0.3 || corner_rads > (M_PI * 2 - 0.3))
                 {
                     const double prev_len = vSize(poly[n] - prev_point);
                     const double next_len = vSize(poly[n] - next_point);
                     if (prev_len < gap_config.getLineWidth() * 2 || next_len < gap_config.getLineWidth() * 2)
                     {
-                        std::cerr << gcode_layer.getLayerNr() << ": at " << poly[n] << " angle " << corner_rads << " prev_len " << prev_len << " next_len " << next_len << "\n";
+                        //std::cerr << gcode_layer.getLayerNr() << ": at " << poly[n] << " angle " << corner_rads << " prev_len " << prev_len << " next_len " << next_len << "\n";
                         poly.remove(n);
-                        continue;
+                        // hack alert - adjust n
+                        --n;
                     }
                 }
+            }
+
+            // now calculate the values that define each line segment and the area it covers
+            std::vector<Point> begin_points;    // corner of segment's area that is the vertex on the gap outline
+            std::vector<Point> end_points;      // corner of segment's area that is orthogonal to begin_point
+            std::vector<Point> mid_points;      // point that the line segment is drawn through
+            std::vector<coord_t> widths;        // width of the line at this point
+            for (unsigned n = 0; n < poly.size(); ++n)
+            {
+                const Point& prev_point = poly[(n + poly.size() - 1) % poly.size()];
+                const Point& next_point = poly[(n + 1) % poly.size()];
+                const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, poly[n], next_point);
 
 #if 0
                 // diagnostic - print gap outline
