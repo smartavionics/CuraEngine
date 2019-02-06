@@ -2219,14 +2219,16 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
 #if 0
                 // diagnostic - print gap outline
-                gcode_layer.addTravel(poly[(n + poly.size() - 1) % poly.size()]);
+                gcode_layer.addTravel(prev_point);
                 gcode_layer.addExtrusionMove(poly[n], gap_config, SpaceFillType::Lines, 0.1);
 #endif
+
                 Polygons lines;
                 Point point_inside(PolygonUtils::getBoundaryPointWithOffset(poly, n, -avg_width * 5));
+
                 // adjust the width when point_inside isn't normal to the direction of the next line segment
                 // if we don't do this, the resulting line width is too big where the gap polygon has sharp(ish) corners
-                const double len_scale = std::abs(std::sin(LinearAlg2D::getAngleLeft(point_inside, poly[n], poly[(n + 1) % poly.size()])));
+                const double corner_sin = std::sin(corner_rads / 2);
                 lines.addLine(poly[n], point_inside);
                 lines = gaps.intersectionPolyLines(lines);
                 if (lines.size() > 0)
@@ -2238,7 +2240,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         ++ln;
                     }
                     Point clipped(lines[ln][1]);
-                    coord_t line_len = vSize(lines[ln][1] - lines[ln][0]) * len_scale;
+                    coord_t line_len = vSize(lines[ln][1] - lines[ln][0]) * std::abs(corner_sin);
 #if 0
                     // diagnostic - print vertex bisector lines
                     gcode_layer.addTravel(lines[ln][0]);
@@ -2246,7 +2248,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 #else
                     widths.push_back(line_len);
                     begin_points.emplace_back(poly[n]);
-                    end_points.emplace_back(poly[n] + normal(turn90CCW(poly[(n + 1) % poly.size()] - poly[n]), line_len));
+                    end_points.emplace_back(poly[n] + normal(turn90CCW(next_point - poly[n]), line_len));
                     mid_points.emplace_back((lines[ln][0] + clipped) / 2);
 #endif
                 }
