@@ -2233,12 +2233,12 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 #endif
 
                 Polygons lines;
-                Point point_inside(PolygonUtils::getBoundaryPointWithOffset(poly, n, -avg_width * 5));
+                Point bisector(poly[n] + rotate(normal(next_point - poly[n], avg_width * 5), corner_rads/2));
 
-                // adjust the width when point_inside isn't normal to the direction of the next line segment
+                // adjust the width when bisector isn't normal to the direction of the next line segment
                 // if we don't do this, the resulting line width is too big where the gap polygon has sharp(ish) corners
                 const double corner_sin = std::sin(corner_rads / 2);
-                lines.addLine(poly[n], point_inside);
+                lines.addLine(poly[n], bisector);
                 lines = gaps.intersectionPolyLines(lines);
                 if (lines.size() > 0)
                 {
