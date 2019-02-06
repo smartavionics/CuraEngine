@@ -2193,32 +2193,41 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
         PolygonRef poly = gap_polygons[next_poly_index];
 
+        // fill areas greater than 0.25 mm^2
         if (std::abs(poly.area()) > (500 * 500))
         {
-            // fill areas greater than 0.25 mm^2
 
-            std::vector<Point> begin_points;
-            std::vector<Point> end_points;
-            std::vector<Point> mid_points;
-            std::vector<coord_t> widths;
+            // first remove points that are at the apex of short narrow spikes - these can be created where the thin wall meets normal wall
             for (unsigned n = 0; n < poly.size(); ++n)
             {
                 const Point& prev_point = poly[(n + poly.size() - 1) % poly.size()];
                 const Point& next_point = poly[(n + 1) % poly.size()];
                 const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, poly[n], next_point);
 
-                // remove points that are at the apex of short narrow spikes - these can be created where the thin wall meets normal wall
                 if (corner_rads < 0.3 || corner_rads > (M_PI * 2 - 0.3))
                 {
                     const double prev_len = vSize(poly[n] - prev_point);
                     const double next_len = vSize(poly[n] - next_point);
                     if (prev_len < gap_config.getLineWidth() * 2 || next_len < gap_config.getLineWidth() * 2)
                     {
-                        std::cerr << gcode_layer.getLayerNr() << ": at " << poly[n] << " angle " << corner_rads << " prev_len " << prev_len << " next_len " << next_len << "\n";
+                        //std::cerr << gcode_layer.getLayerNr() << ": at " << poly[n] << " angle " << corner_rads << " prev_len " << prev_len << " next_len " << next_len << "\n";
                         poly.remove(n);
-                        continue;
+                        // hack alert - adjust n
+                        --n;
                     }
                 }
+            }
+
+            // now calculate the values that define each line segment and the area it covers
+            std::vector<Point> begin_points;    // corner of segment's area that is the vertex on the gap outline
+            std::vector<Point> end_points;      // corner of segment's area that is orthogonal to begin_point
+            std::vector<Point> mid_points;      // point that the line segment is drawn through
+            std::vector<coord_t> widths;        // width of the line at this point
+            for (unsigned n = 0; n < poly.size(); ++n)
+            {
+                const Point& prev_point = poly[(n + poly.size() - 1) % poly.size()];
+                const Point& next_point = poly[(n + 1) % poly.size()];
+                const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, poly[n], next_point);
 
 #if 0
                 // diagnostic - print gap outline
@@ -2227,12 +2236,11 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 #endif
 
                 Polygons lines;
-                Point point_inside(PolygonUtils::getBoundaryPointWithOffset(poly, n, -avg_width * 5));
+                Point bisector(poly[n] + rotate(normal(next_point - poly[n], avg_width * 5), corner_rads/2));
 
-                // adjust the width when point_inside isn't normal to the direction of the next line segment
+                // adjust the width when bisector isn't normal to the direction of the next line segment
                 // if we don't do this, the resulting line width is too big where the gap polygon has sharp(ish) corners
-                const double corner_sin = std::sin(corner_rads / 2);
-                lines.addLine(poly[n], point_inside);
+                lines.addLine(poly[n], bisector);
                 lines = gaps.intersectionPolyLines(lines);
                 if (lines.size() > 0)
                 {
@@ -2243,19 +2251,20 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         ++ln;
                     }
                     Point clipped(lines[ln][1]);
-                    coord_t line_len = vSize(lines[ln][1] - lines[ln][0]) * std::abs(corner_sin);
+                    coord_t line_len = vSize(lines[ln][1] - lines[ln][0]) * std::abs(std::sin(corner_rads / 2));
 #if 0
                     // diagnostic - print vertex bisector lines
                     gcode_layer.addTravel(lines[ln][0]);
                     gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines, 0.1);
 #else
 
-                    // if the corner is sharp measure the width just before the corner and if it is quite different from
-                    // line_len, add another point before this one
-                    const bool sharp_corner = (corner_sin < 0.8);
+                    // if the corner angle is > 90 deg we possibly want to add some points to improve the accuracy of the line width
+                    const bool possibly_add_points = corner_rads > M_PI / 2;
                     const double split_dist = 0.03;
-                    if (sharp_corner)
+                    if (possibly_add_points)
                     {
+                        // measure the width just before the corner and if it is quite different from
+                        // line_len, add another point before this one
                         const Point split(prev_point + (poly[n] - prev_point) * (1 - split_dist));
                         Polygons lines;
                         lines.addLine(split, split + normal(turn90CCW(poly[n] - split), avg_width * 5));
@@ -2283,10 +2292,10 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     end_points.emplace_back(poly[n] + normal(turn90CCW(next_point - poly[n]), line_len));
                     mid_points.emplace_back((lines[ln][0] + clipped) / 2);
 
-                    // if the corner is sharp measure the width just after the corner and if it is quite different from
-                    // line_len, add another point after this one
-                    if (sharp_corner)
+                    if (possibly_add_points)
                     {
+                        // measure the width just after the corner and if it is quite different from
+                        // line_len, add another point after this one
                         const Point split(poly[n] + (next_point - poly[n]) * split_dist);
                         Polygons lines;
                         lines.addLine(split, split + normal(turn90CCW(next_point - split), avg_width * 5));
@@ -2387,7 +2396,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 #if 0
             // diagnostic - print middle of gap lines
             gcode_layer.addTravel(mid_points[0]);
-            for (unsigned n = 0; n <= widths.size(); ++n)
+            for (unsigned n = 0; n <= mid_points.size(); ++n)
             {
                 gcode_layer.addExtrusionMove(mid_points[(n + 1) % mid_points.size()], gap_config, SpaceFillType::Lines, 0.1);
             }
@@ -2508,7 +2517,6 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     start_point_index = last_point_index;
                 }
 
-                Point start_mid_point(mid_points[start_point_index]);
                 bool travel_needed = true;
 
                 // helper function that adds a line between two points - if the line width at each end alters appreciably, the line is sub-divided
@@ -2559,6 +2567,8 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         }
                     }
                 };
+
+                Point start_mid_point(mid_points[start_point_index]);
 
                 // output the lines between the mid points
                 for (unsigned n = 0; n < mid_points.size(); ++n)
