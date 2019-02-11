@@ -2181,6 +2181,12 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
     Polygons all_filled_areas;
     Polygons gap_polygons(gaps);
+    if(!is_outline) {
+        // two benefits to reducing the resolution of gap fill
+        // 1 - very small line segments get removed
+        // 2 - should take less time to process
+        gap_polygons.simplify(50, 50);
+    }
     unsigned next_poly_index = 0;
 
     while (gap_polygons.size() > 0)
@@ -2196,21 +2202,44 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
         // fill areas greater than 0.25 mm^2
         if (std::abs(poly.area()) > (500 * 500))
         {
-
-            // first remove points that are at the apex of short narrow spikes - these can be created where the thin wall meets normal wall
+            // remove some points that cause problems
             for (unsigned n = 0; n < poly.size(); ++n)
             {
                 const Point& prev_point = poly[(n + poly.size() - 1) % poly.size()];
                 const Point& next_point = poly[(n + 1) % poly.size()];
+                const double prev_len = vSize(poly[n] - prev_point);
+                const double next_len = vSize(poly[n] - next_point);
                 const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, poly[n], next_point);
+
+                // remove points that are at the apex of short narrow spikes - these can be created where the thin wall meets normal wall
 
                 if (corner_rads < 0.3 || corner_rads > (M_PI * 2 - 0.3))
                 {
-                    const double prev_len = vSize(poly[n] - prev_point);
-                    const double next_len = vSize(poly[n] - next_point);
                     if (prev_len < gap_config.getLineWidth() * 2 || next_len < gap_config.getLineWidth() * 2)
                     {
                         //std::cerr << gcode_layer.getLayerNr() << ": at " << poly[n] << " angle " << corner_rads << " prev_len " << prev_len << " next_len " << next_len << "\n";
+                        poly.remove(n);
+                        // hack alert - adjust n
+                        --n;
+                        continue;
+                    }
+                }
+
+                // remove point 2 when you get a little wiggle like this
+                // detect by vSize(2-3) being small compared to vSize(1-2) and vSize(3-4) and the angles close to 90deg and have opposite sign
+                //
+                // ---4------------------------3
+                //                             |
+                //                             2-------------------------1----
+                //
+
+                if(next_len < prev_len / 10 && next_len < vSize(poly[(n + 2) % poly.size()] - next_point) / 10)
+                {
+                    const double sin1 = std::sin(corner_rads);
+                    const double sin2 = std::sin(LinearAlg2D::getAngleLeft(poly[n], next_point, poly[(n + 2) % poly.size()]));
+                    if (std::abs(sin1) > 0.8 && std::abs(sin2) > 0.8 && (sin1 < 0) != (sin2 < 0))
+                    {
+                        //std::cerr << gcode_layer.getLayerNr() << ": at " << poly[n] << " sin1 = " << sin1 << " sin2 = " << sin2 << " len ratio = " << prev_len/next_len << "\n";
                         poly.remove(n);
                         // hack alert - adjust n
                         --n;
