@@ -2178,6 +2178,12 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
     Polygons all_filled_areas;
     Polygons gap_polygons(gaps);
+    if(!is_outline) {
+        // two benefits to reducing the resolution of gap fill
+        // 1 - very small line segments get removed
+        // 2 - should take less time to process
+        gap_polygons.simplify(50, 50);
+    }
     unsigned next_poly_index = 0;
 
     while (gap_polygons.size() > 0)
