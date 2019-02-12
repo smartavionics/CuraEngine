@@ -2365,9 +2365,9 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 #endif
                 }
             }
-            if (is_outline && widths.size() > 1)
+            if (widths.size() > 1)
             {
-                // filter out spikes that can occur when an outline point is positioned opposite to a wide area
+                // filter out spikes that can occur when a point is positioned opposite to a wide area
                 // an example of this is when the walls are shaped like a T. A point on the bar of the T that lies
                 // directly above the stem will have a much bigger width than points on either side.
                 // So here we try and determine what would be a sensible width to use instead
