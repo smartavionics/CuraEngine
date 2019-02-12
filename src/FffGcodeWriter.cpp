@@ -2288,11 +2288,11 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     {
                         ++ln;
                     }
-                    Point clipped(lines[ln][1]);
+                    Point clipped(lines[ln][(vSize2(lines[ln][0] - poly[n]) > 100) ? 0 : 1]);
                     coord_t line_len = vSize(lines[ln][1] - lines[ln][0]) * std::abs(std::sin(corner_rads / 2));
 #if 0
                     // diagnostic - print vertex bisector lines
-                    gcode_layer.addTravel(lines[ln][0]);
+                    gcode_layer.addTravel(poly[n]);
                     gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines, 0.1);
 #else
 
@@ -2328,7 +2328,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     widths.push_back(line_len);
                     begin_points.emplace_back(poly[n]);
                     end_points.emplace_back(poly[n] + normal(turn90CCW(next_point - poly[n]), line_len));
-                    mid_points.emplace_back((lines[ln][0] + clipped) / 2);
+                    mid_points.emplace_back((poly[n] + clipped) / 2);
 
                     if (possibly_add_points)
                     {
