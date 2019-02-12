@@ -2366,18 +2366,20 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 // So here we try and determine what would be a sensible width to use instead
                 for (unsigned n = 0; n < widths.size(); ++n)
                 {
-                    if (widths[n] > 1.5 * avg_width)
+                    if (widths[n] > 2 * avg_width)
                     {
-                        const unsigned prev_index = ((n + widths.size()) - 1) % widths.size();
-                        const unsigned next_index = (n + 1) % widths.size();
-                        coord_t prev_width = widths[prev_index];
-                        coord_t next_width = widths[next_index];
                         // first we determine what we think are the widths at the next and previous points so we can compare the current
                         // point's width
-                        if (prev_width > 1.1 * avg_width)
+                        const unsigned prev_index = ((n + widths.size()) - 1) % widths.size();
+                        const unsigned next_index = (n + 1) % widths.size();
+                        const coord_t prev_dist = vSize(begin_points[n] - begin_points[prev_index]);
+                        const coord_t next_dist = vSize(begin_points[n] - begin_points[next_index]);
+                        coord_t prev_width = widths[prev_index];
+                        coord_t next_width = widths[next_index];
+                        if (prev_width > 1.1 * avg_width || prev_dist > 10 * avg_width)
                         {
-                            // the width at the previous point is also large so see what the width is half way between that point and the current point
-                            const Point split((begin_points[prev_index] + begin_points[n]) / 2);
+                            // get a new width for a point between this point and the previous
+                            const Point split(begin_points[n] + (begin_points[prev_index] - begin_points[n]) * ((prev_dist > 10 * avg_width) ? 0.1 : 0.5));
                             Polygons lines;
                             lines.addLine(split, split + normal(turn90CCW(begin_points[n] - begin_points[prev_index]), prev_width));
                             lines = gaps.intersectionPolyLines(lines);
@@ -2396,10 +2398,10 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                                 }
                             }
                         }
-                        if (next_width > 1.1 * avg_width)
+                        if (next_width > 1.1 * avg_width || next_dist > 10 * avg_width)
                         {
-                            // the width at the next point is also large so see what the width is half way between that point and the current point
-                            const Point split((begin_points[next_index] + begin_points[n]) / 2);
+                            // get a new width for a point between this point and the next
+                            const Point split(begin_points[n] + (begin_points[next_index] - begin_points[n]) * ((next_dist > 10 * avg_width) ? 0.1 : 0.5));
                             Polygons lines;
                             lines.addLine(split, split + normal(turn90CCW(begin_points[next_index] - begin_points[n]), next_width));
                             lines = gaps.intersectionPolyLines(lines);
@@ -2420,7 +2422,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         }
                         // now see if the current width is much different to the neighbouring points' widths and
                         // if it is, use the neighbours' widths and recalculate the end and mid points
-                        const coord_t new_width = (prev_width < 1.5 * avg_width && next_width < 1.5 * avg_width) ? (prev_width + next_width) / 2 : std::min(prev_width, next_width);
+                        const coord_t new_width = (prev_width < 2 * avg_width && next_width < 2 * avg_width) ? (prev_width + next_width) / 2 : std::min(prev_width, next_width);
                         if (widths[n] > new_width)
                         {
                             widths[n] = new_width;
