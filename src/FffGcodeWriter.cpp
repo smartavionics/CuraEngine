@@ -2302,8 +2302,8 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines, 0.1);
 #else
 
-                    // if the corner angle is > 90 deg we possibly want to add some points to improve the accuracy of the line width
-                    const bool possibly_add_points = corner_rads > M_PI / 2;
+                    // if the bisector angle is > 90 deg we possibly want to add some points to improve the accuracy of the line width
+                    const bool possibly_add_points = corner_rads > M_PI;
                     const double split_dist = 0.03;
                     if (possibly_add_points)
                     {
