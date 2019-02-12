@@ -2653,18 +2653,43 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             lines = filled.difference(overlap).intersectionPolyLines(lines);
                             if (lines.size())
                             {
-                                for (unsigned ln = 0; ln < lines.size(); ++ln)
+                                while (lines.size() > 0)
                                 {
-                                    if (vSize(lines[ln][1] - lines[ln][0]) > widths[point_index] * 0.2)
+                                    const Point cur_pos(gcode_layer.getLastPlannedPositionOrStartingPosition());
+                                    unsigned closest_seg = 0;
+                                    unsigned closest_end = 0;
+                                    coord_t min_dist2 = vSize2(cur_pos - lines[0][0]);
+                                    for (unsigned ln = 0; ln < lines.size(); ++ln)
                                     {
-                                        const coord_t w0 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[ln][0] - start_mid_point) / seg_len;
-                                        const coord_t w1 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[ln][1] - start_mid_point) / seg_len;
-                                        addLine(lines[ln][0], lines[ln][1], w0, w1);
+                                        for (unsigned en = 0; en < 2; ++en)
+                                        {
+                                            coord_t dist2 = vSize2(cur_pos - lines[ln][en]);
+                                            if (dist2 < min_dist2)
+                                            {
+                                                closest_seg = ln;
+                                                closest_end = en;
+                                                min_dist2 = dist2;
+                                            }
+                                        }
+                                    }
+                                    if (vSize(lines[closest_seg][1] - lines[closest_seg][0]) > widths[point_index] * 0.2)
+                                    {
+                                        const coord_t w0 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[closest_seg][0] - start_mid_point) / seg_len;
+                                        const coord_t w1 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[closest_seg][1] - start_mid_point) / seg_len;
+                                        if (closest_end == 0)
+                                        {
+                                            addLine(lines[closest_seg][0], lines[closest_seg][1], w0, w1);
+                                        }
+                                        else
+                                        {
+                                            addLine(lines[closest_seg][1], lines[closest_seg][0], w1, w0);
+                                        }
                                     }
                                     else
                                     {
                                         travel_needed = true;
                                     }
+                                    lines.remove(closest_seg);
                                 }
                             }
                             else
