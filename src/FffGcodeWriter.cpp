@@ -2175,21 +2175,22 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
         return;
     }
 
-    const coord_t avg_width = 2 * gaps.area() / gaps.polygonLength();
+    Polygons simplified_gaps(gaps);
+    // two benefits to reducing the resolution of the outline
+    // 1 - very small line segments get removed
+    // 2 - should take less time to process
+    simplified_gaps.simplify(100, 50);
+
+    const coord_t avg_width = 2 * simplified_gaps.area() / simplified_gaps.polygonLength();
 
     if ((float)avg_width / gap_config.getLineWidth() < min_flow)
     {
         return;
     }
 
+    Polygons gap_polygons(simplified_gaps);
     Polygons all_filled_areas;
-    Polygons gap_polygons(gaps);
-    if(!is_outline) {
-        // two benefits to reducing the resolution of gap fill
-        // 1 - very small line segments get removed
-        // 2 - should take less time to process
-        gap_polygons.simplify(50, 50);
-    }
+
     unsigned next_poly_index = 0;
 
     while (gap_polygons.size() > 0)
@@ -2285,7 +2286,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 // adjust the width when bisector isn't normal to the direction of the next line segment
                 // if we don't do this, the resulting line width is too big where the gap polygon has sharp(ish) corners
                 lines.addLine(poly[n], bisector);
-                lines = gaps.intersectionPolyLines(lines);
+                lines = simplified_gaps.intersectionPolyLines(lines);
                 if (lines.size() > 0)
                 {
                     // find clipped line segment that starts/ends close to poly[n]
@@ -2312,7 +2313,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         const Point split(prev_point + (poly[n] - prev_point) * (1 - split_dist));
                         Polygons lines;
                         lines.addLine(split, split + normal(turn90CCW(poly[n] - split), avg_width * 5));
-                        lines = gaps.intersectionPolyLines(lines);
+                        lines = simplified_gaps.intersectionPolyLines(lines);
                         if (lines.size() > 0)
                         {
                             unsigned ln = 0;
@@ -2343,7 +2344,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         const Point split(poly[n] + (next_point - poly[n]) * split_dist);
                         Polygons lines;
                         lines.addLine(split, split + normal(turn90CCW(next_point - split), avg_width * 5));
-                        lines = gaps.intersectionPolyLines(lines);
+                        lines = simplified_gaps.intersectionPolyLines(lines);
                         if (lines.size() > 0)
                         {
                             unsigned ln = 0;
@@ -2388,7 +2389,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             const Point split(begin_points[n] + (begin_points[prev_index] - begin_points[n]) * ((prev_dist > 10 * avg_width) ? 0.1 : 0.5));
                             Polygons lines;
                             lines.addLine(split, split + normal(turn90CCW(begin_points[n] - begin_points[prev_index]), prev_width));
-                            lines = gaps.intersectionPolyLines(lines);
+                            lines = simplified_gaps.intersectionPolyLines(lines);
                             if (lines.size() > 0)
                             {
                                 unsigned ln = 0;
@@ -2410,7 +2411,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             const Point split(begin_points[n] + (begin_points[next_index] - begin_points[n]) * ((next_dist > 10 * avg_width) ? 0.1 : 0.5));
                             Polygons lines;
                             lines.addLine(split, split + normal(turn90CCW(begin_points[next_index] - begin_points[n]), next_width));
-                            lines = gaps.intersectionPolyLines(lines);
+                            lines = simplified_gaps.intersectionPolyLines(lines);
                             if (lines.size() > 0)
                             {
                                 unsigned ln = 0;
@@ -2581,7 +2582,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             const Point half_line(normal(turn90CCW(end - start), estimated_width * 2));
                             Polygons lines;
                             lines.addLine(split_point + half_line, split_point - half_line);
-                            lines = gaps.intersectionPolyLines(lines);
+                            lines = simplified_gaps.intersectionPolyLines(lines);
                             if (lines.size() > 0)
                             {
                                 // Limit amount the line width can grow when the line is split.
