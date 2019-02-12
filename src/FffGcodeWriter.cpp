@@ -2215,6 +2215,18 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, poly[n], next_point);
 
                 // remove points that are at the apex of short narrow spikes - these can be created where the thin wall meets normal wall
+                // if the corner at point 2 is sharp and that point is either preceded or followed by a relatively long line, remove point 2
+                // real spike will be sharper than shown in the AA below
+                //
+                // -------1--------------------------------------2
+                //                                              /
+                //                                             /
+                //                                            3
+                //                                            |
+                //                                            |
+                //                                            |
+                //                                            |
+                //                                            4
 
                 if (corner_rads < 0.3 || corner_rads > (M_PI * 2 - 0.3))
                 {
@@ -2229,14 +2241,14 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 }
 
                 // remove point 2 when you get a little wiggle like this
-                // detect by vSize(2-3) being small compared to vSize(1-2) and vSize(3-4) and the angles close to 90deg and have opposite sign
+                // detect by vSize(2-3) being small compared to vSize(1-2) and vSize(3-4) and the angles close to 90deg with opposite signs
                 //
                 // ---4------------------------3
                 //                             |
                 //                             2-------------------------1----
                 //
 
-                if(next_len < prev_len / 10 && next_len < vSize(poly[(n + 2) % poly.size()] - next_point) / 10)
+                if (next_len < prev_len / 10 && next_len < vSize(poly[(n + 2) % poly.size()] - next_point) / 10)
                 {
                     const double sin1 = std::sin(corner_rads);
                     const double sin2 = std::sin(LinearAlg2D::getAngleLeft(poly[n], next_point, poly[(n + 2) % poly.size()]));
@@ -2282,11 +2294,11 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     {
                         ++ln;
                     }
-                    Point clipped(lines[ln][1]);
+                    Point clipped(lines[ln][(vSize2(lines[ln][0] - poly[n]) > 100) ? 0 : 1]);
                     coord_t line_len = vSize(lines[ln][1] - lines[ln][0]) * std::abs(std::sin(corner_rads / 2));
 #if 0
                     // diagnostic - print vertex bisector lines
-                    gcode_layer.addTravel(lines[ln][0]);
+                    gcode_layer.addTravel(poly[n]);
                     gcode_layer.addExtrusionMove(clipped, gap_config, SpaceFillType::Lines, 0.1);
 #else
 
@@ -2322,7 +2334,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     widths.push_back(line_len);
                     begin_points.emplace_back(poly[n]);
                     end_points.emplace_back(poly[n] + normal(turn90CCW(next_point - poly[n]), line_len));
-                    mid_points.emplace_back((lines[ln][0] + clipped) / 2);
+                    mid_points.emplace_back((poly[n] + clipped) / 2);
 
                     if (possibly_add_points)
                     {
@@ -2352,25 +2364,28 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 #endif
                 }
             }
-            if (is_outline && widths.size() > 1) {
+            if (is_outline && widths.size() > 1)
+            {
                 // filter out spikes that can occur when an outline point is positioned opposite to a wide area
                 // an example of this is when the walls are shaped like a T. A point on the bar of the T that lies
                 // directly above the stem will have a much bigger width than points on either side.
                 // So here we try and determine what would be a sensible width to use instead
                 for (unsigned n = 0; n < widths.size(); ++n)
                 {
-                    if (widths[n] > 1.5 * avg_width)
+                    if (widths[n] > 2 * avg_width)
                     {
-                        const unsigned prev_index = ((n + widths.size()) - 1) % widths.size();
-                        const unsigned next_index = (n + 1) % widths.size();
-                        coord_t prev_width = widths[prev_index];
-                        coord_t next_width = widths[next_index];
                         // first we determine what we think are the widths at the next and previous points so we can compare the current
                         // point's width
-                        if (prev_width > 1.1 * avg_width)
+                        const unsigned prev_index = ((n + widths.size()) - 1) % widths.size();
+                        const unsigned next_index = (n + 1) % widths.size();
+                        const coord_t prev_dist = vSize(begin_points[n] - begin_points[prev_index]);
+                        const coord_t next_dist = vSize(begin_points[n] - begin_points[next_index]);
+                        coord_t prev_width = widths[prev_index];
+                        coord_t next_width = widths[next_index];
+                        if (prev_width > 1.1 * avg_width || prev_dist > 10 * avg_width)
                         {
-                            // the width at the previous point is also large so see what the width is half way between that point and the current point
-                            const Point split((begin_points[prev_index] + begin_points[n]) / 2);
+                            // get a new width for a point between this point and the previous
+                            const Point split(begin_points[n] + (begin_points[prev_index] - begin_points[n]) * ((prev_dist > 10 * avg_width) ? 0.1 : 0.5));
                             Polygons lines;
                             lines.addLine(split, split + normal(turn90CCW(begin_points[n] - begin_points[prev_index]), prev_width));
                             lines = gaps.intersectionPolyLines(lines);
@@ -2389,10 +2404,10 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                                 }
                             }
                         }
-                        if (next_width > 1.1 * avg_width)
+                        if (next_width > 1.1 * avg_width || next_dist > 10 * avg_width)
                         {
-                            // the width at the next point is also large so see what the width is half way between that point and the current point
-                            const Point split((begin_points[next_index] + begin_points[n]) / 2);
+                            // get a new width for a point between this point and the next
+                            const Point split(begin_points[n] + (begin_points[next_index] - begin_points[n]) * ((next_dist > 10 * avg_width) ? 0.1 : 0.5));
                             Polygons lines;
                             lines.addLine(split, split + normal(turn90CCW(begin_points[next_index] - begin_points[n]), next_width));
                             lines = gaps.intersectionPolyLines(lines);
@@ -2413,7 +2428,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         }
                         // now see if the current width is much different to the neighbouring points' widths and
                         // if it is, use the neighbours' widths and recalculate the end and mid points
-                        const coord_t new_width = (prev_width < 1.5 * avg_width && next_width < 1.5 * avg_width) ? (prev_width + next_width) / 2 : std::min(prev_width, next_width);
+                        const coord_t new_width = (prev_width < 2 * avg_width && next_width < 2 * avg_width) ? (prev_width + next_width) / 2 : std::min(prev_width, next_width);
                         if (widths[n] > new_width)
                         {
                             widths[n] = new_width;
@@ -2538,13 +2553,10 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     start_point_index = 0;
                 }
 
-                // bit of subtlety here - due to the way that the overlap areas are computed it is possible that
-                // when the line segment before the chosen start point is associated with a sharp corner, its filled
-                // area may not overlap (much) with the filled area for chosen first line and so that will cause an unwanted travel
-                // back to print the last line segment - we can avoid the unwanted travel by detecting when the mid point for the
-                // last line segment falls inside the area for the first line segment and simply start at the last line segment instead
+                // if the line before the chosen start point is short, start with that one instead as this
+                // reduces the chance of having to return back to it later
                 unsigned last_point_index = (start_point_index + mid_points.size() - 1) % mid_points.size();
-                if (!ignore_points[last_point_index] && areas[start_point_index].inside(mid_points[last_point_index]))
+                if (vSize(mid_points[last_point_index] - mid_points[start_point_index]) < 2 * avg_width)
                 {
                     start_point_index = last_point_index;
                 }
@@ -2646,18 +2658,43 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             lines = filled.difference(overlap).intersectionPolyLines(lines);
                             if (lines.size())
                             {
-                                for (unsigned ln = 0; ln < lines.size(); ++ln)
+                                while (lines.size() > 0)
                                 {
-                                    if (vSize(lines[ln][1] - lines[ln][0]) > widths[point_index] * 0.2)
+                                    const Point cur_pos(gcode_layer.getLastPlannedPositionOrStartingPosition());
+                                    unsigned closest_seg = 0;
+                                    unsigned closest_end = 0;
+                                    coord_t min_dist2 = vSize2(cur_pos - lines[0][0]);
+                                    for (unsigned ln = 0; ln < lines.size(); ++ln)
                                     {
-                                        const coord_t w0 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[ln][0] - start_mid_point) / seg_len;
-                                        const coord_t w1 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[ln][1] - start_mid_point) / seg_len;
-                                        addLine(lines[ln][0], lines[ln][1], w0, w1);
+                                        for (unsigned en = 0; en < 2; ++en)
+                                        {
+                                            coord_t dist2 = vSize2(cur_pos - lines[ln][en]);
+                                            if (dist2 < min_dist2)
+                                            {
+                                                closest_seg = ln;
+                                                closest_end = en;
+                                                min_dist2 = dist2;
+                                            }
+                                        }
+                                    }
+                                    if (vSize(lines[closest_seg][1] - lines[closest_seg][0]) > widths[point_index] * 0.2)
+                                    {
+                                        const coord_t w0 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[closest_seg][0] - start_mid_point) / seg_len;
+                                        const coord_t w1 = widths[point_index] + ((int)widths[next_point_index] - (int)widths[point_index]) * vSize(lines[closest_seg][1] - start_mid_point) / seg_len;
+                                        if (closest_end == 0)
+                                        {
+                                            addLine(lines[closest_seg][0], lines[closest_seg][1], w0, w1);
+                                        }
+                                        else
+                                        {
+                                            addLine(lines[closest_seg][1], lines[closest_seg][0], w1, w0);
+                                        }
                                     }
                                     else
                                     {
                                         travel_needed = true;
                                     }
+                                    lines.remove(closest_seg);
                                 }
                             }
                             else
