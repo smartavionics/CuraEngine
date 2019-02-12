@@ -2209,6 +2209,18 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, poly[n], next_point);
 
                 // remove points that are at the apex of short narrow spikes - these can be created where the thin wall meets normal wall
+                // if the corner at point 2 is sharp and that point is either preceded or followed by a relatively long line, remove point 2
+                // real spike will be sharper than shown in the AA below
+                //
+                // -------1--------------------------------------2
+                //                                              /
+                //                                             /
+                //                                            3
+                //                                            |
+                //                                            |
+                //                                            |
+                //                                            |
+                //                                            4
 
                 if (corner_rads < 0.3 || corner_rads > (M_PI * 2 - 0.3))
                 {
@@ -2223,14 +2235,14 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 }
 
                 // remove point 2 when you get a little wiggle like this
-                // detect by vSize(2-3) being small compared to vSize(1-2) and vSize(3-4) and the angles close to 90deg and have opposite sign
+                // detect by vSize(2-3) being small compared to vSize(1-2) and vSize(3-4) and the angles close to 90deg with opposite signs
                 //
                 // ---4------------------------3
                 //                             |
                 //                             2-------------------------1----
                 //
 
-                if(next_len < prev_len / 10 && next_len < vSize(poly[(n + 2) % poly.size()] - next_point) / 10)
+                if (next_len < prev_len / 10 && next_len < vSize(poly[(n + 2) % poly.size()] - next_point) / 10)
                 {
                     const double sin1 = std::sin(corner_rads);
                     const double sin2 = std::sin(LinearAlg2D::getAngleLeft(poly[n], next_point, poly[(n + 2) % poly.size()]));
@@ -2346,7 +2358,8 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 #endif
                 }
             }
-            if (is_outline && widths.size() > 1) {
+            if (is_outline && widths.size() > 1)
+            {
                 // filter out spikes that can occur when an outline point is positioned opposite to a wide area
                 // an example of this is when the walls are shaped like a T. A point on the bar of the T that lies
                 // directly above the stem will have a much bigger width than points on either side.
