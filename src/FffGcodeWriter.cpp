@@ -2545,13 +2545,10 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     start_point_index = 0;
                 }
 
-                // bit of subtlety here - due to the way that the overlap areas are computed it is possible that
-                // when the line segment before the chosen start point is associated with a sharp corner, its filled
-                // area may not overlap (much) with the filled area for chosen first line and so that will cause an unwanted travel
-                // back to print the last line segment - we can avoid the unwanted travel by detecting when the mid point for the
-                // last line segment falls inside the area for the first line segment and simply start at the last line segment instead
+                // if the line before the chosen start point is short, start with that one instead as this
+                // reduces the chance of having to return back to it later
                 unsigned last_point_index = (start_point_index + mid_points.size() - 1) % mid_points.size();
-                if (!ignore_points[last_point_index] && areas[start_point_index].inside(mid_points[last_point_index]))
+                if (vSize(mid_points[last_point_index] - mid_points[start_point_index]) < 2 * avg_width)
                 {
                     start_point_index = last_point_index;
                 }
