@@ -2304,24 +2304,28 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     {
                         // measure the width just before the corner and if it is quite different from
                         // line_len, add another point before this one
-                        const Point split(prev_point + (poly[n] - prev_point) * (1 - split_dist));
-                        Polygons lines;
-                        lines.addLine(split, split + normal(turn90CCW(poly[n] - split), avg_width * 5));
-                        lines = simplified_gaps.intersectionPolyLines(lines);
-                        if (lines.size() > 0)
+                        const coord_t prev_dist = vSize(prev_point - poly[n]);
+                        if (prev_dist >= 10)
                         {
-                            unsigned ln = 0;
-                            while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - split) > 100 && vSize2(lines[ln][1] - split) > 100)
+                            const Point split(poly[n] + normal(prev_point - poly[n], std::max(3.0, prev_dist * split_dist)));
+                            Polygons lines;
+                            lines.addLine(split, split + normal(turn90CCW(poly[n] - split), avg_width * 5));
+                            lines = simplified_gaps.intersectionPolyLines(lines);
+                            if (lines.size() > 0)
                             {
-                                ++ln;
-                            }
-                            const coord_t width = vSize(lines[ln][1] - lines[ln][0]);
-                            if (width < 2 * avg_width && std::abs(width - line_len) > line_len * 0.1)
-                            {
-                                widths.push_back(width);
-                                begin_points.emplace_back(split);
-                                end_points.emplace_back(split + normal(turn90CCW(poly[n] - split), width));
-                                mid_points.emplace_back((begin_points.back() + end_points.back()) / 2);
+                                unsigned ln = 0;
+                                while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - split) > 100 && vSize2(lines[ln][1] - split) > 100)
+                                {
+                                    ++ln;
+                                }
+                                const coord_t width = vSize(lines[ln][1] - lines[ln][0]);
+                                if (width < 2 * avg_width && std::abs(width - line_len) > line_len * 0.1)
+                                {
+                                    widths.push_back(width);
+                                    begin_points.emplace_back(split);
+                                    end_points.emplace_back(split + normal(turn90CCW(poly[n] - split), width));
+                                    mid_points.emplace_back((begin_points.back() + end_points.back()) / 2);
+                                }
                             }
                         }
                     }
@@ -2335,24 +2339,28 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     {
                         // measure the width just after the corner and if it is quite different from
                         // line_len, add another point after this one
-                        const Point split(poly[n] + (next_point - poly[n]) * split_dist);
-                        Polygons lines;
-                        lines.addLine(split, split + normal(turn90CCW(next_point - split), avg_width * 5));
-                        lines = simplified_gaps.intersectionPolyLines(lines);
-                        if (lines.size() > 0)
+                        const coord_t next_dist = vSize(next_point - poly[n]);
+                        if (next_dist >= 10)
                         {
-                            unsigned ln = 0;
-                            while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - split) > 100 && vSize2(lines[ln][1] - split) > 100)
+                            const Point split(poly[n] + normal(next_point - poly[n], std::max(3.0, next_dist * split_dist)));
+                            Polygons lines;
+                            lines.addLine(split, split + normal(turn90CCW(next_point - split), avg_width * 5));
+                            lines = simplified_gaps.intersectionPolyLines(lines);
+                            if (lines.size() > 0)
                             {
-                                ++ln;
-                            }
-                            const coord_t width = vSize(lines[ln][1] - lines[ln][0]);
-                            if (width < 2 * avg_width && std::abs(width - line_len) > line_len * 0.1)
-                            {
-                                widths.push_back(width);
-                                begin_points.emplace_back(split);
-                                end_points.emplace_back(split + normal(turn90CCW(next_point - split), width));
-                                mid_points.emplace_back((begin_points.back() + end_points.back()) / 2);
+                                unsigned ln = 0;
+                                while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - split) > 100 && vSize2(lines[ln][1] - split) > 100)
+                                {
+                                    ++ln;
+                                }
+                                const coord_t width = vSize(lines[ln][1] - lines[ln][0]);
+                                if (width < 2 * avg_width && std::abs(width - line_len) > line_len * 0.1)
+                                {
+                                    widths.push_back(width);
+                                    begin_points.emplace_back(split);
+                                    end_points.emplace_back(split + normal(turn90CCW(next_point - split), width));
+                                    mid_points.emplace_back((begin_points.back() + end_points.back()) / 2);
+                                }
                             }
                         }
                     }
