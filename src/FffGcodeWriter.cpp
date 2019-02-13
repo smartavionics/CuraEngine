@@ -2426,10 +2426,13 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         const coord_t new_width = (prev_width < 2 * avg_width && next_width < 2 * avg_width) ? (prev_width + next_width) / 2 : std::min(prev_width, next_width);
                         if (widths[n] > new_width)
                         {
-                            widths[n] = new_width;
-                            end_points[n] = begin_points[n] + normal(turn90CCW(begin_points[next_index] - begin_points[n]), widths[n]);
-                            const double len_scale = std::abs(std::sin(LinearAlg2D::getAngleLeft(mid_points[n], begin_points[n], begin_points[next_index])));
-                            mid_points[n] = begin_points[n] + normal(mid_points[n] - begin_points[n], widths[n] / (2 * len_scale));
+                            const double len_scale = std::abs(std::sin(LinearAlg2D::getAngleLeft(begin_points[prev_index], begin_points[n], begin_points[next_index]) / 2));
+                            if (len_scale > 0.1)
+                            {
+                                widths[n] = new_width;
+                                end_points[n] = begin_points[n] + normal(turn90CCW(begin_points[next_index] - begin_points[n]), widths[n]);
+                                mid_points[n] = begin_points[n] + normal(mid_points[n] - begin_points[n], widths[n] / (2 * len_scale));
+                            }
                         }
                     }
                 }
