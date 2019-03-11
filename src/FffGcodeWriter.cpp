@@ -2562,7 +2562,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 // if the line before the chosen start point is short, start with that one instead as this
                 // reduces the chance of having to return back to it later
                 unsigned last_point_index = (start_point_index + mid_points.size() - 1) % mid_points.size();
-                if (vSize(mid_points[last_point_index] - mid_points[start_point_index]) < 2 * avg_width)
+                if (!ignore_points[last_point_index] && vSize(mid_points[last_point_index] - mid_points[start_point_index]) < 2 * avg_width)
                 {
                     start_point_index = last_point_index;
                 }
