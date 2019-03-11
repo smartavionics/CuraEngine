@@ -2664,6 +2664,10 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             lines = filled.difference(overlap).intersectionPolyLines(lines);
                             if (lines.size())
                             {
+                                // go to the start of the line to ensure that the segment lines are drawn in the correct order and direction
+                                gcode_layer.addTravel(start_mid_point);
+                                travel_needed = false;
+
                                 while (lines.size() > 0)
                                 {
                                     const Point cur_pos(gcode_layer.getLastPlannedPositionOrStartingPosition());
