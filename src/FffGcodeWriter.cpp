@@ -2637,7 +2637,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                 // if the line before the chosen start point is short, start with that one instead as this
                 // reduces the chance of having to return back to it later
                 unsigned last_point_index = (start_point_index + mid_points.size() - 1) % mid_points.size();
-                if (vSize(mid_points[last_point_index] - mid_points[start_point_index]) < 2 * avg_width)
+                if (!ignore_points[last_point_index] && vSize(mid_points[last_point_index] - mid_points[start_point_index]) < 2 * avg_width)
                 {
                     start_point_index = last_point_index;
                 }
@@ -2739,6 +2739,10 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             lines = filled.difference(overlap).intersectionPolyLines(lines);
                             if (lines.size())
                             {
+                                // go to the start of the line to ensure that the segment lines are drawn in the correct order and direction
+                                gcode_layer.addTravel(start_mid_point);
+                                travel_needed = false;
+
                                 while (lines.size() > 0)
                                 {
                                     const Point cur_pos(gcode_layer.getLastPlannedPositionOrStartingPosition());
