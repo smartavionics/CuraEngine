@@ -571,6 +571,13 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
                 const ExtruderTrain& train_skin = mesh.settings.get<ExtruderTrain&>("top_bottom_extruder_nr");
                 skin_line_width *= train_skin.settings.get<Ratio>("initial_layer_line_width_factor");
             }
+            const double min_gap_area = mesh.settings.get<double>("min_gap_area");
+            const double inner_layer_min_gap_area = mesh.settings.get<double>("inner_layer_min_gap_area");
+            Polygons outline_above;
+            if (filter_out_tiny_gaps && min_gap_area != inner_layer_min_gap_area && layer_nr > 0 && layer_nr < static_cast<LayerIndex>(mesh.layers.size() - 1))
+            {
+                outline_above = storage.getLayerOutlines(layer_nr + 1, false, false, false);
+            }
             for (SliceLayerPart& part : layer.parts)
             {
                  // handle perimeter gaps of normal insets
@@ -582,10 +589,6 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
 
                     Polygons inner = part.insets[inset_idx + 1].offset(line_width / 2);
                     part.perimeter_gaps.add(outer.difference(inner));
-                }
-
-                if (filter_out_tiny_gaps) {
-                    part.perimeter_gaps.removeSmallAreas(2 * INT2MM(wall_line_width_0) * INT2MM(wall_line_width_0)); // remove small outline gaps to reduce blobs on outside of model
                 }
 
                 // gap between inner wall and skin/infill
@@ -600,6 +603,12 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
                     }
                     inner = inner.unionPolygons();
                     part.perimeter_gaps.add(outer.difference(inner));
+                }
+
+                if (filter_out_tiny_gaps) {
+                    // relatively cheap test to determine whether any of the gaps are exposed to air because they are on an outer layer
+                    const double min_area = (!outline_above.size() || outline_above.intersection(part.perimeter_gaps).area() < 0.99 * part.perimeter_gaps.area()) ? min_gap_area : inner_layer_min_gap_area;
+                    part.perimeter_gaps.removeSmallAreas(min_area); // remove small outline gaps to reduce blobs on outside of model
                 }
 
                 // add perimeter gaps for skin insets
@@ -620,7 +629,9 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
                         }
 
                         if (filter_out_tiny_gaps) {
-                            skin_part.perimeter_gaps.removeSmallAreas(2 * INT2MM(skin_line_width) * INT2MM(skin_line_width)); // remove small outline gaps to reduce blobs on outside of model
+                            // relatively cheap test to determine whether any of the gaps are exposed to air because they are on an outer layer
+                            const double min_area = (!outline_above.size() || outline_above.intersection(skin_part.perimeter_gaps).area() < 0.99 * skin_part.perimeter_gaps.area()) ? min_gap_area : inner_layer_min_gap_area;
+                            skin_part.perimeter_gaps.removeSmallAreas(min_area); // remove small outline gaps to reduce blobs on outside of model
                         }
                     }
                 }
