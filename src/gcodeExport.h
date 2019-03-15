@@ -44,7 +44,7 @@ class GCodeExport : public NoCopy
     FRIEND_TEST(GCodeExportTest, CommentLayer);
     FRIEND_TEST(GCodeExportTest, CommentLayerNegative);
     FRIEND_TEST(GCodeExportTest, CommentLayerCount);
-    FRIEND_TEST(GriffinHeaderTest, HeaderGriffinFormatNoExtruders);
+    FRIEND_TEST(GriffinHeaderTest, HeaderGriffinFormat);
     FRIEND_TEST(GCodeExportTest, HeaderUltiGCode);
     FRIEND_TEST(GCodeExportTest, HeaderRepRap);
     FRIEND_TEST(GCodeExportTest, HeaderMarlin);
@@ -134,7 +134,7 @@ private:
     std::vector<Duration> total_print_times; //!< The total estimated print time in seconds for each feature
     TimeEstimateCalculator estimateCalculator;
     
-    bool is_volumatric;
+    bool is_volumetric;
     bool relative_extrusion; //!< whether to use relative extrusion distances rather than absolute
 
     unsigned int layer_nr; //!< for sending travel data
