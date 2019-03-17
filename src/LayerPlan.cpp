@@ -434,6 +434,7 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract)
 
             coord_t distance = 0;
             Point last_point((last_planned_position) ? *last_planned_position : Point(0, 0));
+            const Point start_point(last_point);
             for (CombPath& combPath : combPaths)
             { // add all comb paths (don't do anything special for paths which are moving through air)
                 if (combPath.size() == 0)
@@ -454,6 +455,23 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract)
                 const coord_t retract_threshold = extruder->settings.get<coord_t>("retraction_combing_max_distance");
                 path->retract = retract || (retract_threshold > 0 && distance > retract_threshold);
                 // don't perform a z-hop
+
+                const coord_t max_extra_distance = extruder->settings.get<coord_t>("retraction_combing_max_extra_distance");
+                if (max_extra_distance > 0)
+                {
+                    const coord_t direct_distance = vSize(start_point - p);
+                    if (distance > (direct_distance + max_extra_distance))
+                    {
+                        // the combed travel distance is too long, use a direct line travel move instead
+                        path->points.clear();
+                        // retract and z-hop as per a normal non-combed travel move
+                        path->retract = (direct_distance >= retraction_config.retraction_min_travel_distance);
+                        if (path->retract)
+                        {
+                            path->perform_z_hop = extruder->settings.get<bool>("retraction_hop_enabled");
+                        }
+                    }
+                }
             }
         }
     }
