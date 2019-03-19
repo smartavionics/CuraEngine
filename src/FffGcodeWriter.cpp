@@ -2664,13 +2664,11 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             lines = filled.difference(overlap).intersectionPolyLines(lines);
                             if (lines.size())
                             {
-                                // go to the start of the line to ensure that the segment lines are drawn in the correct order and direction
-                                gcode_layer.addTravel(start_mid_point);
-                                travel_needed = false;
+                                // assume current position is the start of the line to ensure that the segment lines are drawn in the correct order and direction
+                                Point cur_pos(start_mid_point);
 
                                 while (lines.size() > 0)
                                 {
-                                    const Point cur_pos(gcode_layer.getLastPlannedPositionOrStartingPosition());
                                     unsigned closest_seg = 0;
                                     unsigned closest_end = 0;
                                     coord_t min_dist2 = vSize2(cur_pos - lines[0][0]);
@@ -2705,6 +2703,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                                         travel_needed = true;
                                     }
                                     lines.remove(closest_seg);
+                                    cur_pos = gcode_layer.getLastPlannedPositionOrStartingPosition();
                                 }
                             }
                             else
