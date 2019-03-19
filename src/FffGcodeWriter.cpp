@@ -2644,9 +2644,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         std::cerr << point_index << ": overlap % = " << 100 * overlap.area() / filled.area() << " is_outline = " << is_outline << "\n";
                     }
 #endif
-
-                    // consider the area filled even if the flow is too low to actually do the fill
-                    all_filled_areas = all_filled_areas.unionPolygons(filled);
+                    bool add_to_filled_areas = true;
 
                     if (overlap.size() > 0)
                     {
@@ -2654,7 +2652,9 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         double filled_area = filled.area();
                         if (overlap_area > filled_area * 0.9)
                         {
+                            // don't draw any of this line
                             travel_needed = true;
+                            add_to_filled_areas = false;
                         }
                         else if (overlap_area > filled_area * 0.2)
                         {
@@ -2719,6 +2719,11 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     else
                     {
                         addLine(start_mid_point, next_mid_point, widths[point_index], widths[next_point_index]);
+                    }
+
+                    if (add_to_filled_areas)
+                    {
+                        all_filled_areas = all_filled_areas.unionPolygons(filled);
                     }
 
                     start_mid_point = next_mid_point;
