@@ -2750,9 +2750,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         std::cerr << point_index << ": overlap % = " << 100 * overlap.area() / filled.area() << " is_outline = " << is_outline << "\n";
                     }
 #endif
-
-                    // consider the area filled even if the flow is too low to actually do the fill
-                    all_filled_areas = all_filled_areas.unionPolygons(filled);
+                    bool add_to_filled_areas = true;
 
                     if (overlap.size() > 0)
                     {
@@ -2760,7 +2758,9 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         double filled_area = filled.area();
                         if (overlap_area > filled_area * 0.9)
                         {
+                            // don't draw any of this line
                             travel_needed = true;
+                            add_to_filled_areas = false;
                         }
                         else if (overlap_area > filled_area * 0.2)
                         {
@@ -2770,13 +2770,11 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                             lines = filled.difference(overlap).intersectionPolyLines(lines);
                             if (lines.size())
                             {
-                                // go to the start of the line to ensure that the segment lines are drawn in the correct order and direction
-                                gcode_layer.addTravel(start_mid_point);
-                                travel_needed = false;
+                                // assume current position is the start of the line to ensure that the segment lines are drawn in the correct order and direction
+                                Point cur_pos(start_mid_point);
 
                                 while (lines.size() > 0)
                                 {
-                                    const Point cur_pos(gcode_layer.getLastPlannedPositionOrStartingPosition());
                                     unsigned closest_seg = 0;
                                     unsigned closest_end = 0;
                                     coord_t min_dist2 = vSize2(cur_pos - lines[0][0]);
@@ -2811,6 +2809,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                                         travel_needed = true;
                                     }
                                     lines.remove(closest_seg);
+                                    cur_pos = gcode_layer.getLastPlannedPositionOrStartingPosition();
                                 }
                             }
                             else
@@ -2826,6 +2825,11 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     else
                     {
                         addLine(start_mid_point, next_mid_point, widths[point_index], widths[next_point_index]);
+                    }
+
+                    if (add_to_filled_areas)
+                    {
+                        all_filled_areas = all_filled_areas.unionPolygons(filled);
                     }
 
                     start_mid_point = next_mid_point;
