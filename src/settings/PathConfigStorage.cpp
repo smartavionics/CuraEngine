@@ -71,7 +71,7 @@ PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh
     , mesh.settings.get<coord_t>("wall_line_width_0") * line_width_factor_per_extruder[mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr]
     , layer_thickness
     , mesh.settings.get<Ratio>("bridge_wall_material_flow")
-    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_wall_speed"), mesh.settings.get<Acceleration>("acceleration_wall_0"), mesh.settings.get<Velocity>("jerk_wall_0")}
+    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_wall_speed"), mesh.settings.get<Acceleration>("bridge_wall_acceleration"), mesh.settings.get<Velocity>("bridge_wall_jerk")}
     , true // is_bridge_path
     , mesh.settings.get<Ratio>("bridge_fan_speed") * 100.0
 )
@@ -80,7 +80,7 @@ PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh
     , mesh.settings.get<coord_t>("wall_line_width_x") * line_width_factor_per_extruder[mesh.settings.get<ExtruderTrain&>("wall_x_extruder_nr").extruder_nr]
     , layer_thickness
     , mesh.settings.get<Ratio>("bridge_wall_material_flow")
-    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_wall_speed"), mesh.settings.get<Acceleration>("acceleration_wall_x"), mesh.settings.get<Velocity>("jerk_wall_x")}
+    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_wall_speed"), mesh.settings.get<Acceleration>("bridge_wall_acceleration"), mesh.settings.get<Velocity>("bridge_wall_jerk")}
     , true // is_bridge_path
     , mesh.settings.get<Ratio>("bridge_fan_speed") * 100.0
 )
@@ -96,7 +96,7 @@ PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh
     , mesh.settings.get<coord_t>("skin_line_width") * line_width_factor_per_extruder[mesh.settings.get<ExtruderTrain&>("top_bottom_extruder_nr").extruder_nr]
     , layer_thickness
     , mesh.settings.get<Ratio>("bridge_skin_material_flow")
-    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_skin_speed"), mesh.settings.get<Acceleration>("acceleration_topbottom"), mesh.settings.get<Velocity>("jerk_topbottom")}
+    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_skin_speed"), mesh.settings.get<Acceleration>("bridge_skin_acceleration"), mesh.settings.get<Velocity>("bridge_skin_jerk")}
     , true // is_bridge_path
     , mesh.settings.get<Ratio>("bridge_fan_speed") * 100.0
 )
@@ -105,7 +105,7 @@ PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh
     , mesh.settings.get<coord_t>("skin_line_width") * line_width_factor_per_extruder[mesh.settings.get<ExtruderTrain&>("top_bottom_extruder_nr").extruder_nr]
     , layer_thickness
     , mesh.settings.get<Ratio>("bridge_skin_material_flow_2")
-    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_skin_speed_2"), mesh.settings.get<Acceleration>("acceleration_topbottom"), mesh.settings.get<Velocity>("jerk_topbottom")}
+    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_skin_speed_2"), mesh.settings.get<Acceleration>("bridge_skin_acceleration"), mesh.settings.get<Velocity>("bridge_skin_jerk")}
     , true // is_bridge_path
     , mesh.settings.get<Ratio>("bridge_fan_speed_2") * 100.0
 )
@@ -114,7 +114,7 @@ PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh
     , mesh.settings.get<coord_t>("skin_line_width") * line_width_factor_per_extruder[mesh.settings.get<ExtruderTrain&>("top_bottom_extruder_nr").extruder_nr]
     , layer_thickness
     , mesh.settings.get<Ratio>("bridge_skin_material_flow_3")
-    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_skin_speed_3"), mesh.settings.get<Acceleration>("acceleration_topbottom"), mesh.settings.get<Velocity>("jerk_topbottom")}
+    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_skin_speed_3"), mesh.settings.get<Acceleration>("bridge_skin_acceleration"), mesh.settings.get<Velocity>("bridge_skin_jerk")}
     , true // is_bridge_path
     , mesh.settings.get<Ratio>("bridge_fan_speed_3") * 100.0
 )
