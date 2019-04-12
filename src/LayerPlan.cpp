@@ -1042,7 +1042,9 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
         const size_t start = orderOptimizer.polyStart[poly_idx];
         const size_t end = 1 - start;
         const Point& p0 = polygon[start];
-        addTravel(p0);
+        // try to avoid using combing when printing lines skin pattern
+        const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
+        addTravel(p0, false, min_comb_distance);
         const Point& p1 = polygon[end];
         addExtrusionMove(p1, config, space_fill_type, flow_ratio, false, 1.0, fan_speed);
 
