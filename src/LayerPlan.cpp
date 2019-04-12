@@ -359,7 +359,7 @@ std::optional<std::pair<Point, bool>> LayerPlan::getFirstTravelDestinationState(
     return ret;
 }
 
-GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract)
+GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract, coord_t min_comb_distance)
 {
     const GCodePathConfig& travel_config = configs_storage.travel_config_per_extruder[getExtruder()];
     const RetractionConfig& retraction_config = storage.retraction_config_per_extruder[getExtruder()];
@@ -401,7 +401,7 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract)
         // Multiply by 2 because if two lines start and end points places very close then will be applied combing with retractions. (Ex: for brim)
         const coord_t max_distance_ignored = extruder->settings.get<coord_t>("machine_nozzle_tip_outer_diameter") / 2 * 2;
 
-        combed = comb->calc(*extruder, *last_planned_position, p, combPaths, was_inside, is_inside, max_distance_ignored);
+        combed = comb->calc(*extruder, *last_planned_position, p, combPaths, was_inside, is_inside, std::max(min_comb_distance, max_distance_ignored));
         if (combed)
         {
             bool retract = path->retract || combPaths.size() > 1;
@@ -1089,7 +1089,9 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
         const size_t start = orderOptimizer.polyStart[poly_idx];
         const size_t end = 1 - start;
         const Point& p0 = polygon[start];
-        addTravel(p0);
+        // try to avoid using combing when printing lines skin pattern
+        const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
+        addTravel(p0, false, min_comb_distance);
         const Point& p1 = polygon[end];
         addExtrusionMove(p1, config, space_fill_type, flow_ratio, false, 1.0, fan_speed);
 
