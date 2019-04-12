@@ -359,7 +359,7 @@ std::optional<std::pair<Point, bool>> LayerPlan::getFirstTravelDestinationState(
     return ret;
 }
 
-GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract)
+GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract, coord_t min_comb_distance)
 {
     const GCodePathConfig& travel_config = configs_storage.travel_config_per_extruder[getExtruder()];
     const RetractionConfig& retraction_config = storage.retraction_config_per_extruder[getExtruder()];
@@ -401,7 +401,7 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract)
         // Multiply by 2 because if two lines start and end points places very close then will be applied combing with retractions. (Ex: for brim)
         const coord_t max_distance_ignored = extruder->settings.get<coord_t>("machine_nozzle_tip_outer_diameter") / 2 * 2;
 
-        combed = comb->calc(*extruder, *last_planned_position, p, combPaths, was_inside, is_inside, max_distance_ignored);
+        combed = comb->calc(*extruder, *last_planned_position, p, combPaths, was_inside, is_inside, std::max(min_comb_distance, max_distance_ignored));
         if (combed)
         {
             bool retract = path->retract || combPaths.size() > 1;

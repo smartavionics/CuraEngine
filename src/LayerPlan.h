@@ -457,8 +457,9 @@ public:
      * 
      * \param p The point to travel to
      * \param force_comb_retract Whether to force a retraction to occur when travelling to this point. (Only enforced when distance is larger than retraction_min_travel)
+     * \param min_comb_distance Minimum travel distance required to enable the use of combing rather than a direct travel move.
      */
-    GCodePath& addTravel(Point p, bool force_comb_retract = false);
+    GCodePath& addTravel(Point p, bool force_comb_retract = false, coord_t min_comb_distance = 0);
     
     /*!
      * Add a travel path to a certain point and retract if needed.
