@@ -160,6 +160,7 @@ Polygons LayerPlan::computeCombBoundaryInside(const size_t max_inset)
             if (mesh.settings.get<bool>("infill_mesh")) {
                 continue;
             }
+            const coord_t skin_avoid_distance = mesh.settings.get<coord_t>("machine_nozzle_tip_outer_diameter") * 0.75;
             const CombingMode combing_mode = mesh.settings.get<CombingMode>("retraction_combing");
             if (combing_mode == CombingMode::NO_SKIN)
             {
@@ -229,6 +230,13 @@ Polygons LayerPlan::computeCombBoundaryInside(const size_t max_inset)
                         }
 
                         Polygons infill(part.infill_area);
+                        Polygons skin_parts;
+                        for (const SkinPart& skin_part : part.skin_parts)
+                        {
+                            skin_parts.add(skin_part.outline);
+                        }
+                        infill = infill.difference(skin_parts.unionPolygons().offset(skin_avoid_distance));
+
                         if (part.perimeter_gaps.size() > 0)
                         {
                             infill = infill.unionPolygons(part.perimeter_gaps.offset(10)); // ensure polygons overlap slightly
@@ -243,7 +251,12 @@ Polygons LayerPlan::computeCombBoundaryInside(const size_t max_inset)
             {
                 for (const SliceLayerPart& part : layer.parts)
                 {
-                    comb_boundary.add(part.infill_area);
+                    Polygons skin_parts;
+                    for (const SkinPart& skin_part : part.skin_parts)
+                    {
+                        skin_parts.add(skin_part.outline);
+                    }
+                    comb_boundary.add(part.infill_area.difference(skin_parts.unionPolygons().offset(skin_avoid_distance)));
                 }
             }
             else
