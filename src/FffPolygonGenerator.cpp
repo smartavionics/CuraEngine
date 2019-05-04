@@ -528,7 +528,7 @@ void FffPolygonGenerator::processOutlineGaps(SliceDataStorage& storage)
                         inner.add(part.insets[0].offset(wall_line_width_0 / 2 + perimeter_gaps_extra_offset + wall_0_inset));
                     }
                     Polygons outline_gaps = outer.difference(inner);
-                    outline_gaps.removeSmallAreas(2 * INT2MM(wall_line_width_0) * INT2MM(wall_line_width_0)); // remove small outline gaps to reduce blobs on outside of model
+                    outline_gaps.removeSmallAreas(mesh.settings.get<double>("min_gap_area")); // remove small outline gaps to reduce blobs on outside of model
                     part.outline_gaps.add(outline_gaps);
                 }
             }
