@@ -676,31 +676,34 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
 
                 // coast distance is proportional to distance, speed and flow of non-bridge segments just printed and is throttled by speed_flow_factor
                 const double coast_dist = std::min(non_bridge_line_volume, max_non_bridge_line_volume) * (1 - speed_flow_factor) * bridge_wall_coast / 40;
+                const double distance_to_coast_start = std::max(distance_to_bridge_start - coast_dist, 0.0);
 
-                if ((distance_to_bridge_start - distance_to_line_end) <= coast_dist)
+                if (coast_dist > 0 && distance_to_coast_start <= distance_to_line_end)
                 {
-                    // coast takes precedence over acceleration
                     segment_end = line_end;
-                }
-
-                const coord_t len = vSize(cur_point - segment_end);
-                if (coast_dist > 0 && ((distance_to_bridge_start - len) <= coast_dist))
-                {
-                    if ((len - coast_dist) > min_line_len)
+                    if ((distance_to_line_end - distance_to_coast_start) > min_line_len)
                     {
                         // segment is longer than coast distance so extrude using non-bridge config to start of coast
-                        addExtrusionMove(segment_end + coast_dist * (cur_point - segment_end) / len, non_bridge_config, SpaceFillType::Polygons, segment_flow, spiralize, speed_factor);
+                        addExtrusionMove(cur_point + (line_end - cur_point) * distance_to_coast_start / distance_to_line_end, non_bridge_config, SpaceFillType::Polygons, segment_flow, spiralize, speed_factor);
                     }
-                    // then coast to start of bridge segment
-                    addExtrusionMove(segment_end, non_bridge_config, SpaceFillType::Polygons, 0, spiralize, speed_factor);
+                    // then coast to end of line
+                    addExtrusionMove(line_end, non_bridge_config, SpaceFillType::Polygons, 0, spiralize, speed_factor);
+                    distance_to_bridge_start -= distance_to_line_end;
+                    if (distance_to_bridge_start < 0)
+                    {
+                        distance_to_bridge_start = 0;
+                    }
                 }
                 else
                 {
                     // no coasting required, just normal segment using non-bridge config
                     addExtrusionMove(segment_end, non_bridge_config, SpaceFillType::Polygons, segment_flow, spiralize, (is_overhang) ? overhang_speed_factor : speed_factor, fan_speed);
+                    distance_to_bridge_start -= vSize(cur_point - segment_end);
+                    if (distance_to_bridge_start < 0)
+                    {
+                        distance_to_bridge_start = 0;
+                    }
                 }
-
-                distance_to_bridge_start -= len;
             }
             else
             {
