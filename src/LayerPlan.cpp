@@ -833,17 +833,15 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
 
     // helper function to calculate the distance from the start of the current wall line to the first bridge segment
 
-    auto computeDistanceToBridgeStart = [&](unsigned current_index)
+    auto computeDistanceToBridgeStart = [&](const unsigned current_line_index, const unsigned num_lines)
     {
-        distance_to_bridge_start = 0;
-
         if (!bridge_wall_mask.empty())
         {
             // there is air below the part so iterate through the lines that have not yet been output accumulating the total distance to the first bridge segment
-            for (unsigned point_idx = current_index; point_idx < wall.size(); ++point_idx)
+            for (unsigned line_idx = 0; line_idx < num_lines; ++line_idx)
             {
-                const Point& p0 = wall[point_idx];
-                const Point& p1 = wall[(point_idx + 1) % wall.size()];
+                const Point& p0 = wall[(current_line_index + line_idx) % wall.size()];
+                const Point& p1 = wall[(current_line_index + line_idx + 1) % wall.size()];
 
                 if (PolygonUtils::polygonCollidesWithLineSegment(bridge_wall_mask, p0, p1))
                 {
@@ -885,21 +883,18 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                             b1 = bridge[0];
                         }
 
-                        distance_to_bridge_start += vSize(b0 - p0);
-
-                        const double bridge_line_len = vSize(b1 - b0);
-
-                        if (bridge_line_len >= min_bridge_line_len)
+                        if (vSize(b1 - b0) >= min_bridge_line_len)
                         {
                             // job done, we have found the first bridge line
+                            distance_to_bridge_start += vSize(b0 - p0);
                             return;
                         }
-
-                        distance_to_bridge_start += bridge_line_len;
 
                         // finished with this segment
                         line_polys.remove(nearest);
                     }
+                    // none of the unsupported line segments were long enough to bridge
+                    distance_to_bridge_start += vSize(p1 - p0);
                 }
                 else if (!bridge_wall_mask.inside(p0, true))
                 {
@@ -908,9 +903,9 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                 }
             }
 
-            // we have got all the way to the end of the wall without finding a bridge segment so disable coasting by setting distance_to_bridge_start back to 0
+            // we have got all the way to the end of the wall without finding a bridge segment so disable coasting by setting distance_to_bridge_start to -1
 
-            distance_to_bridge_start = 0;
+            distance_to_bridge_start = -1;
         }
     };
 
@@ -925,9 +920,9 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         const Point& p1 = wall[(start_idx + point_idx) % wall.size()];
         const float flow = (wall_overlap_computation) ? flow_ratio * wall_overlap_computation->getFlow(p0, p1) : flow_ratio;
 
-        if (!bridge_wall_mask.empty())
+        if (!bridge_wall_mask.empty() && distance_to_bridge_start == 0)
         {
-            computeDistanceToBridgeStart((start_idx + point_idx - 1) % wall.size());
+            computeDistanceToBridgeStart((start_idx + point_idx - 1) % wall.size(), wall.size() - point_idx + 1);
         }
 
         // HACK ALERT
@@ -967,9 +962,9 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         const Point& p1 = wall[start_idx];
         const float flow = (wall_overlap_computation) ? flow_ratio * wall_overlap_computation->getFlow(p0, p1) : flow_ratio;
 
-        if (!bridge_wall_mask.empty())
+        if (!bridge_wall_mask.empty() && distance_to_bridge_start == 0)
         {
-            computeDistanceToBridgeStart((start_idx + wall.size() - 1) % wall.size());
+            computeDistanceToBridgeStart((start_idx + wall.size() - 1) % wall.size(), 1);
         }
 
         if (flow >= wall_min_flow)
