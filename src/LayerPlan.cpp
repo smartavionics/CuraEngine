@@ -789,6 +789,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                         // after a bridge segment, start slow and accelerate to avoid under-extrusion due to extruder lag
                         speed_factor = std::max(std::min(Ratio(bridge_config.getSpeed() / non_bridge_config.getSpeed()), 1.0_r), 0.5_r);
                     }
+                    distance_to_bridge_start = 0;
                 }
                 else
                 {
