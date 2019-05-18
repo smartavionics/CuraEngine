@@ -632,11 +632,11 @@ void LayerPlan::addPolygonsByOptimizer(const Polygons& polygons, const GCodePath
 
 static const float max_non_bridge_line_volume = 100000.0f; // limit to accumulated "volume" of non-bridge lines which is proportional to distance x extrusion rate
 
-void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, double distance_to_bridge_start)
+void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, coord_t& distance_to_bridge_start)
 {
     const coord_t min_line_len = 5; // we ignore lines less than 5um long
     const double acceleration_segment_len = 1000; // accelerate using segments of this length
-    const double acceleration_factor = 0.85; // must be < 1, the larger the value, the slower the acceleration
+    const double acceleration_factor = 0.75; // must be < 1, the larger the value, the slower the acceleration
     const bool spiralize = false;
 
     const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
@@ -676,31 +676,34 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
 
                 // coast distance is proportional to distance, speed and flow of non-bridge segments just printed and is throttled by speed_flow_factor
                 const double coast_dist = std::min(non_bridge_line_volume, max_non_bridge_line_volume) * (1 - speed_flow_factor) * bridge_wall_coast / 40;
+                const double distance_to_coast_start = std::max(distance_to_bridge_start - coast_dist, 0.0);
 
-                if ((distance_to_bridge_start - distance_to_line_end) <= coast_dist)
+                if (coast_dist > 0 && distance_to_coast_start <= distance_to_line_end)
                 {
-                    // coast takes precedence over acceleration
                     segment_end = line_end;
-                }
-
-                const coord_t len = vSize(cur_point - segment_end);
-                if (coast_dist > 0 && ((distance_to_bridge_start - len) <= coast_dist))
-                {
-                    if ((len - coast_dist) > min_line_len)
+                    if ((distance_to_line_end - distance_to_coast_start) > min_line_len)
                     {
                         // segment is longer than coast distance so extrude using non-bridge config to start of coast
-                        addExtrusionMove(segment_end + coast_dist * (cur_point - segment_end) / len, non_bridge_config, SpaceFillType::Polygons, segment_flow, spiralize, speed_factor);
+                        addExtrusionMove(cur_point + (line_end - cur_point) * distance_to_coast_start / distance_to_line_end, non_bridge_config, SpaceFillType::Polygons, segment_flow, spiralize, speed_factor);
                     }
-                    // then coast to start of bridge segment
-                    addExtrusionMove(segment_end, non_bridge_config, SpaceFillType::Polygons, 0, spiralize, speed_factor);
+                    // then coast to end of line
+                    addExtrusionMove(line_end, non_bridge_config, SpaceFillType::Polygons, 0, spiralize, speed_factor);
+                    distance_to_bridge_start -= distance_to_line_end;
+                    if (distance_to_bridge_start < 0)
+                    {
+                        distance_to_bridge_start = 0;
+                    }
                 }
                 else
                 {
                     // no coasting required, just normal segment using non-bridge config
                     addExtrusionMove(segment_end, non_bridge_config, SpaceFillType::Polygons, segment_flow, spiralize, (is_overhang) ? overhang_speed_factor : speed_factor, fan_speed);
+                    distance_to_bridge_start -= vSize(cur_point - segment_end);
+                    if (distance_to_bridge_start < 0)
+                    {
+                        distance_to_bridge_start = 0;
+                    }
                 }
-
-                distance_to_bridge_start -= len;
             }
             else
             {
@@ -710,6 +713,10 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
             non_bridge_line_volume += vSize(cur_point - segment_end) * segment_flow * speed_factor * non_bridge_config.getSpeed();
             cur_point = segment_end;
             speed_factor = 1 - (1 - speed_factor) * acceleration_factor;
+            if (speed_factor >= 0.9)
+            {
+                speed_factor = 1;
+            }
             distance_to_line_end = vSize(cur_point - line_end);
         }
     };
@@ -764,14 +771,15 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                     b1 = bridge[0];
                 }
 
-                // extrude using non_bridge_config to the start of the next bridge segment
-
-                addNonBridgeLine(b0);
-
-                const double bridge_line_len = vSize(b1 - cur_point);
+                const double bridge_line_len = vSize(b1 - b0);
 
                 if (bridge_line_len >= min_bridge_line_len)
                 {
+                    // extrude using non_bridge_config to the start of the next bridge segment
+
+                    distance_to_bridge_start = vSize(cur_point - b0);
+                    addNonBridgeLine(b0);
+
                     // extrude using bridge_config to the end of the next bridge segment
 
                     if (bridge_line_len > min_line_len)
@@ -780,8 +788,9 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                         non_bridge_line_volume = 0;
                         cur_point = b1;
                         // after a bridge segment, start slow and accelerate to avoid under-extrusion due to extruder lag
-                        speed_factor = std::min(Ratio(bridge_config.getSpeed() / non_bridge_config.getSpeed()), 1.0_r);
+                        speed_factor = std::max(std::min(Ratio(bridge_config.getSpeed() / non_bridge_config.getSpeed()), 1.0_r), 0.5_r);
                     }
+                    distance_to_bridge_start = 0;
                 }
                 else
                 {
@@ -829,17 +838,15 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
 
     // helper function to calculate the distance from the start of the current wall line to the first bridge segment
 
-    auto computeDistanceToBridgeStart = [&](unsigned current_index)
+    auto computeDistanceToBridgeStart = [&](const unsigned current_line_index, const unsigned num_lines)
     {
-        distance_to_bridge_start = 0;
-
         if (!bridge_wall_mask.empty())
         {
             // there is air below the part so iterate through the lines that have not yet been output accumulating the total distance to the first bridge segment
-            for (unsigned point_idx = current_index; point_idx < wall.size(); ++point_idx)
+            for (unsigned line_idx = 0; line_idx < num_lines; ++line_idx)
             {
-                const Point& p0 = wall[point_idx];
-                const Point& p1 = wall[(point_idx + 1) % wall.size()];
+                const Point& p0 = wall[(current_line_index + line_idx) % wall.size()];
+                const Point& p1 = wall[(current_line_index + line_idx + 1) % wall.size()];
 
                 if (PolygonUtils::polygonCollidesWithLineSegment(bridge_wall_mask, p0, p1))
                 {
@@ -881,21 +888,18 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                             b1 = bridge[0];
                         }
 
-                        distance_to_bridge_start += vSize(b0 - p0);
-
-                        const double bridge_line_len = vSize(b1 - b0);
-
-                        if (bridge_line_len >= min_bridge_line_len)
+                        if (vSize(b1 - b0) >= min_bridge_line_len)
                         {
                             // job done, we have found the first bridge line
+                            distance_to_bridge_start += vSize(b0 - p0);
                             return;
                         }
-
-                        distance_to_bridge_start += bridge_line_len;
 
                         // finished with this segment
                         line_polys.remove(nearest);
                     }
+                    // none of the unsupported line segments were long enough to bridge
+                    distance_to_bridge_start += vSize(p1 - p0);
                 }
                 else if (!bridge_wall_mask.inside(p0, true))
                 {
@@ -904,9 +908,9 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                 }
             }
 
-            // we have got all the way to the end of the wall without finding a bridge segment so disable coasting by setting distance_to_bridge_start back to 0
+            // we have got all the way to the end of the wall without finding a bridge segment so disable coasting by setting distance_to_bridge_start to -1
 
-            distance_to_bridge_start = 0;
+            distance_to_bridge_start = -1;
         }
     };
 
@@ -921,9 +925,9 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         const Point& p1 = wall[(start_idx + point_idx) % wall.size()];
         const float flow = (wall_overlap_computation) ? flow_ratio * wall_overlap_computation->getFlow(p0, p1) : flow_ratio;
 
-        if (!bridge_wall_mask.empty())
+        if (!bridge_wall_mask.empty() && distance_to_bridge_start == 0)
         {
-            computeDistanceToBridgeStart((start_idx + point_idx - 1) % wall.size());
+            computeDistanceToBridgeStart((start_idx + point_idx - 1) % wall.size(), wall.size() - point_idx + 1);
         }
 
         // HACK ALERT
@@ -963,9 +967,9 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         const Point& p1 = wall[start_idx];
         const float flow = (wall_overlap_computation) ? flow_ratio * wall_overlap_computation->getFlow(p0, p1) : flow_ratio;
 
-        if (!bridge_wall_mask.empty())
+        if (!bridge_wall_mask.empty() && distance_to_bridge_start == 0)
         {
-            computeDistanceToBridgeStart((start_idx + wall.size() - 1) % wall.size());
+            computeDistanceToBridgeStart((start_idx + wall.size() - 1) % wall.size(), 1);
         }
 
         if (flow >= wall_min_flow)
