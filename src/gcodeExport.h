@@ -244,6 +244,16 @@ public:
     {
         extruder_attr[current_extruder].prime_volume += last_coasted_volume; 
     }
+
+    /*!
+     * Add extra amount of material to be primed after an unretraction.
+     *
+     * \param extra_prime_distance Amount of material in mm.
+     */
+    void addExtraPrimeAmount(double extra_prime_volume)
+    {
+        extruder_attr[current_extruder].prime_volume += extra_prime_volume;
+    }
     
     Point3 getPosition() const;
     
@@ -480,6 +490,7 @@ public:
     
     void writeTemperatureCommand(const size_t extruder, const Temperature& temperature, const bool wait = false);
     void writeBedTemperatureCommand(const Temperature& temperature, const bool wait = false);
+    void writeBuildVolumeTemperatureCommand(const Temperature& temperature, const bool wait = false);
 
     /*!
      * Write the command for setting the acceleration for print moves to a specific value
