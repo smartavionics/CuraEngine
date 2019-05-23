@@ -1549,8 +1549,6 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 }
             }
 
-            bool force_temperature_write = false;
-
             if (prev_extruder_temp == 0)
             {
                 // because the extruders may be sharing a heater, we turn off the previous extruder
@@ -1558,13 +1556,11 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 // heater stays active
                 constexpr bool wait = false;
                 gcode.writeTemperatureCommand(prev_extruder, prev_extruder_temp, wait);
-                // ensure the temperature really does get set
-                force_temperature_write = true;
             }
 
             { // require printing temperature to be met
                 constexpr bool wait = true;
-                gcode.writeTemperatureCommand(extruder_nr, extruder_plan.required_start_temperature, wait, force_temperature_write);
+                gcode.writeTemperatureCommand(extruder_nr, extruder_plan.required_start_temperature, wait);
             }
 
             if (prev_extruder_temp > 0)
