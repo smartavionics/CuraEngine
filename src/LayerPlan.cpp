@@ -1538,36 +1538,20 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 gcode.writeMaxZFeedrate(extruder.settings.get<Velocity>("max_feedrate_z_override"));
             }
 
-            Temperature prev_extruder_temp = (extruder_plan.prev_extruder_standby_temp) ? *extruder_plan.prev_extruder_standby_temp : -1;
-
-            if (extruder_plan.prev_extruder_standby_temp)
-            { // turn off previous extruder
-                const LayerIndex prev_layer_nr = (extruder_plan_idx == 0) ? layer_nr - 1 : layer_nr;
-                if (prev_layer_nr == storage.max_print_height_per_extruder[prev_extruder])
-                {
-                    prev_extruder_temp = 0; // TODO ? should there be a setting for extruder_off_temperature ?
-                }
-            }
-
-            if (prev_extruder_temp == 0)
-            {
-                // because the extruders may be sharing a heater, we turn off the previous extruder
-                // before setting the temperature of the new extruder so that the net result is that the
-                // heater stays active
-                constexpr bool wait = false;
-                gcode.writeTemperatureCommand(prev_extruder, prev_extruder_temp, wait);
-            }
-
             { // require printing temperature to be met
                 constexpr bool wait = true;
                 gcode.writeTemperatureCommand(extruder_nr, extruder_plan.required_start_temperature, wait);
             }
 
-            if (prev_extruder_temp > 0)
-            {
-                // the previous extruder is going to standby temperature - we do this after new extruder has achieved its
-                // starting temperature so that the previous extruder doesn't begin cooling down too early
+            if (extruder_plan.prev_extruder_standby_temp)
+            { // turn off previous extruder
                 constexpr bool wait = false;
+                Temperature prev_extruder_temp = *extruder_plan.prev_extruder_standby_temp;
+                const LayerIndex prev_layer_nr = (extruder_plan_idx == 0) ? layer_nr - 1 : layer_nr;
+                if (prev_layer_nr == storage.max_print_height_per_extruder[prev_extruder])
+                {
+                    prev_extruder_temp = 0; // TODO ? should there be a setting for extruder_off_temperature ?
+                }
                 gcode.writeTemperatureCommand(prev_extruder, prev_extruder_temp, wait);
             }
 
