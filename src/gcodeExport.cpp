@@ -1194,10 +1194,9 @@ void GCodeExport::writeTemperatureCommand(const size_t extruder, const Temperatu
     if (extruder_train.settings.get<bool>("machine_extruders_share_heater"))
     {
         // extruders share a single heater
-
-        // ignore all changes to the non-current extruder and non-wait reductions of the current extruder temperature
-        if (extruder != current_extruder || (!wait && temperature > 0 && temperature < extruder_attr[extruder].currentTemperature))
+        if (extruder != current_extruder)
         {
+            // ignore all changes to the non-current extruder
             return;
         }
 
