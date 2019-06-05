@@ -1823,6 +1823,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
                 float length = 0.0;
                 p0 = gcode.getPositionXY();
+                Point spiral_start = p0;
                 for (; path_idx < paths.size() && paths[path_idx].spiralize; path_idx++)
                 { // handle all consecutive spiralized paths > CHANGES path_idx!
                     GCodePath& path = paths[path_idx];
@@ -1845,7 +1846,10 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     // vertex would not be shifted (as it's the last vertex in the sequence). The smoother the model,
                     // the less the vertices are shifted and the less obvious is the ridge. If the layer display
                     // really displayed a spiral rather than slices of a spiral, this would not be required.
-                    communication->sendLineTo(path.config->type, path.points[0], path.getLineWidthForLayerView(), path.config->getLayerThickness(), speed);
+                    if (path_idx + 1 >= paths.size() || !paths[path_idx + 1].spiralize)
+                    {
+                        communication->sendLineTo(path.config->type, spiral_start, path.getLineWidthForLayerView(), path.config->getLayerThickness(), speed);
+                    }
                 }
                 path_idx--; // the last path_idx didnt spiralize, so it's not part of the current spiralize path
             }
