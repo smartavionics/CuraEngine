@@ -1819,7 +1819,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 //If we need to spiralize then raise the head slowly by 1 layer as this path progresses.
                 float totalLength = 0.0;
                 Point p0 = gcode.getPositionXY();
-                for (unsigned int _path_idx = path_idx; _path_idx < paths.size() && !paths[_path_idx].isTravelPath(); _path_idx++)
+                for (unsigned int _path_idx = path_idx; _path_idx < paths.size() && paths[_path_idx].spiralize; _path_idx++)
                 {
                     GCodePath& _path = paths[_path_idx];
                     for (unsigned int point_idx = 0; point_idx < _path.points.size(); point_idx++)
