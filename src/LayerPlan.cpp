@@ -1224,12 +1224,21 @@ void LayerPlan::spiralizeWallSlice(const GCodePathConfig& config, ConstPolygonRe
     for (int wall_point_idx = 1; wall_point_idx <= n_points; ++wall_point_idx)
     {
         // p is a point from the current wall polygon
-        const Point& p = wall[(seam_vertex_idx + wall_point_idx) % n_points];
-        const Point& shift = shifts[(seam_vertex_idx + wall_point_idx) % n_points];
+        const size_t idx = (seam_vertex_idx + wall_point_idx) % n_points;
+        const Point& p = wall[idx];
+        Point shift = shifts[idx];
         wall_length += vSizeMM(p - p0);
         p0 = p;
 
-        const double flow = (is_bottom_layer) ? (min_bottom_layer_flow + ((1 - min_bottom_layer_flow) * wall_length / total_length)) : flows[(seam_vertex_idx + wall_point_idx) % n_points];
+        const double flow = (is_bottom_layer) ? (min_bottom_layer_flow + ((1 - min_bottom_layer_flow) * wall_length / total_length)) : flows[idx];
+
+        if (flow < flows[(idx + 1) % n_points])
+        {
+            // this line segment is thinner than the following segment so to avoid producing a visible bump
+            // at the start of the next segment we move the end vertex away from the boundary
+            // by using the shift distance for the next segment
+            shift = normal(shift, vSize(shifts[(idx + 1) % n_points]));
+        }
 
         // if required, use interpolation to smooth the x/y coordinates between layers but not for the first spiralized layer
         // as that lies directly on top of a non-spiralized wall with exactly the same outline and not for the last point in each layer
@@ -1810,7 +1819,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 //If we need to spiralize then raise the head slowly by 1 layer as this path progresses.
                 float totalLength = 0.0;
                 Point p0 = gcode.getPositionXY();
-                for (unsigned int _path_idx = path_idx; _path_idx < paths.size() && !paths[_path_idx].isTravelPath(); _path_idx++)
+                for (unsigned int _path_idx = path_idx; _path_idx < paths.size() && paths[_path_idx].spiralize; _path_idx++)
                 {
                     GCodePath& _path = paths[_path_idx];
                     for (unsigned int point_idx = 0; point_idx < _path.points.size(); point_idx++)
