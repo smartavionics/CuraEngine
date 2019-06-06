@@ -1625,7 +1625,7 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
                 {
                     ++ln;
                 }
-                Point clipped(lines[ln][(vSize2(lines[ln][0] - poly[n]) > 100) ? 0 : 1]);
+                //Point clipped(lines[ln][(vSize2(lines[ln][0] - poly[n]) > 100) ? 0 : 1]);
                 coord_t line_width = vSize(lines[ln][1] - lines[ln][0]) * std::abs(std::sin(corner_rads / 2));
 #if 0
                 // diagnostic - print vertex bisector lines
@@ -1634,7 +1634,7 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
 #endif
 
                 flows[n] = std::max(std::min((double)line_width / default_line_width, 2.0), 0.5);
-                shifts[n] = normal(clipped - poly[n], default_line_width * (flows[n] - 1) / 2 / std::abs(std::sin(corner_rads / 2)));
+                //shifts[n] = normal(clipped - poly[n], default_line_width * (flows[n] - 1) / 2 / std::abs(std::sin(corner_rads / 2)));
             }
         }
     }
