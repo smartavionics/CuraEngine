@@ -1596,7 +1596,6 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
     const int seam_vertex_idx = storage.spiralize_seam_vertex_indices[layer_nr]; // use pre-computed seam vertex index for current layer
 
     std::vector<float> flows(wall_outline.size(), 1.0); // flow multiplier for each line segment
-    std::vector<Point> shifts(wall_outline.size(), Point()); // position offset for each line segment
 
     if (part.outline.size() > 1)
     {
@@ -1625,7 +1624,6 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
                 {
                     ++ln;
                 }
-                //Point clipped(lines[ln][(vSize2(lines[ln][0] - poly[n]) > 100) ? 0 : 1]);
                 coord_t line_width = vSize(lines[ln][1] - lines[ln][0]) * std::abs(std::sin(corner_rads / 2));
 #if 0
                 // diagnostic - print vertex bisector lines
@@ -1634,12 +1632,11 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
 #endif
 
                 flows[n] = std::max(std::min((double)line_width / default_line_width, 2.0), 0.5);
-                //shifts[n] = normal(clipped - poly[n], default_line_width * (flows[n] - 1) / 2 / std::abs(std::sin(corner_rads / 2)));
             }
         }
     }
     // output a wall slice that is interpolated between the last and current walls
-    gcode_layer.spiralizeWallSlice(mesh_config.inset0_config, wall_outline, ConstPolygonRef(*last_wall_outline), seam_vertex_idx, last_seam_vertex_idx, is_top_layer, is_bottom_layer, flows, shifts);
+    gcode_layer.spiralizeWallSlice(mesh_config.inset0_config, wall_outline, ConstPolygonRef(*last_wall_outline), seam_vertex_idx, last_seam_vertex_idx, is_top_layer, is_bottom_layer, flows);
 }
 
 bool FffGcodeWriter::processInsets(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SliceLayerPart& part) const
