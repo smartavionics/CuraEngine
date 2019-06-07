@@ -1602,34 +1602,34 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
         // part is not solid, wall line width can vary
         const coord_t default_line_width = mesh.settings.get<coord_t>("wall_line_width_0");
 
-        ConstPolygonRef poly = part.insets[0][0];
-
-        Polygon inset_outline;
-
-        for (unsigned n = 0; n < poly.size(); ++n)
+        for (unsigned n = 0; n < wall_outline.size(); ++n)
         {
-            const Point& prev_point = poly[(n + poly.size() - 1) % poly.size()];
-            const Point& next_point = poly[(n + 1) % poly.size()];
-            const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, poly[n], next_point);
+            const Point& this_point = wall_outline[n];
+            const Point& prev_point = wall_outline[(n + wall_outline.size() - 1) % wall_outline.size()];
+            const Point& next_point = wall_outline[(n + 1) % wall_outline.size()];
+            const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, this_point, next_point);
+
+            Point bisector(rotate(normal(next_point - this_point, default_line_width * 5), corner_rads / 2));
 
             Polygons lines;
-            Point bisector(poly[n] + rotate(normal(next_point - poly[n], default_line_width * 5), corner_rads / 2));
-            lines.addLine(poly[n], bisector);
+            lines.addLine(this_point - bisector, this_point + bisector);
+#if 0
+            // diagnostic - print vertex bisector lines
+            gcode_layer.addTravel(lines[0][0]);
+            gcode_layer.addExtrusionMove(lines[0][1], mesh_config.inset0_config, SpaceFillType::Lines, 0.1);
+#endif
+
             lines = part.outline.intersectionPolyLines(lines);
             if (lines.size() > 0)
             {
                 // find clipped line segment that starts/ends close to poly[n]
                 unsigned ln = 0;
-                while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - poly[n]) > 100 && vSize2(lines[ln][1] - poly[n]) > 100)
+                while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - this_point) > 100 && vSize2(lines[ln][1] - this_point) > 100)
                 {
                     ++ln;
                 }
-                coord_t line_width = vSize(lines[ln][1] - lines[ln][0]) * std::abs(std::sin(corner_rads / 2));
-#if 0
-                // diagnostic - print vertex bisector lines
-                gcode_layer.addTravel(poly[n]);
-                gcode_layer.addExtrusionMove(clipped, mesh_config.inset0_config, SpaceFillType::Lines, 0.1);
-#endif
+
+                const coord_t line_width = vSize(lines[ln][1] - lines[ln][0]) * std::abs(std::sin(corner_rads / 2));
 
                 flows[n] = std::max(std::min((double)line_width / default_line_width, 2.0), 0.5);
             }
