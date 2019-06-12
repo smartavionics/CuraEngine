@@ -1597,10 +1597,13 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
 
     std::vector<float> flows(wall_outline.size(), 1.0); // flow multiplier for each line segment
 
-    if (part.outline.size() > 1)
+    const coord_t default_line_width = mesh.settings.get<coord_t>("wall_line_width_0");
+    const double min_line_width = mesh.settings.get<Ratio>("spiralize_min_line_width");
+    const double max_line_width = mesh.settings.get<Ratio>("spiralize_max_line_width");
+
+    if (min_line_width != 1.0 || max_line_width != 1.0)
     {
-        // part is not solid, wall line width can vary
-        const coord_t default_line_width = mesh.settings.get<coord_t>("wall_line_width_0");
+        // wall line width can vary
 
         for (unsigned n = 0; n < wall_outline.size(); ++n)
         {
@@ -1631,7 +1634,7 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
 
                 const coord_t line_width = vSize(lines[ln][1] - lines[ln][0]) * std::abs(std::sin(corner_rads / 2));
 
-                flows[n] = std::max(std::min((double)line_width / default_line_width, 2.0), 0.5);
+                flows[n] = std::max(std::min((double)line_width / default_line_width, max_line_width), min_line_width);
             }
         }
     }
