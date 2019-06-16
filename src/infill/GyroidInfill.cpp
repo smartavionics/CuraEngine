@@ -1,17 +1,10 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
-/* 
- * File:   GyroidInfill.cpp
- * Author: asasin
- * 
- * Created on October 1, 2018, 11:59 AM
- */
+//Copyright (c) 2018 Ultimaker B.V.
+//CuraEngine is released under the terms of the AGPLv3 or higher.
 
 #include "GyroidInfill.h"
+#include "../utils/AABB.h"
+#include "../utils/linearAlg2D.h"
+#include "../utils/polygon.h"
 
 namespace cura {
 
@@ -277,7 +270,7 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
                     for (unsigned point_index = 0; point_index < 2; ++point_index)
                     {
                         // don't include chain ends that are close to the segment but are beyond the segment ends
-                        char beyond = 0;
+                        short beyond = 0;
                         if (LinearAlg2D::getDist2FromLineSegment(op0, chains[point_index][chain_index], op1, &beyond) < 10 && !beyond)
                         {
                             points_on_outline_point_index.push_back(point_index);
@@ -420,7 +413,6 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
     }
 
     result_lines = result;
-
 }
 
 } // namespace cura
