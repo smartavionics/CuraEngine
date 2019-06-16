@@ -2401,6 +2401,8 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
         // print the lines from each polygon in the gap part
 
+        bool is_outer_poly = is_outline;
+
         unsigned next_poly_index = 0; // start with outer polygon
 
         while (gap_polygons.size() > 0)
@@ -2743,8 +2745,18 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                         }
                     }
 
-                    // start at the mid point that is closest to the current location
-                    const Point origin(gcode_layer.getLastPlannedPositionOrStartingPosition());
+                    Point origin;
+                    if (is_outer_poly && mesh.settings.get<EZSeamType>("z_seam_type") == EZSeamType::USER_SPECIFIED)
+                    {
+                        // start at the mid point that is closest to the z-seam location
+                        origin = Point(mesh.settings.get<coord_t>("z_seam_x"), mesh.settings.get<coord_t>("z_seam_y"));
+                    }
+                    else
+                    {
+                        // start at the mid point that is closest to the current location
+                        origin = gcode_layer.getLastPlannedPositionOrStartingPosition();
+                    }
+
                     unsigned start_point_index = 0;
                     while (start_point_index < mid_points.size() && ignore_points[start_point_index])
                     {
@@ -2958,6 +2970,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
                     next_poly_index = cpp.poly_idx;
                 }
             }
+            is_outer_poly = false;
         }
     }
 }
