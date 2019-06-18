@@ -14,7 +14,7 @@ GyroidInfill::GyroidInfill() {
 GyroidInfill::~GyroidInfill() {
 }
 
-void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z)
+void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z, EFillMethod pattern)
 {
     // generate infill based on the gyroid equation: sin_x * cos_y + sin_y * cos_z + sin_z * cos_x = 0
     // kudos to the author of the Slic3r implementation equation code, the equation code here is based on that
@@ -25,7 +25,8 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
     int pitch = line_distance * 2.41; // this produces similar density to the "line" infill pattern
     int num_steps = 4;
     int step = pitch / num_steps;
-    while (step > 500 && num_steps < 16)
+    const int max_steps = (pattern == EFillMethod::GYROID_LOW_RES) ? 4 : (pattern == EFillMethod::GYROID_MED_RES) ? 8 : 16;
+    while (step > 500 && num_steps < max_steps)
     {
         num_steps *= 2;
         step = pitch / num_steps;
