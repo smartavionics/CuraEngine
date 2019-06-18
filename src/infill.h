@@ -220,9 +220,9 @@ private:
     /*!
      * Generate gyroid infill
      * \param result (output) The resulting polygons
+     * \param pattern The space filling pattern of the infill to generate
      */
-    void generateGyroidInfill(Polygons& result);
-    
+    void generateGyroidInfill(Polygons& result, EFillMethod pattern);
     /*!
      * Generate sparse concentric infill
      * 

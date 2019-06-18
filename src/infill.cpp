@@ -149,8 +149,10 @@ void Infill::_generate(Polygons& result_polygons, Polygons& result_lines, const 
         }
         generateCrossInfill(*cross_fill_provider, result_polygons, result_lines);
         break;
-    case EFillMethod::GYROID:
-        generateGyroidInfill(result_lines);
+    case EFillMethod::GYROID_HI_RES:
+    case EFillMethod::GYROID_MED_RES:
+    case EFillMethod::GYROID_LOW_RES:
+        generateGyroidInfill(result_lines, pattern);
         break;
     default:
         logError("Fill pattern has unknown value.\n");
@@ -250,9 +252,9 @@ void Infill::multiplyInfill(Polygons& result_polygons, Polygons& result_lines)
     }
 }
 
-void Infill::generateGyroidInfill(Polygons& result_lines)
+void Infill::generateGyroidInfill(Polygons& result_lines, EFillMethod pattern)
 {
-    GyroidInfill::generateTotalGyroidInfill(result_lines, zig_zaggify, outline_offset + infill_overlap, infill_line_width, line_distance, in_outline, z);
+    GyroidInfill::generateTotalGyroidInfill(result_lines, zig_zaggify, outline_offset + infill_overlap, infill_line_width, line_distance, in_outline, z, pattern);
 }
 
 void Infill::generateConcentricInfill(Polygons& result, int inset_value)
