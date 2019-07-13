@@ -57,6 +57,31 @@ double ExtruderPlan::getFanSpeed()
     return fan_speed;
 }
 
+double ExtruderPlan::getMaterial(std::vector<double>* amounts) const
+{
+    double total = 0;
+
+    if (amounts)
+    {
+        amounts->resize((unsigned)PrintFeatureType::NumPrintFeatureTypes, 0.0);
+    }
+
+    for (const GCodePath& path : paths)
+    {
+        double amount = path.estimates.getMaterial();
+        total +=  amount;
+        if (amounts)
+        {
+            unsigned feature_type = (unsigned)path.config->type;
+            if (feature_type < (unsigned)PrintFeatureType::NumPrintFeatureTypes)
+            {
+                (*amounts)[feature_type] += amount;
+            }
+        }
+    }
+
+    return total;
+}
 
 GCodePath* LayerPlan::getLatestPathWithConfig(const GCodePathConfig& config, SpaceFillType space_fill_type, const Ratio flow, bool spiralize, const Ratio speed_factor)
 {

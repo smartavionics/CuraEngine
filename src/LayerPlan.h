@@ -175,6 +175,15 @@ public:
      */
     double getFanSpeed();
 
+    /*!
+     * Get the amount of material used by this extruder plan in mm^3.
+     *
+     * \param amounts - optional pointer to a vector of doubles, one for each print feature type
+     *
+     * \return amount of material
+     */
+    double getMaterial(std::vector<double>* amounts = nullptr) const;
+
 protected:
     LayerIndex layer_nr; //!< The layer number at which we are currently printing.
     bool is_initial_layer; //!< Whether this extruder plan is printed on the very first layer (which might be raft)
