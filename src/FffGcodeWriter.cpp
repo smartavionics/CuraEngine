@@ -2587,12 +2587,12 @@ void FffGcodeWriter::setExtruder_addPrime(const SliceDataStorage& storage, Layer
     }
     const bool extruder_changed = gcode_layer.setExtruder(extruder_nr);
 
+    const ExtruderTrain& train = Application::getInstance().current_slice->scene.extruders[extruder_nr];
+
     if (extruder_changed)
     {
         if (extruder_prime_layer_nr[extruder_nr] == gcode_layer.getLayerNr())
         {
-            const ExtruderTrain& train = Application::getInstance().current_slice->scene.extruders[extruder_nr];
-
             // We always prime an extruder, but whether it will be a prime blob/poop depends on if prime blob is enabled.
             // This is decided in GCodeExport::writePrimeTrain().
             if (train.settings.get<bool>("prime_blob_enable")) // Don't travel to the prime-blob position if not enabled though.
@@ -2612,7 +2612,8 @@ void FffGcodeWriter::setExtruder_addPrime(const SliceDataStorage& storage, Layer
 
     // The first layer of the prime tower is printed with one material only, so do not prime another material on the
     // first layer again.
-    if (((extruder_changed && gcode_layer.getLayerNr() > 0) || extruder_nr == outermost_prime_tower_extruder) && gcode_layer.getLayerNr() >= -static_cast<LayerIndex>(Raft::getFillerLayerCount())) //Always print a prime tower with outermost extruder.
+    const bool prime_outermost_extruder = gcode_layer.getLayerNr() == 0 || train.settings.get<bool>("prime_outermost_extruder_always");
+    if (((extruder_changed && gcode_layer.getLayerNr() > 0) || (extruder_nr == outermost_prime_tower_extruder && prime_outermost_extruder)) && gcode_layer.getLayerNr() >= -static_cast<LayerIndex>(Raft::getFillerLayerCount())) //Always print a prime tower with outermost extruder.
     {
         addPrimeTower(storage, gcode_layer, previous_extruder);
     }
