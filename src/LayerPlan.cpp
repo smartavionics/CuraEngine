@@ -1532,6 +1532,9 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
         bool update_extrusion_offset = true;
 
+        double prime_tower_volume = 0;
+        double prime_tower_min_volume = extruder.settings.get<double>("prime_tower_min_volume");
+
         for(unsigned int path_idx = 0; path_idx < paths.size(); path_idx++)
         {
             extruder_plan.handleInserts(path_idx, gcode);
@@ -1581,6 +1584,15 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             }
             if (!path.config->isTravelPath() && last_extrusion_config != path.config)
             {
+                if (path.config->type == PrintFeatureType::PrimeTower)
+                {
+                    std::vector<double> amounts;
+                    double total_volume = extruder_plan.getMaterial(&amounts);
+                    double prime_tower_max_volume = amounts[(unsigned)PrintFeatureType::PrimeTower]; // volume required for all the lines in the prime tower for this extruder
+                    double model_volume = total_volume - prime_tower_max_volume; // volume required for everything other than the prime tower
+                    // if extruder_min_volume is > (model_volume + prime_tower_min_volume), the prime tower will need to soak up the extra
+                    prime_tower_min_volume = std::max(extruder.settings.get<double>("extruder_min_volume") - model_volume, prime_tower_min_volume);
+                }
                 gcode.writeTypeComment(path.config->type);
                 if (path.config->isBridgePath())
                 {
@@ -1645,6 +1657,15 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 }
                 if (!coasting) // not same as 'else', cause we might have changed [coasting] in the line above...
                 { // normal path to gcode algorithm
+                    if (path.config->type == PrintFeatureType::PrimeTower)
+                    {
+                        if (layer_nr > 0 && prime_tower_volume >= prime_tower_min_volume)
+                        {
+                            // don't need any more prime tower so ignore this path
+                            continue;
+                        }
+                        prime_tower_volume += path.estimates.getMaterial();
+                    }
                     for(unsigned int point_idx = 0; point_idx < path.points.size(); point_idx++)
                     {
                         communication->sendLineTo(path.config->type, path.points[point_idx], path.getLineWidthForLayerView(), path.config->getLayerThickness(), speed);

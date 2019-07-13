@@ -103,7 +103,9 @@ void PrimeTower::generatePaths_denseInfill()
     for (size_t extruder_nr : extruder_order)
     {
         const coord_t line_width = scene.extruders[extruder_nr].settings.get<coord_t>("prime_tower_line_width");
-        const coord_t required_volume = scene.extruders[extruder_nr].settings.get<double>("prime_tower_min_volume") * 1000000000; //To cubic microns.
+        // prime tower has to be planned large enough to contain the greater of extruder_min_volume and prime_tower_min_volume
+        const double extruder_min_volume = scene.extruders[extruder_nr].settings.get<double>("extruder_min_volume");
+        const coord_t required_volume = std::max(extruder_min_volume, scene.extruders[extruder_nr].settings.get<double>("prime_tower_min_volume")) * 1000000000; //To cubic microns.
         const Ratio flow = scene.extruders[extruder_nr].settings.get<Ratio>("prime_tower_flow");
         coord_t current_volume = 0;
         ExtrusionMoves& pattern = pattern_per_extruder[extruder_nr];
