@@ -1535,6 +1535,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
         double prime_tower_volume = 0;
         double prime_tower_min_volume = extruder.settings.get<double>("prime_tower_min_volume");
+        double prime_tower_max_volume = extruder.settings.get<double>("extruder_min_volume");
 
         for(unsigned int path_idx = 0; path_idx < paths.size(); path_idx++)
         {
@@ -1587,12 +1588,17 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             {
                 if (path.config->type == PrintFeatureType::PrimeTower && extruder_switched)
                 {
-                    std::vector<double> amounts;
-                    double total_volume = extruder_plan.getMaterial(&amounts);
-                    double prime_tower_max_volume = amounts[(unsigned)PrintFeatureType::PrimeTower]; // volume required for all the lines in the prime tower for this extruder
-                    double model_volume = total_volume - prime_tower_max_volume; // volume required for everything other than the prime tower
-                    // if extruder_min_volume is > (model_volume + prime_tower_min_volume), the prime tower will need to soak up the extra
-                    prime_tower_min_volume = std::max(extruder.settings.get<double>("extruder_min_volume") - model_volume, prime_tower_min_volume);
+                    // if extruder_min_volume is greater than prime_tower_min_volume, see if prime_tower_min_volume needs to be increased
+                    const double extruder_min_volume = extruder.settings.get<double>("extruder_min_volume");
+                    if (extruder_min_volume > prime_tower_min_volume)
+                    {
+                        std::vector<double> amounts;
+                        double total_volume = extruder_plan.getMaterial(&amounts);
+                        prime_tower_max_volume = amounts[(unsigned)PrintFeatureType::PrimeTower]; // volume required for all the lines in the prime tower for this extruder
+                        double model_volume = total_volume - prime_tower_max_volume; // volume required for everything other than the prime tower
+                        // if extruder_min_volume is > (model_volume + prime_tower_min_volume), the prime tower will need to soak up the extra
+                        prime_tower_min_volume = std::max(extruder_min_volume - model_volume, prime_tower_min_volume);
+                    }
                 }
                 gcode.writeTypeComment(path.config->type);
                 if (path.config->isBridgePath())
