@@ -1536,6 +1536,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
         double prime_tower_volume = 0;
         double prime_tower_min_volume = extruder.settings.get<double>("prime_tower_min_volume");
         double prime_tower_max_volume = extruder.settings.get<double>("extruder_min_volume");
+        bool limiting_prime_tower_volume = false;
 
         for(unsigned int path_idx = 0; path_idx < paths.size(); path_idx++)
         {
@@ -1552,6 +1553,12 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             if (!path.retract && path.config->isTravelPath() && path.points.size() == 1 && path.points[0] == gcode.getPositionXY() && z == gcode.getPositionZ())
             {
                 // ignore travel moves to the current location to avoid needless change of acceleration/jerk
+                continue;
+            }
+
+            if (limiting_prime_tower_volume && path.config->isTravelPath())
+            {
+                // ignore unwanted travel between prime tower lines that won't be printed
                 continue;
             }
 
@@ -1668,6 +1675,12 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     {
                         if (layer_nr > 0 && prime_tower_volume >= prime_tower_min_volume)
                         {
+                            prime_tower_volume += path.estimates.getMaterial();
+
+                            // set flag so that the travel moves and accel/jerk changes that would be output
+                            // for the remaining prime tower lines are suppressed
+                            limiting_prime_tower_volume = prime_tower_volume < prime_tower_max_volume;
+
                             // don't need any more prime tower so ignore this path
                             continue;
                         }
