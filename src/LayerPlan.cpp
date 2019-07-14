@@ -1646,11 +1646,11 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             bool spiralize = path.spiralize;
             if (!spiralize) // normal (extrusion) move (with coasting
             {
+                bool coasting = extruder.settings.get<bool>("coasting_enable") && path.config->type != PrintFeatureType::PrimeTower;
                 // if path provides a valid (in range 0-100) fan speed, use it
                 const double path_fan_speed = path.getFanSpeed();
                 gcode.writeFanCommand(path_fan_speed != GCodePathConfig::FAN_SPEED_DEFAULT ? path_fan_speed : extruder_plan.getFanSpeed());
 
-                bool coasting = extruder.settings.get<bool>("coasting_enable");
                 if (coasting)
                 {
                     coasting = writePathWithCoasting(gcode, extruder_plan_idx, path_idx, layer_thickness);
