@@ -1462,8 +1462,9 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
         ExtruderPlan& extruder_plan = extruder_plans[extruder_plan_idx];
         const RetractionConfig& retraction_config = storage.retraction_config_per_extruder[extruder_plan.extruder_nr];
         coord_t z_hop_height = retraction_config.zHop;
+        const bool extruder_switched = (extruder_nr != extruder_plan.extruder_nr);
 
-        if (extruder_nr != extruder_plan.extruder_nr)
+        if (extruder_switched)
         {
             int prev_extruder = extruder_nr;
             extruder_nr = extruder_plan.extruder_nr;
@@ -1584,7 +1585,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             }
             if (!path.config->isTravelPath() && last_extrusion_config != path.config)
             {
-                if (path.config->type == PrintFeatureType::PrimeTower)
+                if (path.config->type == PrintFeatureType::PrimeTower && extruder_switched)
                 {
                     std::vector<double> amounts;
                     double total_volume = extruder_plan.getMaterial(&amounts);
