@@ -1540,8 +1540,9 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
         ExtruderPlan& extruder_plan = extruder_plans[extruder_plan_idx];
         const RetractionConfig& retraction_config = storage.retraction_config_per_extruder[extruder_plan.extruder_nr];
         coord_t z_hop_height = retraction_config.zHop;
+        const bool extruder_switched = (extruder_nr != extruder_plan.extruder_nr);
 
-        if (extruder_nr != extruder_plan.extruder_nr)
+        if (extruder_switched)
         {
             int prev_extruder = extruder_nr;
             extruder_nr = extruder_plan.extruder_nr;
@@ -1658,6 +1659,8 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
         double prime_tower_volume = 0;
         double prime_tower_min_volume = extruder.settings.get<double>("prime_tower_min_volume");
+        double prime_tower_max_volume = extruder.settings.get<double>("extruder_min_volume");
+        bool limiting_prime_tower_volume = false;
 
         for(unsigned int path_idx = 0; path_idx < paths.size(); path_idx++)
         {
@@ -1709,6 +1712,12 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 continue;
             }
 
+            if (limiting_prime_tower_volume && path.config->isTravelPath())
+            {
+                // ignore unwanted travel between prime tower lines that won't be printed
+                continue;
+            }
+
             if (acceleration_enabled)
             {
                 if (path.config->isTravelPath())
@@ -1740,14 +1749,19 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             }
             if (!path.config->isTravelPath() && last_extrusion_config != path.config)
             {
-                if (path.config->type == PrintFeatureType::PrimeTower)
+                if (path.config->type == PrintFeatureType::PrimeTower && extruder_switched)
                 {
-                    std::vector<double> amounts;
-                    double total_volume = extruder_plan.getMaterial(&amounts);
-                    double prime_tower_max_volume = amounts[(unsigned)PrintFeatureType::PrimeTower]; // volume required for all the lines in the prime tower for this extruder
-                    double model_volume = total_volume - prime_tower_max_volume; // volume required for everything other than the prime tower
-                    // if extruder_min_volume is > (model_volume + prime_tower_min_volume), the prime tower will need to soak up the extra
-                    prime_tower_min_volume = std::max(extruder.settings.get<double>("extruder_min_volume") - model_volume, prime_tower_min_volume);
+                    // if extruder_min_volume is greater than prime_tower_min_volume, see if prime_tower_min_volume needs to be increased
+                    const double extruder_min_volume = extruder.settings.get<double>("extruder_min_volume");
+                    if (extruder_min_volume > prime_tower_min_volume)
+                    {
+                        std::vector<double> amounts;
+                        double total_volume = extruder_plan.getMaterial(&amounts);
+                        prime_tower_max_volume = amounts[(unsigned)PrintFeatureType::PrimeTower]; // volume required for all the lines in the prime tower for this extruder
+                        double model_volume = total_volume - prime_tower_max_volume; // volume required for everything other than the prime tower
+                        // if extruder_min_volume is > (model_volume + prime_tower_min_volume), the prime tower will need to soak up the extra
+                        prime_tower_min_volume = std::max(extruder_min_volume - model_volume, prime_tower_min_volume);
+                    }
                 }
                 gcode.writeTypeComment(path.config->type);
                 if (path.config->isBridgePath())
@@ -1802,7 +1816,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             bool spiralize = path.spiralize;
             if (!spiralize) // normal (extrusion) move (with coasting
             {
-                bool coasting = extruder.settings.get<bool>("coasting_enable");
+                bool coasting = extruder.settings.get<bool>("coasting_enable") && path.config->type != PrintFeatureType::PrimeTower;
                 // if path provides a valid (in range 0-100) fan speed, use it
                 const double path_fan_speed = path.getFanSpeed();
                 if (coasting)
@@ -1829,6 +1843,12 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     {
                         if (layer_nr > 0 && prime_tower_volume >= prime_tower_min_volume)
                         {
+                            prime_tower_volume += path.estimates.getMaterial();
+
+                            // set flag so that the travel moves and accel/jerk changes that would be output
+                            // for the remaining prime tower lines are suppressed
+                            limiting_prime_tower_volume = prime_tower_volume < prime_tower_max_volume;
+
                             // don't need any more prime tower so ignore this path
                             continue;
                         }
