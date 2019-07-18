@@ -125,24 +125,31 @@ void PrimeTower::generatePaths_denseInfill()
         }
         cumulative_inset += wall_nr * line_width;
 
-        //Generate the pattern for the first layer.
-        coord_t line_width_layer0 = line_width;
-        if (mesh_group_settings.get<EPlatformAdhesion>("adhesion_type") != EPlatformAdhesion::RAFT)
+        if (scene.extruders[extruder_nr].settings.get<bool>("prime_all_extruders_on_layer_0"))
         {
-            line_width_layer0 *= scene.extruders[extruder_nr].settings.get<Ratio>("initial_layer_line_width_factor");
+            pattern_per_extruder_layer0.emplace_back(pattern);
         }
-        pattern_per_extruder_layer0.emplace_back();
-
-        ExtrusionMoves& pattern_layer0 = pattern_per_extruder_layer0.back();
-
-        // Generate a concentric infill pattern in the form insets for the prime tower's first layer instead of using
-        // the infill pattern because the infill pattern tries to connect polygons in different insets which causes the
-        // first layer of the prime tower to not stick well.
-        Polygons inset = outer_poly.offset(-line_width_layer0 / 2);
-        while (!inset.empty())
+        else
         {
-            pattern_layer0.polygons.add(inset);
-            inset = inset.offset(-line_width_layer0);
+            //Generate the pattern for the first layer.
+            coord_t line_width_layer0 = line_width;
+            if (mesh_group_settings.get<EPlatformAdhesion>("adhesion_type") != EPlatformAdhesion::RAFT)
+            {
+                line_width_layer0 *= scene.extruders[extruder_nr].settings.get<Ratio>("initial_layer_line_width_factor");
+            }
+            pattern_per_extruder_layer0.emplace_back();
+
+            ExtrusionMoves& pattern_layer0 = pattern_per_extruder_layer0.back();
+
+            // Generate a concentric infill pattern in the form insets for the prime tower's first layer instead of using
+            // the infill pattern because the infill pattern tries to connect polygons in different insets which causes the
+            // first layer of the prime tower to not stick well.
+            Polygons inset = outer_poly.offset(-line_width_layer0 / 2);
+            while (!inset.empty())
+            {
+                pattern_layer0.polygons.add(inset);
+                inset = inset.offset(-line_width_layer0);
+            }
         }
     }
 }

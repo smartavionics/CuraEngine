@@ -201,6 +201,7 @@ void SkirtBrim::generate(SliceDataStorage& storage, Polygons first_layer_outline
         offset_distance = 0;
     }
 
+    if (!scene.extruders[adhesion_extruder_nr].settings.get<bool>("prime_all_extruders_on_layer_0"))
     { // process other extruders' brim/skirt (as one brim line around the old brim)
         int last_width = primary_extruder_skirt_brim_line_width;
         std::vector<bool> extruder_is_used = storage.getExtrudersUsed();
