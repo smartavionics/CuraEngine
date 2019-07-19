@@ -13,12 +13,14 @@ namespace cura
 
 void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const Polygons& gaps, const GCodePathConfig& gap_config, const bool is_outline, bool& added_something) const
 {
-    const Ratio min_flow = std::max(Ratio(0.2), mesh.settings.get<Ratio>("wall_min_flow"));
-
     if (!gaps.polyLineLength())
     {
         return;
     }
+
+    const Ratio min_flow = std::max(Ratio(0.2), mesh.settings.get<Ratio>("wall_min_flow"));
+
+    const double min_gap_area = mesh.settings.get<double>("min_gap_area") * 1000 * 1000; // mm^2 -> microns^2
 
     Polygons simplified_gaps(gaps);
 
@@ -96,8 +98,8 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
         {
             PolygonRef poly = gap_polygons[next_poly_index];
 
-            // fill areas greater than 0.25 mm^2
-            if (std::abs(poly.area()) > (500 * 500))
+            // fill areas not less than min_gap_area
+            if (std::abs(poly.area()) >= min_gap_area)
             {
                 // remove some points that cause problems
                 for (unsigned n = 0; n < poly.size(); ++n)
