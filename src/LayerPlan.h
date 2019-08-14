@@ -484,7 +484,7 @@ public:
     /*!
      * Plan a prime blob at the current location.
      */
-    void planPrime();
+    void planPrime(const float& prime_blob_wipe_length = 10.0);
 
     /*!
      * Add an extrusion move to a certain point, optionally with a different flow than the one in the \p config.
