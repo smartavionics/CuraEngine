@@ -137,6 +137,8 @@ PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh
 {
     infill_config.reserve(MAX_INFILL_COMBINE);
 
+    const double fan_speed = (mesh.settings.get<bool>("infill_fan_enable")) ? (double)(mesh.settings.get<Ratio>("infill_fan_speed") * 100.0) : GCodePathConfig::FAN_SPEED_DEFAULT;
+
     for (int combine_idx = 0; combine_idx < MAX_INFILL_COMBINE; combine_idx++)
     {
         infill_config.emplace_back(
@@ -145,6 +147,8 @@ PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh
                 , layer_thickness
                 , mesh.settings.get<Ratio>("infill_material_flow") * ((layer_nr == 0) ? mesh.settings.get<Ratio>("material_flow_layer_0") : Ratio(1.0))
                 , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("speed_infill"), mesh.settings.get<Acceleration>("acceleration_infill"), mesh.settings.get<Velocity>("jerk_infill")}
+                , false // is_bridge_path
+                , fan_speed
             );
     }
 }
