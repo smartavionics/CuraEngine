@@ -1619,11 +1619,13 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
         const Duration max_cool_fan_lag = extruder.settings.get<Duration>("cool_fan_lag"); // time taken for fan speed to change from 0 to 100%
 
+        const double plan_fan_speed = extruder_plan.getFanSpeed();
+
         if (max_cool_fan_lag > 0)
         {
             double elapsed_time = 0;
 
-            double current_fan_speed = extruder_plan.getFanSpeed();
+            double current_fan_speed = plan_fan_speed;
 
             for (const GCodePath& path : extruder_plan.paths)
             {
@@ -1645,7 +1647,12 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     }
                     else
                     {
-                        current_fan_speed = extruder_plan.getFanSpeed();
+                        // add event to revert fan speed to default
+                        if (current_fan_speed != plan_fan_speed)
+                        {
+                            fan_override_events.emplace_back(elapsed_time, plan_fan_speed);
+                        }
+                        current_fan_speed = plan_fan_speed;
                     }
                 }
                 double path_time = path.estimates.getTotalTime() / path.speed_factor;
@@ -1655,9 +1662,17 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 }
                 elapsed_time += path_time;
             }
+            // if last path overrode fan speed, add event to revert speed back to default
+            // so that next layer will start with the right fan speed
+            if (current_fan_speed != plan_fan_speed)
+            {
+                fan_override_events.emplace_back(elapsed_time, plan_fan_speed);
+            }
         }
 
-        double current_fan_speed = extruder_plan.getFanSpeed();
+        double current_fan_speed = plan_fan_speed;
+
+        bool fan_speed_hold = false; // when true, supress normal fan speed updates
 
         double elapsed_time = 0;
 
@@ -1674,9 +1689,9 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
             if (fan_override_events.size() && elapsed_time > fan_override_events[0].first)
             {
-                // now past the fan event time, remove the event and restore the default fan speed
+                // now past the fan event time, remove the event and allow fan speed updates
                 fan_override_events.erase(fan_override_events.begin());
-                current_fan_speed = extruder_plan.getFanSpeed();
+                fan_speed_hold = false;
             }
 
             double fan_speed_override_at = -1; // when >= 0, this is the time offset within path when fan speed override should occur
@@ -1695,9 +1710,9 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
                 const double path_end_time = elapsed_time + path_time;
 
-                if (!path.config->isTravelPath() && path.getFanSpeed() == GCodePathConfig::FAN_SPEED_DEFAULT && path_end_time >= fan_speed_override_time)
+                if (!path.config->isTravelPath() && path_end_time >= fan_speed_override_time)
                 {
-                    // path doesn't override the fan and it ends within the spool up/down period of the next fan event so schedule fan speed override
+                    // path ends within the spool up/down period of the next fan event so schedule fan speed override
                     fan_speed_override_at = std::max(fan_speed_override_time - elapsed_time, 0.0);
                 }
 
@@ -1829,19 +1844,25 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     {
                         // start the override now
                         current_fan_speed = fan_override_events[0].second;
+                        gcode.writeFanCommand(current_fan_speed);
                         fan_speed_override_at = -1;
+                        fan_speed_hold = true;
                     }
-                    gcode.writeFanCommand(path_fan_speed != GCodePathConfig::FAN_SPEED_DEFAULT ? path_fan_speed : current_fan_speed);
+                    if (!fan_speed_hold)
+                    {
+                        current_fan_speed = (path_fan_speed != GCodePathConfig::FAN_SPEED_DEFAULT) ? path_fan_speed : plan_fan_speed;
+                        gcode.writeFanCommand(current_fan_speed);
+                    }
                     coasting = writePathWithCoasting(gcode, extruder_plan_idx, path_idx, layer_thickness);
                 }
                 if (!coasting) // not same as 'else', cause we might have changed [coasting] in the line above...
                 { // normal path to gcode algorithm
                     double path_time = 0;
                     Point last_point = gcode.getPositionXY();
-                    if (fan_speed_override_at != 0)
+                    if (!fan_speed_hold)
                     {
-                        // there is no fan speed override scheduled for immediate execution so update fan speed
-                        gcode.writeFanCommand(path_fan_speed != GCodePathConfig::FAN_SPEED_DEFAULT ? path_fan_speed : current_fan_speed);
+                        current_fan_speed = (path_fan_speed != GCodePathConfig::FAN_SPEED_DEFAULT) ? path_fan_speed : plan_fan_speed;
+                        gcode.writeFanCommand(current_fan_speed);
                     }
                     if (path.config->type == PrintFeatureType::PrimeTower)
                     {
@@ -1870,6 +1891,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                                 current_fan_speed = fan_override_events[0].second;
                                 gcode.writeFanCommand(current_fan_speed);
                                 fan_speed_override_at = -1;
+                                fan_speed_hold = true;
                             }
                         }
                         communication->sendLineTo(path.config->type, path.points[point_idx], path.getLineWidthForLayerView(), path.config->getLayerThickness(), speed);
