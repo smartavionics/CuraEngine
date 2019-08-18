@@ -3479,10 +3479,9 @@ void FffGcodeWriter::setExtruder_addPrime(const SliceDataStorage& storage, Layer
 
     // The first layer of the prime tower is printed with one material only, so do not prime another material on the
     // first layer again.
-    const bool prime_outermost_extruder = gcode_layer.getLayerNr() == 0 || train.settings.get<bool>("prime_outermost_extruder_always");
     const bool prime_all = train.settings.get<bool>("prime_all_extruders_on_layer_0");
 
-    if ((prime_all || (extruder_changed && gcode_layer.getLayerNr() > 0) || (extruder_nr == outermost_prime_tower_extruder && prime_outermost_extruder)) && gcode_layer.getLayerNr() >= -static_cast<LayerIndex>(Raft::getFillerLayerCount())) //Always print a prime tower with outermost extruder.
+    if ((prime_all || (extruder_changed && gcode_layer.getLayerNr() > 0) || extruder_nr == outermost_prime_tower_extruder) && gcode_layer.getLayerNr() >= -static_cast<LayerIndex>(Raft::getFillerLayerCount())) //Always print a prime tower with outermost extruder.
     {
         addPrimeTower(storage, gcode_layer, previous_extruder);
     }
