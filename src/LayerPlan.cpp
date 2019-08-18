@@ -1877,12 +1877,15 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                             }
                             else
                             {
-                                // now coasting through the remainder of the prime tower
-                                prime_tower_coasting = true;
+                                if (prime_tower_total_volume < prime_tower_max_volume)
+                                {
+                                    // now coasting through the remainder of the prime tower
+                                    prime_tower_coasting = true;
 
-                                // set flag so that the travel moves and accel/jerk changes that would be output
-                                // for the remaining prime tower lines are suppressed
-                                suppress_accel_jerk = true;
+                                    // set flag so that the travel moves and accel/jerk changes that would be output
+                                    // for the remaining prime tower lines are suppressed
+                                    suppress_accel_jerk = true;
+                                }
 
                                 if (prime_tower_compact)
                                 {
