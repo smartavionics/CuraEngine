@@ -1533,6 +1533,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
     const bool acceleration_enabled = mesh_group_settings.get<bool>("acceleration_enabled");
     const bool jerk_enabled = mesh_group_settings.get<bool>("jerk_enabled");
     std::string current_mesh = "NONMESH";
+    size_t next_prime_tower_path = 0;
 
     for(size_t extruder_plan_idx = 0; extruder_plan_idx < extruder_plans.size(); extruder_plan_idx++)
     {
@@ -1545,6 +1546,8 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
         {
             int prev_extruder = extruder_nr;
             extruder_nr = extruder_plan.extruder_nr;
+
+            last_extrusion_config = nullptr;
 
             gcode.ResetLastEValueAfterWipe(prev_extruder);
 
@@ -1656,10 +1659,14 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
         double elapsed_time = 0;
 
-        double prime_tower_volume = 0;
+        double prime_tower_total_volume = 0; // the volume of all of the prime tower paths
+        double prime_tower_used_volume = 0;  // the volume of the prime tower paths used so far
         double prime_tower_min_volume = extruder.settings.get<double>("prime_tower_min_volume");
         double prime_tower_max_volume = extruder.settings.get<double>("extruder_min_volume");
-        bool limiting_prime_tower_volume = false;
+        bool prime_tower_compact = extruder.settings.get<bool>("prime_tower_compact");
+        bool prime_tower_coasting = false; // true when ignoring prime tower lines
+        bool suppress_accel_jerk = false;
+        size_t prime_tower_paths_seen = 0;
 
         for(unsigned int path_idx = 0; path_idx < paths.size(); path_idx++)
         {
@@ -1711,13 +1718,13 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 continue;
             }
 
-            if (limiting_prime_tower_volume && path.config->isTravelPath())
+            if (prime_tower_coasting && path.config->isTravelPath())
             {
                 // ignore unwanted travel between prime tower lines that won't be printed
                 continue;
             }
 
-            if (acceleration_enabled)
+            if (acceleration_enabled && !suppress_accel_jerk)
             {
                 if (path.config->isTravelPath())
                 {
@@ -1728,7 +1735,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     gcode.writePrintAcceleration(path.config->getAcceleration());
                 }
             }
-            if (jerk_enabled)
+            if (jerk_enabled && !suppress_accel_jerk)
             {
                 gcode.writeJerk(path.config->getJerk());
             }
@@ -1748,15 +1755,15 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             }
             if (!path.config->isTravelPath() && last_extrusion_config != path.config)
             {
-                if (path.config->type == PrintFeatureType::PrimeTower && extruder_switched)
+                if (path.config->type == PrintFeatureType::PrimeTower)
                 {
                     // if extruder_min_volume is greater than prime_tower_min_volume, see if prime_tower_min_volume needs to be increased
                     const double extruder_min_volume = extruder.settings.get<double>("extruder_min_volume");
+                    std::vector<double> amounts;
+                    double total_volume = extruder_plan.getMaterial(&amounts);
+                    prime_tower_max_volume = amounts[(unsigned)PrintFeatureType::PrimeTower]; // volume required for all the lines in the prime tower for this extruder
                     if (extruder_min_volume > prime_tower_min_volume)
                     {
-                        std::vector<double> amounts;
-                        double total_volume = extruder_plan.getMaterial(&amounts);
-                        prime_tower_max_volume = amounts[(unsigned)PrintFeatureType::PrimeTower]; // volume required for all the lines in the prime tower for this extruder
                         double model_volume = total_volume - prime_tower_max_volume; // volume required for everything other than the prime tower
                         // if extruder_min_volume is > (model_volume + prime_tower_min_volume), the prime tower will need to soak up the extra
                         prime_tower_min_volume = std::max(extruder_min_volume - model_volume, prime_tower_min_volume);
@@ -1840,18 +1847,57 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     }
                     if (path.config->type == PrintFeatureType::PrimeTower)
                     {
-                        if (layer_nr > 0 && prime_tower_volume >= prime_tower_min_volume)
+                        prime_tower_total_volume += path.estimates.getMaterial();
+                        if (next_prime_tower_path > 0)
                         {
-                            prime_tower_volume += path.estimates.getMaterial();
+                            if (prime_tower_paths_seen < next_prime_tower_path)
+                            {
+                                ++prime_tower_paths_seen;
+                                suppress_accel_jerk = true;
+                                continue;
+                            }
+                            else if(prime_tower_paths_seen == next_prime_tower_path)
+                            {
+                                suppress_accel_jerk = false;
+                            }
+                        }
 
-                            // set flag so that the travel moves and accel/jerk changes that would be output
-                            // for the remaining prime tower lines are suppressed
-                            limiting_prime_tower_volume = prime_tower_volume < prime_tower_max_volume;
+                        if ((layer_nr > 0 || extruder.settings.get<bool>("prime_all_extruders_on_layer_0")) && prime_tower_used_volume >= prime_tower_min_volume)
+                        {
+                            if (prime_tower_coasting)
+                            {
+                                if (prime_tower_total_volume >= prime_tower_max_volume)
+                                {
+                                    // no longer coasting
+                                    prime_tower_coasting = false;
+
+                                    // reset flag that suppresses travel + accel/jerk changes
+                                    suppress_accel_jerk = false;
+                                }
+                            }
+                            else
+                            {
+                                // now coasting through the remainder of the prime tower
+                                prime_tower_coasting = true;
+
+                                // set flag so that the travel moves and accel/jerk changes that would be output
+                                // for the remaining prime tower lines are suppressed
+                                suppress_accel_jerk = true;
+
+                                if (prime_tower_compact)
+                                {
+                                    next_prime_tower_path = prime_tower_paths_seen;
+                                }
+                            }
+
+                            ++prime_tower_paths_seen;
 
                             // don't need any more prime tower so ignore this path
                             continue;
                         }
-                        prime_tower_volume += path.estimates.getMaterial();
+
+                        ++prime_tower_paths_seen;
+                        prime_tower_used_volume += path.estimates.getMaterial();
                     }
                     for(unsigned int point_idx = 0; point_idx < path.points.size(); point_idx++)
                     {

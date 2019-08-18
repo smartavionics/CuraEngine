@@ -152,6 +152,20 @@ void PrimeTower::generatePaths_denseInfill()
             }
         }
     }
+
+    if (extruder_order.size() > 1 && scene.extruders[0].settings.get<bool>("prime_tower_compact"))
+    {
+        // all the extruders get all the walls
+        Polygons all_walls;
+        for (size_t extruder_nr : extruder_order)
+        {
+            all_walls.add(pattern_per_extruder[extruder_nr].polygons);
+        }
+        for (size_t extruder_nr : extruder_order)
+        {
+            pattern_per_extruder[extruder_nr].polygons = all_walls;
+        }
+    }
 }
 
 void PrimeTower::generateStartLocations()
@@ -213,7 +227,9 @@ void PrimeTower::addToGcode(const SliceDataStorage& storage, LayerPlan& gcode_la
 
 void PrimeTower::addToGcode_denseInfill(LayerPlan& gcode_layer, const size_t extruder_nr) const
 {
-    const ExtrusionMoves& pattern = (gcode_layer.getLayerNr() == -static_cast<LayerIndex>(Raft::getFillerLayerCount()))
+    bool is_compact = Application::getInstance().current_slice->scene.extruders[extruder_nr].settings.get<bool>("prime_tower_compact");
+
+    const ExtrusionMoves& pattern = (!is_compact && gcode_layer.getLayerNr() == -static_cast<LayerIndex>(Raft::getFillerLayerCount()))
         ? pattern_per_extruder_layer0[extruder_nr]
         : pattern_per_extruder[extruder_nr];
 
