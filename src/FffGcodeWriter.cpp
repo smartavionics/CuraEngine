@@ -952,9 +952,12 @@ LayerPlan& FffGcodeWriter::processLayer(const SliceDataStorage& storage, LayerIn
                 }
             }
         }
-        // ensure we print the prime tower with this extruder, because the next layer begins with this extruder!
-        // If this is not performed, the next layer might get two extruder switches...
-        setExtruder_addPrime(storage, gcode_layer, extruder_nr);
+        if (extruder_nr != storage.primeTower.extruder_order[0] || !scene.extruders[extruder_nr].settings.get<bool>("prime_tower_compact"))
+        {
+            // ensure we print the prime tower with this extruder, because the next layer begins with this extruder!
+            // If this is not performed, the next layer might get two extruder switches...
+            setExtruder_addPrime(storage, gcode_layer, extruder_nr);
+        }
     }
 
     if (include_helper_parts)
@@ -3450,6 +3453,11 @@ void FffGcodeWriter::setExtruder_addPrime(const SliceDataStorage& storage, Layer
     const bool extruder_changed = gcode_layer.setExtruder(extruder_nr);
 
     const ExtruderTrain& train = Application::getInstance().current_slice->scene.extruders[extruder_nr];
+
+    if (previous_extruder == extruder_nr && train.settings.get<bool>("prime_tower_compact"))
+    {
+        return;
+    }
 
     if (extruder_changed)
     {
