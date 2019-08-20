@@ -319,26 +319,17 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
      * and don't allow that to exceed allowed_error_distance_squared. */
     coord_t accumulated_area_removed = previous.X * current.Y - previous.Y * current.X; //Shoelace formula for area of polygon per line segment.
 
-    for (size_t point_idx = 1; point_idx <= size(); point_idx++)
+    new_path.push_back(previous);
+
+    for (size_t point_idx = 1; point_idx < size(); point_idx++)
     {
-        current = path->at(point_idx % size());
+        current = path->at(point_idx);
+
+        Point next = path->at((point_idx + 1) % size());
 
         const coord_t length2 = vSize2(current - previous);
 
         //Check if the accumulated area doesn't exceed the maximum.
-        Point next;
-        if (point_idx + 1 < size())
-        {
-            next = path->at(point_idx + 1);
-        }
-        else if (!new_path.empty())
-        {
-            next = new_path[0]; //Spill over to new polygon for checking removed area.
-        }
-        else
-        {
-            break; //New polygon also doesn't have any vertices yet, meaning we've completed the loop without adding any vertices. The entire polygon is too small to be significant.
-        }
         accumulated_area_removed += current.X * next.Y - current.Y * next.X; //Shoelace formula for area of polygon per line segment.
 
         const coord_t area_removed_so_far = accumulated_area_removed + next.X * previous.Y - next.Y * previous.X; //Close the polygon.
@@ -385,11 +376,21 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
             new_path.pop_back();
         }
     }
-    for(size_t i = 0; i < 2; i++) //For the first two points we haven't checked yet if they are almost exactly straight.
+    //For the first two points we haven't checked yet if they are almost exactly straight.
+    if (new_path.size() > 2)
     {
-        if(new_path.size() > 2 && LinearAlg2D::getDist2FromLine(new_path[0], new_path.back(), new_path[1]) <= 25)
+        if (LinearAlg2D::getDist2FromLine(new_path[0], new_path.back(), new_path[1]) <= 25)
         {
+            // first point is colinear, remove it and check the 2nd point
             new_path.erase(new_path.begin());
+            if (new_path.size() > 2 && LinearAlg2D::getDist2FromLine(new_path[0], new_path.back(), new_path[1]) <= 25)
+            {
+                new_path.erase(new_path.begin());
+            }
+        }
+        else if (LinearAlg2D::getDist2FromLine(new_path[1], new_path[0], new_path[2]) <= 25)
+        {
+            new_path.erase(new_path.begin() + 1);
         }
     }
 
