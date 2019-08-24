@@ -1304,6 +1304,15 @@ void FffGcodeWriter::addMeshPartToGCode(const SliceDataStorage& storage, const S
 
     bool added_something = false;
 
+    if (gcode_layer.getLayerNr() > 0 && !mesh_group_settings.get<bool>("magic_spiralize"))
+    {
+        Polygons bridge_regions;
+        Polygons overhang_regions;
+        getBridgeAndOverhangRegions(storage, gcode_layer.getLayerNr(), mesh, extruder_nr, mesh_config, part.outline, &bridge_regions, &overhang_regions);
+        gcode_layer.setBridgeWallMask(bridge_regions);
+        gcode_layer.setOverhangMask(overhang_regions);
+    }
+
     if (mesh.settings.get<bool>("infill_before_walls"))
     {
         added_something = added_something | processInfill(storage, gcode_layer, mesh, extruder_nr, mesh_config, part);
@@ -1581,6 +1590,114 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
     gcode_layer.spiralizeWallSlice(mesh_config.inset0_config, wall_outline, ConstPolygonRef(*last_wall_outline), seam_vertex_idx, last_seam_vertex_idx, is_top_layer, is_bottom_layer);
 }
 
+void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage, size_t layer_nr, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const Polygons& part_outline, Polygons *bridge_regions, Polygons *overhang_regions) const
+{
+    const bool bridge_settings_enabled = (bridge_regions != nullptr) && mesh.settings.get<bool>("bridge_settings_enabled");
+    const double wall_overhang_angle = mesh.settings.get<AngleDegrees>("wall_overhang_angle");
+    const bool wall_overhang_detection_enabled = (overhang_regions != nullptr) && (wall_overhang_angle < 90);
+
+    if (bridge_settings_enabled || wall_overhang_detection_enabled)
+    {
+        // accumulate the outlines of all of the parts that are on the layer below
+
+        Polygons outlines_below;
+        AABB boundaryBox(part_outline);
+        for (const SliceMeshStorage& m : storage.meshes)
+        {
+            if (m.isPrinted())
+            {
+                for (const SliceLayerPart& prevLayerPart : m.layers[layer_nr - 1].parts)
+                {
+                    if (boundaryBox.hit(prevLayerPart.boundaryBox))
+                    {
+                        outlines_below.add(prevLayerPart.outline);
+                    }
+                }
+            }
+        }
+
+        const coord_t layer_height = mesh_config.inset0_config.getLayerThickness();
+
+        // if support is enabled, add the support outlines also so we don't generate bridges over support
+
+        const Settings& mesh_group_settings = Application::getInstance().current_slice->scene.current_mesh_group->settings;
+        if (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable"))
+        {
+            const coord_t z_distance_top = mesh.settings.get<coord_t>("support_top_distance");
+            const size_t z_distance_top_layers = round_up_divide(z_distance_top, layer_height) + 1;
+            const int support_layer_nr = layer_nr - z_distance_top_layers;
+
+            if (support_layer_nr > 0)
+            {
+                const SupportLayer& support_layer = storage.support.supportLayers[support_layer_nr];
+
+                Polygons support;
+
+                if (!support_layer.support_roof.empty())
+                {
+                    AABB support_roof_bb(support_layer.support_roof);
+                    if (boundaryBox.hit(support_roof_bb))
+                    {
+                        support.add(support_layer.support_roof);
+                    }
+                }
+                else
+                {
+                    for (const SupportInfillPart& support_part : support_layer.support_infill_parts)
+                    {
+                        AABB support_part_bb(support_part.getInfillArea());
+                        if (boundaryBox.hit(support_part_bb))
+                        {
+                            support.add(support_part.getInfillArea());
+                        }
+                    }
+                }
+
+                if (support.size())
+                {
+                    // expand support regions to avoid generating bridge walls and skins in the gap between the support and the model
+                    outlines_below.add(support.offset(mesh.settings.get<coord_t>("support_xy_distance") + 10));
+                }
+            }
+        }
+
+        const int half_outer_wall_width = mesh_config.inset0_config.getLineWidth() / 2;
+
+        // remove those parts of the layer below that are narrower than a wall line width as they will not be printed
+
+        outlines_below = outlines_below.offset(-half_outer_wall_width).offset(half_outer_wall_width);
+
+        if (bridge_settings_enabled)
+        {
+            // max_air_gap is the max allowed width of the unsupported region below the wall line
+            // if the unsupported region is wider than max_air_gap, the wall line will be printed using bridge settings
+
+            const coord_t max_air_gap = half_outer_wall_width;
+
+            // subtract the outlines of the parts below this part to give the shapes of the unsupported regions and then
+            // shrink those shapes so that any that are narrower than two times max_air_gap will be removed
+
+            Polygons compressed_air(part_outline.difference(outlines_below).offset(-max_air_gap));
+
+            // now expand the air regions by the same amount as they were shrunk plus half the outer wall line width
+            // which is required because when the walls are being generated, the vertices do not fall on the part's outline
+            // but, instead, are 1/2 a line width inset from the outline
+
+            bridge_regions->add(compressed_air.offset(max_air_gap + half_outer_wall_width));
+        }
+
+        if (wall_overhang_detection_enabled)
+        {
+            // the overhang mask is set to the area of the current part's outline minus the region that is considered to be supported
+            // the supported region is made up of those areas that really are supported by either model or support on the layer below
+            // expanded to take into account the overhang angle, the greater the overhang angle, the larger the supported area is
+            // considered to be
+            const coord_t overhang_width = layer_height * std::tan(wall_overhang_angle / (180 / M_PI));
+            overhang_regions->add(part_outline.offset(-half_outer_wall_width).difference(outlines_below.offset(10 + overhang_width - half_outer_wall_width)).offset(10));
+        }
+    }
+}
+
 bool FffGcodeWriter::processInsets(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SliceLayerPart& part) const
 {
     if (extruder_nr != mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr && extruder_nr != mesh.settings.get<ExtruderTrain&>("wall_x_extruder_nr").extruder_nr)
@@ -1625,118 +1742,6 @@ bool FffGcodeWriter::processInsets(const SliceDataStorage& storage, LayerPlan& g
                     gcode_layer.addPolygonsByOptimizer(part.insets[0], mesh_config.inset0_config, wall_overlap_computation, ZSeamConfig(), wall_0_wipe_dist);
                 }
             }
-        }
-        // for non-spiralized layers, determine the shape of the unsupported areas below this part
-        if (!spiralize && gcode_layer.getLayerNr() > 0)
-        {
-            // accumulate the outlines of all of the parts that are on the layer below
-
-            Polygons outlines_below;
-            AABB boundaryBox(part.outline);
-            for (const SliceMeshStorage& m : storage.meshes)
-            {
-                if (m.isPrinted())
-                {
-                    for (const SliceLayerPart& prevLayerPart : m.layers[gcode_layer.getLayerNr() - 1].parts)
-                    {
-                        if (boundaryBox.hit(prevLayerPart.boundaryBox))
-                        {
-                            outlines_below.add(prevLayerPart.outline);
-                        }
-                    }
-                }
-            }
-
-            const coord_t layer_height = mesh_config.inset0_config.getLayerThickness();
-
-            // if support is enabled, add the support outlines also so we don't generate bridges over support
-
-            const Settings& mesh_group_settings = Application::getInstance().current_slice->scene.current_mesh_group->settings;
-            if (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable"))
-            {
-                const coord_t z_distance_top = mesh.settings.get<coord_t>("support_top_distance");
-                const size_t z_distance_top_layers = round_up_divide(z_distance_top, layer_height) + 1;
-                const int support_layer_nr = gcode_layer.getLayerNr() - z_distance_top_layers;
-
-                if (support_layer_nr > 0)
-                {
-                    const SupportLayer& support_layer = storage.support.supportLayers[support_layer_nr];
-
-                    if (!support_layer.support_roof.empty())
-                    {
-                        AABB support_roof_bb(support_layer.support_roof);
-                        if (boundaryBox.hit(support_roof_bb))
-                        {
-                            outlines_below.add(support_layer.support_roof);
-                        }
-                    }
-                    else
-                    {
-                        for (const SupportInfillPart& support_part : support_layer.support_infill_parts)
-                        {
-                            AABB support_part_bb(support_part.getInfillArea());
-                            if (boundaryBox.hit(support_part_bb))
-                            {
-                                outlines_below.add(support_part.getInfillArea());
-                            }
-                        }
-                    }
-                }
-            }
-
-            const int half_outer_wall_width = mesh_config.inset0_config.getLineWidth() / 2;
-
-            // remove those parts of the layer below that are narrower than a wall line width as they will not be printed
-
-            outlines_below = outlines_below.offset(-half_outer_wall_width).offset(half_outer_wall_width);
-
-            if (mesh.settings.get<bool>("bridge_settings_enabled"))
-            {
-                // max_air_gap is the max allowed width of the unsupported region below the wall line
-                // if the unsupported region is wider than max_air_gap, the wall line will be printed using bridge settings
-
-                const coord_t max_air_gap = half_outer_wall_width;
-
-                // subtract the outlines of the parts below this part to give the shapes of the unsupported regions and then
-                // shrink those shapes so that any that are narrower than two times max_air_gap will be removed
-
-                Polygons compressed_air(part.outline.difference(outlines_below).offset(-max_air_gap));
-
-                // now expand the air regions by the same amount as they were shrunk plus half the outer wall line width
-                // which is required because when the walls are being generated, the vertices do not fall on the part's outline
-                // but, instead, are 1/2 a line width inset from the outline
-
-                gcode_layer.setBridgeWallMask(compressed_air.offset(max_air_gap + half_outer_wall_width));
-            }
-            else
-            {
-                // clear to disable use of bridging settings
-                gcode_layer.setBridgeWallMask(Polygons());
-            }
-
-            const AngleDegrees overhang_angle = mesh.settings.get<AngleDegrees>("wall_overhang_angle");
-            if (overhang_angle >= 90)
-            {
-                // clear to disable overhang detection
-                gcode_layer.setOverhangMask(Polygons());
-            }
-            else
-            {
-                // the overhang mask is set to the area of the current part's outline minus the region that is considered to be supported
-                // the supported region is made up of those areas that really are supported by either model or support on the layer below
-                // expanded to take into account the overhang angle, the greater the overhang angle, the larger the supported area is
-                // considered to be
-                const coord_t overhang_width = layer_height * std::tan(overhang_angle / (180 / M_PI));
-                Polygons overhang_region = part.outline.offset(-half_outer_wall_width).difference(outlines_below.offset(10 + overhang_width - half_outer_wall_width)).offset(10);
-                gcode_layer.setOverhangMask(overhang_region);
-            }
-        }
-        else
-        {
-            // clear to disable use of bridging settings
-            gcode_layer.setBridgeWallMask(Polygons());
-            // clear to disable overhang detection
-            gcode_layer.setOverhangMask(Polygons());
         }
 
         // Only spiralize the first part in the mesh, any other parts will be printed using the normal, non-spiralize codepath.

@@ -712,6 +712,19 @@ private:
      * \return layer seam vertex index
      */
     unsigned int findSpiralizedLayerSeamVertexIndex(const SliceDataStorage& storage, const SliceMeshStorage& mesh, const int layer_nr, const int last_layer_nr);
+
+    /*!
+     * Generate polygons for the regions of a given layer part that are bridged or overhung
+     * \param[in] storage where the slice data is stored.
+     * \param layer_nr The layer number.
+     * \param mesh The mesh for which to add to the layer plan \p gcodeLayer.
+     * \param extruder_nr The extruder for which to print all features of the mesh which should be printed with this extruder
+     * \param mesh_config the line config with which to print a print feature
+     * \param part_outline The outline of the part for which to create gcode
+     * \param[out] bridge_regions The regions of the part that are bridges.
+     * \param[out] overhang_regions The regions of the part that overhang.
+     */
+    void getBridgeAndOverhangRegions(const SliceDataStorage& storage, size_t layer_nr, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const Polygons& part_outline, Polygons* bridge_regions, Polygons* overhang_regions = nullptr) const;
 };
 
 }//namespace cura
