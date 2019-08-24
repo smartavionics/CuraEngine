@@ -449,6 +449,16 @@ public:
     }
 
     /*!
+     * Get bridge_wall_mask.
+     *
+     * \return The unsupported areas of the part currently being processed that will require bridges.
+     */
+    const Polygons& getBridgeWallMask() const
+    {
+        return bridge_wall_mask;
+    }
+
+    /*!
      * Set overhang_mask.
      *
      * \param polys The overhung areas of the part currently being processed that will require modified print settings
