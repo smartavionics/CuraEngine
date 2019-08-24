@@ -2111,7 +2111,64 @@ bool FffGcodeWriter::processSkinPart(const SliceDataStorage& storage, LayerPlan&
 
     // add normal skinfill
     Polygons top_bottom_concentric_perimeter_gaps; // the perimeter gaps of the insets of concentric skin pattern of this skin part
-    processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, skin_part, top_bottom_concentric_perimeter_gaps, added_something);
+
+    if (mesh.settings.get<bool>("bridge_settings_enabled"))
+    {
+        // print each bridge skin region separately
+
+        // the bridge wall mask for this layer tells us where the bridge regions are
+
+        Polygons bridge_regions = gcode_layer.getBridgeWallMask();
+
+        if (mesh.settings.get<bool>("bridge_enable_more_layers"))
+        {
+            // for the 2nd and 3rd bridge layers we need to compute the bridge regions here
+
+            const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
+            const size_t layer_nr = gcode_layer.getLayerNr();
+
+            if (layer_nr > 1 && bottom_layers > 1)
+            {
+                getBridgeAndOverhangRegions(storage, layer_nr - 1, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions);
+            }
+
+            if (layer_nr > 2 && bottom_layers > 2)
+            {
+                getBridgeAndOverhangRegions(storage, layer_nr - 2, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions);
+            }
+
+            bridge_regions = bridge_regions.unionPolygons();
+
+            const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
+            bridge_regions.removeSmallAreas((min_bridge_line_len / 1000.0) * (min_bridge_line_len / 1000.0));
+        }
+
+        // expand bridge region by the width of an outer wall to help avoid getting very narrow non-skin bridge regions created
+        bridge_regions = bridge_regions.offset(mesh_config.inset0_config.getLineWidth());
+
+        // print the bridge skin regions
+        for (const PolygonRef outline : skin_part.outline.intersection(bridge_regions))
+        {
+            SkinPart sp;
+            sp.outline.add(outline);
+            sp.inner_infill = skin_part.inner_infill.intersection(sp.outline);
+            Polygons ignored_perimeter_gaps;
+            processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something);
+        }
+
+        // print the non-bridge skin regions
+        for (const PolygonRef outline : skin_part.outline.difference(bridge_regions))
+        {
+            SkinPart sp;
+            sp.outline.add(outline);
+            sp.inner_infill = skin_part.inner_infill.intersection(sp.outline);
+            processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, top_bottom_concentric_perimeter_gaps, added_something);
+        }
+    }
+    else
+    {
+        processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, skin_part, top_bottom_concentric_perimeter_gaps, added_something);
+    }
 
     // handle perimeter_gaps of concentric skin
     {
