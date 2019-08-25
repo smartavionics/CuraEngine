@@ -556,6 +556,30 @@ private:
     /*!
      * Add the normal skinfill which is the area inside the innermost skin inset
      * which doesn't have air directly above it if we're printing roofing
+     *
+     * Bridges are detected and handled.
+     *
+     * Perimeter gaps are generated when the pattern is concentric.
+     * These gaps are generated here, but not printed here because printing all perimeter gaps at the same time is more efficient.
+     * There are already some perimeter gaps from the skin outline walls.
+     * This function adds more perimeter gaps for the skin concentric pattern.
+     * The gaps will be filled in \ref concentric_perimeter_gaps
+     * That way we can choose the fastest route between all perimeter gaps of this skin part.
+     *
+     * \param[in] storage where the slice data is stored.
+     * \param gcode_layer The initial planning of the gcode of the layer.
+     * \param mesh The mesh for which to add to the layer plan \p gcode_layer.
+     * \param extruder_nr The extruder for which to print all features of the mesh which should be printed with this extruder
+     * \param mesh_config the line config with which to print a print feature
+     * \param skin_part The skin part for which to create gcode
+     * \param[out] concentric_perimeter_gaps The perimeter gaps output which are generated when the pattern is concentric
+     * \param[out] added_something Whether this function added anything to the layer plan
+     */
+    void processTopBottomWithBridges(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something) const;
+
+    /*!
+     * Add the normal skinfill which is the area inside the innermost skin inset
+     * which doesn't have air directly above it if we're printing roofing
      * 
      * Perimeter gaps are generated when the pattern is concentric.
      * These gaps are generated here, but not printed here because printing all perimeter gaps at the same time is more efficient.
@@ -572,8 +596,10 @@ private:
      * \param skin_part The skin part for which to create gcode
      * \param[out] concentric_perimeter_gaps The perimeter gaps output which are generated when the pattern is concentric
      * \param[out] added_something Whether this function added anything to the layer plan
+     * \param bridge_layer_nr The bridge layer number (1-n) when this skin is known to be a bridge, 0 if it is known not to be a bridge, -1 if not determined
+     * \param line_angle The line direction used for a bridge skin, -1 if not set
      */
-    void processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something) const;
+    void processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something, int bridge_layer_nr = -1, int line_angle = -1) const;
 
     /*!
      * Process a dense skin feature like roofing or top/bottom
@@ -726,6 +752,19 @@ private:
      * \return layer seam vertex index
      */
     unsigned int findSpiralizedLayerSeamVertexIndex(const SliceDataStorage& storage, const SliceMeshStorage& mesh, const int layer_nr, const int last_layer_nr);
+
+    /*!
+     * Generate polygons for the regions of a given layer part that are bridged or overhung
+     * \param[in] storage where the slice data is stored.
+     * \param layer_nr The layer number.
+     * \param mesh The mesh for which to add to the layer plan \p gcodeLayer.
+     * \param extruder_nr The extruder for which to print all features of the mesh which should be printed with this extruder
+     * \param mesh_config the line config with which to print a print feature
+     * \param part_outline The outline of the part for which to create gcode
+     * \param[out] bridge_regions The regions of the part that are bridges.
+     * \param[out] overhang_regions The regions of the part that overhang.
+     */
+    void getBridgeAndOverhangRegions(const SliceDataStorage& storage, size_t layer_nr, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const Polygons& part_outline, Polygons* bridge_regions, Polygons* overhang_regions = nullptr) const;
 };
 
 }//namespace cura
