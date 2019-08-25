@@ -542,6 +542,30 @@ private:
     /*!
      * Add the normal skinfill which is the area inside the innermost skin inset
      * which doesn't have air directly above it if we're printing roofing
+     *
+     * Bridges are detected and handled.
+     *
+     * Perimeter gaps are generated when the pattern is concentric.
+     * These gaps are generated here, but not printed here because printing all perimeter gaps at the same time is more efficient.
+     * There are already some perimeter gaps from the skin outline walls.
+     * This function adds more perimeter gaps for the skin concentric pattern.
+     * The gaps will be filled in \ref concentric_perimeter_gaps
+     * That way we can choose the fastest route between all perimeter gaps of this skin part.
+     *
+     * \param[in] storage where the slice data is stored.
+     * \param gcode_layer The initial planning of the gcode of the layer.
+     * \param mesh The mesh for which to add to the layer plan \p gcode_layer.
+     * \param extruder_nr The extruder for which to print all features of the mesh which should be printed with this extruder
+     * \param mesh_config the line config with which to print a print feature
+     * \param skin_part The skin part for which to create gcode
+     * \param[out] concentric_perimeter_gaps The perimeter gaps output which are generated when the pattern is concentric
+     * \param[out] added_something Whether this function added anything to the layer plan
+     */
+    void processTopBottomWithBridges(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something) const;
+
+    /*!
+     * Add the normal skinfill which is the area inside the innermost skin inset
+     * which doesn't have air directly above it if we're printing roofing
      * 
      * Perimeter gaps are generated when the pattern is concentric.
      * These gaps are generated here, but not printed here because printing all perimeter gaps at the same time is more efficient.
