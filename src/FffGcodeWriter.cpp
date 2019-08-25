@@ -2036,8 +2036,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
 
     // print each bridge skin region separately so we can optimise the direction of its lines
 
-    const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
-    double min_bridge_skin_area = (min_bridge_line_len / 1000.0) * (min_bridge_line_len / 1000.0);
+    double bridge_skin_min_area = mesh.settings.get<double>("bridge_skin_min_area");
 
     std::vector<Polygons> bridge_regions; // one element for each bridge layer
 
@@ -2070,7 +2069,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
     }
 
     bridge_regions.back() = bridge_regions.back().unionPolygons();
-    bridge_regions.back().removeSmallAreas(min_bridge_skin_area);
+    bridge_regions.back().removeSmallAreas(bridge_skin_min_area);
 
     if (mesh.settings.get<bool>("bridge_enable_more_layers"))
     {
@@ -2083,7 +2082,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
             bridge_regions.emplace_back();
             getBridgeAndOverhangRegions(storage, layer_nr - 1, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions.back());
             bridge_regions.back() = bridge_regions.back().unionPolygons().difference(bridge_regions[0]);
-            bridge_regions.back().removeSmallAreas(min_bridge_skin_area);
+            bridge_regions.back().removeSmallAreas(bridge_skin_min_area);
         }
 
         if (layer_nr > 2 && bottom_layers > 2)
@@ -2091,7 +2090,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
             bridge_regions.emplace_back();
             getBridgeAndOverhangRegions(storage, layer_nr - 2, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions.back());
             bridge_regions.back() = bridge_regions.back().unionPolygons().difference(bridge_regions[0]).difference(bridge_regions[1]);
-            bridge_regions.back().removeSmallAreas(min_bridge_skin_area);
+            bridge_regions.back().removeSmallAreas(bridge_skin_min_area);
         }
     }
 
