@@ -572,8 +572,10 @@ private:
      * \param skin_part The skin part for which to create gcode
      * \param[out] concentric_perimeter_gaps The perimeter gaps output which are generated when the pattern is concentric
      * \param[out] added_something Whether this function added anything to the layer plan
+     * \param bridge_layer_nr The bridge layer number (1-n) when this skin is known to be a bridge, 0 if it is known not to be a bridge, -1 if not determined
+     * \param line_angle The line direction used for a bridge skin, -1 if not set
      */
-    void processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something) const;
+    void processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something, int bridge_layer_nr = -1, int line_angle = -1) const;
 
     /*!
      * Process a dense skin feature like roofing or top/bottom

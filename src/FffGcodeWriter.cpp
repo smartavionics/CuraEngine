@@ -2112,57 +2112,134 @@ bool FffGcodeWriter::processSkinPart(const SliceDataStorage& storage, LayerPlan&
     // add normal skinfill
     Polygons top_bottom_concentric_perimeter_gaps; // the perimeter gaps of the insets of concentric skin pattern of this skin part
 
-    if (mesh.settings.get<bool>("bridge_settings_enabled"))
+    const size_t layer_nr = gcode_layer.getLayerNr();
+
+    if (layer_nr > 0 && mesh.settings.get<bool>("bridge_settings_enabled"))
     {
         // print each bridge skin region separately
 
+        const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
+        double min_bridge_skin_area = (min_bridge_line_len / 1000.0) * (min_bridge_line_len / 1000.0);
+
+        std::vector<Polygons> bridge_regions; // one element for each bridge layer
+
         // the bridge wall mask for this layer tells us where the bridge regions are
 
-        Polygons bridge_regions = gcode_layer.getBridgeWallMask();
+        bridge_regions.emplace_back(gcode_layer.getBridgeWallMask());
+
+        // if infill regions in the layer below are "sparse" consider the skin in that region to be unsupported
+        for (const SliceMeshStorage& mesh : storage.meshes)
+        {
+            if (mesh.isPrinted())
+            {
+                const Ratio sparse_infill_max_density = mesh.settings.get<Ratio>("bridge_sparse_infill_max_density");
+
+                if (sparse_infill_max_density > 0)
+                {
+                    const coord_t infill_line_distance = mesh.settings.get<coord_t>("infill_line_distance");
+                    const coord_t infill_line_width = mesh.settings.get<coord_t>("infill_line_width");
+                    const bool part_has_sparse_infill = (infill_line_distance == 0) || ((float)infill_line_width / infill_line_distance) <= sparse_infill_max_density;
+
+                    if (part_has_sparse_infill)
+                    {
+                        for (const SliceLayerPart& prev_layer_part : mesh.layers[layer_nr - 1].parts)
+                        {
+                            bridge_regions.back().add(prev_layer_part.getOwnInfillArea().intersection(skin_part.outline));
+                        }
+                    }
+                }
+            }
+        }
+
+        bridge_regions.back() = bridge_regions.back().unionPolygons();
+        bridge_regions.back().removeSmallAreas(min_bridge_skin_area);
 
         if (mesh.settings.get<bool>("bridge_enable_more_layers"))
         {
             // for the 2nd and 3rd bridge layers we need to compute the bridge regions here
 
             const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
-            const size_t layer_nr = gcode_layer.getLayerNr();
 
             if (layer_nr > 1 && bottom_layers > 1)
             {
-                getBridgeAndOverhangRegions(storage, layer_nr - 1, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions);
+                bridge_regions.emplace_back();
+                getBridgeAndOverhangRegions(storage, layer_nr - 1, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions.back());
+                bridge_regions.back() = bridge_regions.back().unionPolygons().difference(bridge_regions[0]);
+                bridge_regions.back().removeSmallAreas(min_bridge_skin_area);
             }
 
             if (layer_nr > 2 && bottom_layers > 2)
             {
-                getBridgeAndOverhangRegions(storage, layer_nr - 2, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions);
+                bridge_regions.emplace_back();
+                getBridgeAndOverhangRegions(storage, layer_nr - 2, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions.back());
+                bridge_regions.back() = bridge_regions.back().unionPolygons().difference(bridge_regions[0]).difference(bridge_regions[1]);
+                bridge_regions.back().removeSmallAreas(min_bridge_skin_area);
             }
-
-            bridge_regions = bridge_regions.unionPolygons();
-
-            const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
-            bridge_regions.removeSmallAreas((min_bridge_line_len / 1000.0) * (min_bridge_line_len / 1000.0));
         }
 
-        // expand bridge region by the width of an outer wall to help avoid getting very narrow non-skin bridge regions created
-        bridge_regions = bridge_regions.offset(mesh_config.inset0_config.getLineWidth());
+        Polygons all_bridge_regions;
 
-        // print the bridge skin regions
-        for (const PolygonRef outline : skin_part.outline.intersection(bridge_regions))
+        for (unsigned n = 0; n < bridge_regions.size(); ++n)
         {
-            SkinPart sp;
-            sp.outline.add(outline);
-            sp.inner_infill = skin_part.inner_infill.intersection(sp.outline);
-            Polygons ignored_perimeter_gaps;
-            processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something);
+            // print the bridge skin regions
+
+            // expand bridge region by the width of an outer wall to help avoid getting very narrow non-skin bridge regions created
+
+            Polygons bridge_skin = skin_part.outline.intersection(bridge_regions[n].offset(mesh_config.inset0_config.getLineWidth()));
+
+            for (const PolygonsPart& bridge_skin_part : bridge_skin.splitIntoParts())
+            {
+                SkinPart sp;
+                sp.outline = bridge_skin_part;
+                sp.inner_infill = skin_part.inner_infill.intersection(sp.outline);
+
+                // determine the best angle for the skin lines - the current heuristic is that the skin lines should be parallel to the
+                // direction of the skin area's longest unsupported edge
+
+                Polygons line_polys;
+                for (ConstPolygonRef poly : bridge_skin_part)
+                {
+                    Point p0 = poly.back();
+                    for (const Point p1 : poly)
+                    {
+                        line_polys.addLine(p0, p1);
+                        p0 = p1;
+                    }
+                }
+                line_polys = bridge_regions[n].intersectionPolyLines(line_polys);
+                double max_dist2 = 0;
+                double line_angle = 0;
+                for (ConstPolygonRef line_poly : line_polys)
+                {
+                    double dist2 = vSize2(line_poly[0] - line_poly[1]);
+                    if (dist2 > max_dist2)
+                    {
+                        max_dist2 = dist2;
+                        line_angle = angle(line_poly[0] - line_poly[1]);
+                    }
+                }
+                Polygons ignored_perimeter_gaps;
+                processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something, n + 1, line_angle);
+            }
+            all_bridge_regions.add(bridge_skin);
         }
 
-        // print the non-bridge skin regions
-        for (const PolygonRef outline : skin_part.outline.difference(bridge_regions))
+        all_bridge_regions = all_bridge_regions.unionPolygons();
+
+        if (all_bridge_regions.size())
         {
-            SkinPart sp;
-            sp.outline.add(outline);
-            sp.inner_infill = skin_part.inner_infill.intersection(sp.outline);
-            processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, top_bottom_concentric_perimeter_gaps, added_something);
+            // print the non-bridge skin regions
+            for (const PolygonsPart& non_bridge_skin_part : skin_part.outline.difference(all_bridge_regions).splitIntoParts())
+            {
+                SkinPart sp;
+                sp.outline = non_bridge_skin_part;
+                sp.inner_infill = skin_part.inner_infill.intersection(sp.outline);
+                processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, top_bottom_concentric_perimeter_gaps, added_something, 0);
+            }
+        }
+        else
+        {
+            processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, skin_part, top_bottom_concentric_perimeter_gaps, added_something, 0);
         }
     }
     else
@@ -2232,7 +2309,7 @@ void FffGcodeWriter::processRoofing(const SliceDataStorage& storage, LayerPlan& 
     processSkinPrintFeature(storage, gcode_layer, mesh, extruder_nr, skin_part.roofing_fill, mesh_config.roofing_config, pattern, roofing_angle, skin_overlap, skin_density, perimeter_gaps_output, added_something);
 }
 
-void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something) const
+void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something, int bridge_layer_nr, int line_angle) const
 {
     const size_t top_bottom_extruder_nr = mesh.settings.get<ExtruderTrain&>("top_bottom_extruder_nr").extruder_nr;
     if (extruder_nr != top_bottom_extruder_nr)
@@ -2267,135 +2344,133 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     Ratio skin_density = 1.0;
     coord_t skin_overlap = mesh.settings.get<coord_t>("skin_overlap_mm");
     const coord_t more_skin_overlap = std::max(skin_overlap, (coord_t)(mesh_config.insetX_config.getLineWidth() / 2)); // force a minimum amount of skin_overlap
-    const bool bridge_settings_enabled = mesh.settings.get<bool>("bridge_settings_enabled");
-    const bool bridge_enable_more_layers = bridge_settings_enabled && mesh.settings.get<bool>("bridge_enable_more_layers");
-    const Ratio support_threshold = bridge_settings_enabled ? mesh.settings.get<Ratio>("bridge_skin_support_threshold") : 0.0_r;
+
     const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
-
-    // if support is enabled, consider the support outlines so we don't generate bridges over support
-
-    int support_layer_nr = -1;
-    const SupportLayer* support_layer = nullptr;
-
-    if (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable"))
-    {
-        const coord_t layer_height = mesh_config.inset0_config.getLayerThickness();
-        const coord_t z_distance_top = mesh.settings.get<coord_t>("support_top_distance");
-        const size_t z_distance_top_layers = round_up_divide(z_distance_top, layer_height) + 1;
-        support_layer_nr = layer_nr - z_distance_top_layers;
-    }
 
     // helper function that detects skin regions that have no support and modifies their print settings (config, line angle, density, etc.)
 
-    auto handle_bridge_skin = [&](const int bridge_layer, const GCodePathConfig* config, const float density) // bridge_layer = 1, 2 or 3
+    auto handle_bridge_skin = [&](const GCodePathConfig* config, const float density)
     {
-        if (support_layer_nr >= (bridge_layer - 1))
+        int angle = -1;
+
+        if (line_angle > -1)
         {
-            support_layer = &storage.support.supportLayers[support_layer_nr - (bridge_layer - 1)];
+            // use angle passed to us and assign bridge skin parameters
+            angle = line_angle;
+            skin_config = config;
+            skin_overlap = more_skin_overlap;
+            skin_density = density;
+        }
+        else
+        {
+            // determine angle using legacy function
+            angle = bridgeAngle(mesh.settings, skin_part.outline, storage, layer_nr);
+            if (angle < 0)
+            {
+                // skin is not considered a bridge
+                return;
+            }
         }
 
-        Polygons supported_skin_part_regions;
-
-        const int angle = bridgeAngle(mesh.settings, skin_part.outline, storage, layer_nr, bridge_layer, support_layer, supported_skin_part_regions);
-
-        if (angle > -1 || (supported_skin_part_regions.area() / (skin_part.outline.area() + 1) < support_threshold))
+        switch (bridge_layer_nr)
         {
-            if (angle > -1)
-            {
-                switch (bridge_layer)
+            default:
+            case 1:
+                skin_angle = angle;
+                break;
+
+            case 2:
+                if (bottom_layers > 2)
                 {
-                    default:
-                    case 1:
-                        skin_angle = angle;
-                        break;
-
-                    case 2:
-                        if (bottom_layers > 2)
-                        {
-                            // orientate second bridge skin at +45 deg to first
-                            skin_angle = angle + 45;
-                        }
-                        else
-                        {
-                            // orientate second bridge skin at 90 deg to first
-                            skin_angle = angle + 90;
-                        }
-                        break;
-
-                    case 3:
-                        // orientate third bridge skin at 135 (same result as -45) deg to first
-                        skin_angle = angle + 135;
-                        break;
+                    // orientate second bridge skin at +45 deg to first
+                    skin_angle = angle + 45;
                 }
-            }
-            pattern = EFillMethod::LINES; // force lines pattern when bridging
-            if (bridge_settings_enabled)
-            {
-                skin_config = config;
-                skin_overlap = more_skin_overlap;
-                skin_density = density;
-            }
-            return true;
+                else
+                {
+                    // orientate second bridge skin at 90 deg to first
+                    skin_angle = angle + 90;
+                }
+                break;
+
+            case 3:
+                // orientate third bridge skin at 135 (same result as -45) deg to first
+                skin_angle = angle + 135;
+                break;
         }
 
-        return false;
+        pattern = EFillMethod::LINES; // force lines pattern when bridging
     };
 
-    bool is_bridge_skin = false;
     if (layer_nr > 0)
     {
-        is_bridge_skin = handle_bridge_skin(1, &mesh_config.bridge_skin_config, mesh.settings.get<Ratio>("bridge_skin_density"));
-    }
-    if (bridge_enable_more_layers && !is_bridge_skin && layer_nr > 1 && bottom_layers > 1)
-    {
-        is_bridge_skin = handle_bridge_skin(2, &mesh_config.bridge_skin_config2, mesh.settings.get<Ratio>("bridge_skin_density_2"));
-
-        if (!is_bridge_skin && layer_nr > 2 && bottom_layers > 2)
+        switch (bridge_layer_nr)
         {
-            is_bridge_skin = handle_bridge_skin(3, &mesh_config.bridge_skin_config3, mesh.settings.get<Ratio>("bridge_skin_density_3"));
+            default:
+            case 0:
+                // skin is not a bridge
+                break;
+            case -1:
+                // skin could be a bridge to be detected by legacy code, fall through
+            case 1:
+                handle_bridge_skin(&mesh_config.bridge_skin_config, mesh.settings.get<Ratio>("bridge_skin_density"));
+                break;
+            case 2:
+                handle_bridge_skin(&mesh_config.bridge_skin_config2, mesh.settings.get<Ratio>("bridge_skin_density_2"));
+                break;
+            case 3:
+                handle_bridge_skin(&mesh_config.bridge_skin_config3, mesh.settings.get<Ratio>("bridge_skin_density_3"));
+                break;
         }
     }
 
     double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
 
-    if (layer_nr > 0 && skin_config == &mesh_config.skin_config && support_layer_nr >= 0 && mesh.settings.get<bool>("support_fan_enable"))
+    if (layer_nr > 0 && skin_config == &mesh_config.skin_config && mesh.settings.get<bool>("support_fan_enable"))
     {
         // skin isn't a bridge but is it above support and we need to modify the fan speed?
 
-        AABB skin_bb(skin_part.outline);
-
-        support_layer = &storage.support.supportLayers[support_layer_nr];
-
-        bool supported = false;
-
-        if (!support_layer->support_roof.empty())
+        if (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable"))
         {
-            AABB support_roof_bb(support_layer->support_roof);
-            if (skin_bb.hit(support_roof_bb))
+            const coord_t layer_height = mesh_config.inset0_config.getLayerThickness();
+            const coord_t z_distance_top = mesh.settings.get<coord_t>("support_top_distance");
+            const size_t z_distance_top_layers = round_up_divide(z_distance_top, layer_height) + 1;
+            int support_layer_nr = layer_nr - z_distance_top_layers;
+
+            AABB skin_bb(skin_part.outline);
+
+            const SupportLayer& support_layer = storage.support.supportLayers[support_layer_nr];
+
+            bool supported = false;
+
+            if (!support_layer.support_roof.empty())
             {
-                supported = !skin_part.outline.intersection(support_layer->support_roof).empty();
-            }
-        }
-        else
-        {
-            for (auto support_part : support_layer->support_infill_parts)
-            {
-                AABB support_part_bb(support_part.getInfillArea());
-                if (skin_bb.hit(support_part_bb))
+                AABB support_roof_bb(support_layer.support_roof);
+                if (skin_bb.hit(support_roof_bb))
                 {
-                    supported = !skin_part.outline.intersection(support_part.getInfillArea()).empty();
-
-                    if (supported)
+                    supported = !skin_part.outline.intersection(support_layer.support_roof).empty();
+                }
+            }
+            else
+            {
+                for (auto support_part : support_layer.support_infill_parts)
+                {
+                    AABB support_part_bb(support_part.getInfillArea());
+                    if (skin_bb.hit(support_part_bb))
                     {
-                        break;
+                        supported = !skin_part.outline.intersection(support_part.getInfillArea()).empty();
+
+                        if (supported)
+                        {
+                            break;
+                        }
                     }
                 }
             }
-        }
 
-        if (supported)
-        {
-            fan_speed = mesh.settings.get<Ratio>("support_supported_skin_fan_speed") * 100.0;
+            if (supported)
+            {
+                fan_speed = mesh.settings.get<Ratio>("support_supported_skin_fan_speed") * 100.0;
+            }
         }
     }
 
