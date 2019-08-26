@@ -55,7 +55,7 @@ coord_t SkinInfillAreaComputation::getInfillSkinOverlap(const SliceMeshStorage& 
     { // compute infill_skin_overlap
         const ExtruderTrain& train_infill = mesh.settings.get<ExtruderTrain&>("infill_extruder_nr");
         const Ratio infill_line_width_factor = (layer_nr == 0) ? train_infill.settings.get<Ratio>("initial_layer_line_width_factor") : Ratio(1.0);
-        const bool infill_is_dense = mesh.settings.get<coord_t>("infill_line_distance") < mesh.settings.get<coord_t>("infill_line_width") * infill_line_width_factor + 10;
+        const bool infill_is_dense = mesh.settings.get<coord_t>("infill_line_distance") < mesh.settings.get<coord_t>("infill_line_width") * 2 * infill_line_width_factor + 10;
         if (!infill_is_dense && mesh.settings.get<EFillMethod>("infill_pattern") != EFillMethod::CONCENTRIC)
         {
             infill_skin_overlap = innermost_wall_line_width / 2;
