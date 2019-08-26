@@ -2346,8 +2346,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     // generate skin_polygons and skin_lines (and concentric_perimeter_gaps if needed)
     const GCodePathConfig* skin_config = &mesh_config.skin_config;
     Ratio skin_density = 1.0;
-    coord_t skin_overlap = mesh.settings.get<coord_t>("skin_overlap_mm");
-    const coord_t more_skin_overlap = std::max(skin_overlap, (coord_t)(mesh_config.insetX_config.getLineWidth() / 2)); // force a minimum amount of skin_overlap
+    const coord_t skin_overlap = mesh.settings.get<coord_t>("skin_overlap_mm");
 
     const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
 
@@ -2362,7 +2361,6 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             // use angle passed to us and assign bridge skin parameters
             angle = line_angle;
             skin_config = config;
-            skin_overlap = more_skin_overlap;
             skin_density = density;
         }
         else
