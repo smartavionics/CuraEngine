@@ -2454,40 +2454,43 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             const size_t z_distance_top_layers = round_up_divide(z_distance_top, layer_height) + 1;
             int support_layer_nr = layer_nr - z_distance_top_layers;
 
-            AABB skin_bb(skin_part.outline);
-
-            const SupportLayer& support_layer = storage.support.supportLayers[support_layer_nr];
-
-            bool supported = false;
-
-            if (!support_layer.support_roof.empty())
+            if (support_layer_nr >= 0)
             {
-                AABB support_roof_bb(support_layer.support_roof);
-                if (skin_bb.hit(support_roof_bb))
+                AABB skin_bb(skin_part.outline);
+
+                const SupportLayer& support_layer = storage.support.supportLayers[support_layer_nr];
+
+                bool supported = false;
+
+                if (!support_layer.support_roof.empty())
                 {
-                    supported = !skin_part.outline.intersection(support_layer.support_roof).empty();
-                }
-            }
-            else
-            {
-                for (auto support_part : support_layer.support_infill_parts)
-                {
-                    AABB support_part_bb(support_part.getInfillArea());
-                    if (skin_bb.hit(support_part_bb))
+                    AABB support_roof_bb(support_layer.support_roof);
+                    if (skin_bb.hit(support_roof_bb))
                     {
-                        supported = !skin_part.outline.intersection(support_part.getInfillArea()).empty();
-
-                        if (supported)
+                        supported = !skin_part.outline.intersection(support_layer.support_roof).empty();
+                    }
+                }
+                else
+                {
+                    for (auto support_part : support_layer.support_infill_parts)
+                    {
+                        AABB support_part_bb(support_part.getInfillArea());
+                        if (skin_bb.hit(support_part_bb))
                         {
-                            break;
+                            supported = !skin_part.outline.intersection(support_part.getInfillArea()).empty();
+
+                            if (supported)
+                            {
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            if (supported)
-            {
-                fan_speed = mesh.settings.get<Ratio>("support_supported_skin_fan_speed") * 100.0;
+                if (supported)
+                {
+                    fan_speed = mesh.settings.get<Ratio>("support_supported_skin_fan_speed") * 100.0;
+                }
             }
         }
     }
