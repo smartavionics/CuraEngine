@@ -2963,8 +2963,9 @@ void FffGcodeWriter::setExtruder_addPrime(const SliceDataStorage& storage, Layer
 
     const ExtruderTrain& train = Application::getInstance().current_slice->scene.extruders[extruder_nr];
 
-    if (previous_extruder == extruder_nr && train.settings.get<bool>("prime_tower_compact"))
+    if (!extruder_changed && gcode_layer.getLayerNr() > 0 && train.settings.get<bool>("prime_tower_compact"))
     {
+        // when using the compact tower, if the extruder wasn't changed and it's not the first layer, don't prime this extruder
         return;
     }
 
@@ -2994,8 +2995,6 @@ void FffGcodeWriter::setExtruder_addPrime(const SliceDataStorage& storage, Layer
         }
     }
 
-    // The first layer of the prime tower is printed with one material only, so do not prime another material on the
-    // first layer again.
     const bool prime_all = train.settings.get<bool>("prime_all_extruders_on_layer_0");
 
     if ((prime_all || (extruder_changed && gcode_layer.getLayerNr() > 0) || extruder_nr == outermost_prime_tower_extruder) && gcode_layer.getLayerNr() >= -static_cast<LayerIndex>(Raft::getFillerLayerCount())) //Always print a prime tower with outermost extruder.
