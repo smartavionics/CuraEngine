@@ -63,7 +63,7 @@ double ExtruderPlan::getMaterial(std::vector<double>* amounts) const
 
     if (amounts)
     {
-        amounts->resize((unsigned)PrintFeatureType::NumPrintFeatureTypes, 0.0);
+        amounts->assign((unsigned)PrintFeatureType::NumPrintFeatureTypes, 0.0);
     }
 
     for (const GCodePath& path : paths)
