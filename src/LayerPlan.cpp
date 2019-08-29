@@ -1926,7 +1926,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                                     suppress_accel_jerk = true;
                                 }
 
-                                if (prime_tower_compact)
+                                if (prime_tower_compact || extruder.settings.get<bool>("prime_all_extruders_on_layer_0"))
                                 {
                                     next_prime_tower_path = prime_tower_paths_seen;
                                 }
