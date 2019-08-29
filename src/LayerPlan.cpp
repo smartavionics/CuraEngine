@@ -1782,6 +1782,14 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             {
                 if (path.config->type == PrintFeatureType::PrimeTower)
                 {
+                    if (layer_nr == 0)
+                    {
+                        // need to fill prime tower inside using the last extruder to be primed
+                        if (extruder_plan_idx == (extruder_plans.size() - 1) || !extruder.settings.get<bool>("prime_all_extruders_on_layer_0"))
+                        {
+                            prime_tower_min_volume = std::numeric_limits<double>::max();
+                        }
+                    }
                     // if extruder_min_volume is greater than prime_tower_min_volume, see if prime_tower_min_volume needs to be increased
                     const double extruder_min_volume = extruder.settings.get<double>("extruder_min_volume");
                     std::vector<double> amounts;
