@@ -125,31 +125,24 @@ void PrimeTower::generatePaths_denseInfill()
         }
         cumulative_inset += wall_nr * line_width;
 
-        if (scene.extruders[extruder_nr].settings.get<bool>("prime_all_extruders_on_layer_0"))
+        //Generate the pattern for the first layer.
+        coord_t line_width_layer0 = line_width;
+        if (mesh_group_settings.get<EPlatformAdhesion>("adhesion_type") != EPlatformAdhesion::RAFT)
         {
-            pattern_per_extruder_layer0.emplace_back(pattern);
+            line_width_layer0 *= scene.extruders[extruder_nr].settings.get<Ratio>("initial_layer_line_width_factor");
         }
-        else
+        pattern_per_extruder_layer0.emplace_back();
+
+        ExtrusionMoves& pattern_layer0 = pattern_per_extruder_layer0.back();
+
+        // Generate a concentric infill pattern in the form insets for the prime tower's first layer instead of using
+        // the infill pattern because the infill pattern tries to connect polygons in different insets which causes the
+        // first layer of the prime tower to not stick well.
+        Polygons inset = outer_poly.offset(-line_width_layer0 / 2);
+        while (!inset.empty())
         {
-            //Generate the pattern for the first layer.
-            coord_t line_width_layer0 = line_width;
-            if (mesh_group_settings.get<EPlatformAdhesion>("adhesion_type") != EPlatformAdhesion::RAFT)
-            {
-                line_width_layer0 *= scene.extruders[extruder_nr].settings.get<Ratio>("initial_layer_line_width_factor");
-            }
-            pattern_per_extruder_layer0.emplace_back();
-
-            ExtrusionMoves& pattern_layer0 = pattern_per_extruder_layer0.back();
-
-            // Generate a concentric infill pattern in the form insets for the prime tower's first layer instead of using
-            // the infill pattern because the infill pattern tries to connect polygons in different insets which causes the
-            // first layer of the prime tower to not stick well.
-            Polygons inset = outer_poly.offset(-line_width_layer0 / 2);
-            while (!inset.empty())
-            {
-                pattern_layer0.polygons.add(inset);
-                inset = inset.offset(-line_width_layer0);
-            }
+            pattern_layer0.polygons.add(inset);
+            inset = inset.offset(-line_width_layer0);
         }
     }
 
@@ -227,9 +220,7 @@ void PrimeTower::addToGcode(const SliceDataStorage& storage, LayerPlan& gcode_la
 
 void PrimeTower::addToGcode_denseInfill(LayerPlan& gcode_layer, const size_t extruder_nr) const
 {
-    bool is_compact = Application::getInstance().current_slice->scene.extruders[extruder_nr].settings.get<bool>("prime_tower_compact");
-
-    const ExtrusionMoves& pattern = (!is_compact && gcode_layer.getLayerNr() == -static_cast<LayerIndex>(Raft::getFillerLayerCount()))
+    const ExtrusionMoves& pattern = (gcode_layer.getLayerNr() == -static_cast<LayerIndex>(Raft::getFillerLayerCount()))
         ? pattern_per_extruder_layer0[extruder_nr]
         : pattern_per_extruder[extruder_nr];
 
