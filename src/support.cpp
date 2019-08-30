@@ -1221,10 +1221,6 @@ void AreaSupport::moveUpFromModel(const SliceDataStorage& storage, Polygons& sta
             }
         }
     }
-
-#if 1
-    support_areas = support_areas.difference(to_be_removed);
-#else
     Polygons to_be_kept;
     Polygons result = support_areas.difference(to_be_removed);
     if (result.size() < support_areas.size()) // <- check if an island is completely erased by stair stepping
@@ -1241,7 +1237,6 @@ void AreaSupport::moveUpFromModel(const SliceDataStorage& storage, Polygons& sta
         result.add(to_be_kept); // <- add any _completely_ missing islands back
     }
     support_areas = result;
-#endif
 }
 
 
