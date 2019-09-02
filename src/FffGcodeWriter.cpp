@@ -2139,18 +2139,46 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
                     p0 = p1;
                 }
             }
-            line_polys = bridge_regions[n].intersectionPolyLines(line_polys);
-            double max_dist2 = 0;
-            double line_angle = 0;
-            for (ConstPolygonRef line_poly : line_polys)
+
+            Polygons unsupported_line_polys = bridge_regions[n].intersectionPolyLines(line_polys);
+            double max_dist2 = 1000 * 1000; // ignore lines less than 1mm long
+            double line_angle = -1;
+            for (ConstPolygonRef line_poly : unsupported_line_polys)
             {
                 double dist2 = vSize2(line_poly[0] - line_poly[1]);
                 if (dist2 > max_dist2)
                 {
                     max_dist2 = dist2;
-                    line_angle = angle(line_poly[0] - line_poly[1]);
+                    line_angle = (angle(line_poly[0] - line_poly[1]) + 360) % 360;
                 }
             }
+
+            if (line_angle < 0)
+            {
+                // there were no unsupported edges longer than 1mm so find the longest supported edge and use an angle 90 degrees to that
+                line_polys.clear();
+                for (ConstPolygonRef poly : bridge_regions[n])
+                {
+                    Point p0 = poly.back();
+                    for (const Point p1 : poly)
+                    {
+                        line_polys.addLine(p0, p1);
+                        p0 = p1;
+                    }
+                }
+
+                Polygons supported_line_polys = bridge_skin_part.intersectionPolyLines(line_polys);
+                for (ConstPolygonRef line_poly : supported_line_polys)
+                {
+                    double dist2 = vSize2(line_poly[0] - line_poly[1]);
+                    if (dist2 > max_dist2)
+                    {
+                        max_dist2 = dist2;
+                        line_angle = (angle(line_poly[0] - line_poly[1]) + 360 + 90) % 360;
+                    }
+                }
+            }
+
             Polygons ignored_perimeter_gaps;
             processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something, n + 1, line_angle);
         }
