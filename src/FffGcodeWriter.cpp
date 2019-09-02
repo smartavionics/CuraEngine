@@ -2372,10 +2372,26 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     {
         int angle = -1;
 
-        if (line_angle > -1)
+        if (bridge_layer_nr > 0)
         {
-            // use angle passed to us and assign bridge skin parameters
-            angle = line_angle;
+            if (line_angle > -1)
+            {
+                // use the angle that has been determined to be best for this skin
+                angle = line_angle;
+            }
+            else
+            {
+                // fall back to use the default angle for the skin on the first bridge layer
+                if (mesh.skin_angles.size() > 0)
+                {
+                    angle = mesh.skin_angles[(layer_nr - (bridge_layer_nr - 1)) % mesh.skin_angles.size()];
+                }
+                else
+                {
+                    angle = 45;
+                }
+            }
+            // assign bridge skin parameters
             skin_config = config;
             skin_density = density;
         }
