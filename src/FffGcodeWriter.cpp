@@ -2198,23 +2198,32 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
     bridge_regions.emplace_back(gcode_layer.getBridgeWallMask());
 
     // if infill regions in the layer below are "sparse" consider the skin in that region to be unsupported
-    for (const SliceMeshStorage& mesh : storage.meshes)
+    for (const SliceMeshStorage& m : storage.meshes)
     {
-        if (mesh.isPrinted())
+        if (&mesh == &m || (!m.settings.get<bool>("support_mesh") && !m.settings.get<bool>("anti_overhang_mesh")))
         {
-            const Ratio sparse_infill_max_density = mesh.settings.get<Ratio>("bridge_sparse_infill_max_density");
+            const Ratio sparse_infill_max_density = m.settings.get<Ratio>("bridge_sparse_infill_max_density");
 
             if (sparse_infill_max_density > 0)
             {
-                const coord_t infill_line_distance = mesh.settings.get<coord_t>("infill_line_distance");
-                const coord_t infill_line_width = mesh.settings.get<coord_t>("infill_line_width");
+                const coord_t infill_line_distance = m.settings.get<coord_t>("infill_line_distance");
+                const coord_t infill_line_width = m.settings.get<coord_t>("infill_line_width");
                 const bool part_has_sparse_infill = (infill_line_distance == 0) || ((float)infill_line_width / infill_line_distance) <= sparse_infill_max_density;
 
                 if (part_has_sparse_infill)
                 {
-                    for (const SliceLayerPart& prev_layer_part : mesh.layers[layer_nr - 1].parts)
+                    for (const SliceLayerPart& prev_layer_part : m.layers[layer_nr - 1].parts)
                     {
-                        bridge_regions.back().add(prev_layer_part.getOwnInfillArea().intersection(skin_part.outline));
+                        Polygons skins_below;
+                        for (const SkinPart& sp : prev_layer_part.skin_parts)
+                        {
+                            skins_below.add(sp.outline);
+                        }
+                        if (!skins_below.size() || skins_below.intersection(skin_part.outline).area() < prev_layer_part.outline.intersection(skin_part.outline).area() * 0.5)
+                        {
+                            // less than 50% of the part below's area is skin so consider all of that part's area to be sparse infill
+                            bridge_regions.back().add(prev_layer_part.outline);
+                        }
                     }
                 }
             }
