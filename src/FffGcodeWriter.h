@@ -9,6 +9,7 @@
 #include "gcodeExport.h"
 #include "LayerPlanBuffer.h"
 #include "settings/PathConfigStorage.h" //For the MeshPathConfigs subclass.
+#include "settings/types/AngleDegrees.h"
 #include "utils/NoCopy.h"
 
 namespace std
@@ -585,7 +586,7 @@ private:
      * \param bridge_layer_nr The bridge layer number (1-n) when this skin is known to be a bridge, 0 if it is known not to be a bridge, -1 if not determined
      * \param line_angle The line direction used for a bridge skin, -1 if not set
      */
-    void processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something, int bridge_layer_nr = -1, int line_angle = -1) const;
+    void processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something, int bridge_layer_nr = -1, AngleDegrees line_angle = -1) const;
 
     /*!
      * Process a dense skin feature like roofing or top/bottom
