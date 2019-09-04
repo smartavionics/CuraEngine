@@ -1604,7 +1604,7 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
         AABB boundaryBox(part_outline);
         for (const SliceMeshStorage& m : storage.meshes)
         {
-            if (m.isPrinted())
+            if (&mesh == &m || (!m.settings.get<bool>("support_mesh") && !m.settings.get<bool>("anti_overhang_mesh")))
             {
                 for (const SliceLayerPart& prevLayerPart : m.layers[layer_nr - 1].parts)
                 {
