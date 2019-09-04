@@ -131,7 +131,7 @@ INLINE coord_t dot(const Point& p0, const Point& p1)
     return p0.X * p1.X + p0.Y * p1.Y;
 }
 
-INLINE int angle(const Point& p)
+INLINE double angle(const Point& p)
 {
     double angle = std::atan2(p.X, p.Y) / M_PI * 180.0;
     if (angle < 0.0) angle += 360.0;
