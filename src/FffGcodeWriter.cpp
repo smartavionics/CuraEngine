@@ -2151,14 +2151,18 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
 
             Polygons unsupported_line_polys = bridge_regions[n].intersectionPolyLines(line_polys);
             double max_dist2 = 1000 * 1000; // ignore lines less than 1mm long
-            double line_angle = -1;
+            AngleDegrees line_angle = -1;
             for (ConstPolygonRef line_poly : unsupported_line_polys)
             {
                 double dist2 = vSize2(line_poly[0] - line_poly[1]);
                 if (dist2 > max_dist2)
                 {
                     max_dist2 = dist2;
-                    line_angle = (angle(line_poly[0] - line_poly[1]) + 360) % 360;
+                    line_angle = angle(line_poly[0] - line_poly[1]) + 360;
+                    while (line_angle >= 360)
+                    {
+                        line_angle -= 360;
+                    }
                 }
             }
 
@@ -2183,7 +2187,11 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
                     if (dist2 > max_dist2)
                     {
                         max_dist2 = dist2;
-                        line_angle = (angle(line_poly[0] - line_poly[1]) + 360 + 90) % 360;
+                        line_angle = angle(line_poly[0] - line_poly[1]) + 360 + 90;
+                        while (line_angle >= 360)
+                        {
+                            line_angle -= 360;
+                        }
                     }
                 }
             }
@@ -2254,7 +2262,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
 
     auto handle_bridge_skin = [&](const GCodePathConfig* config, const float density)
     {
-        int angle = -1;
+        AngleDegrees angle = -1;
 
         if (bridge_layer_nr > 0)
         {
