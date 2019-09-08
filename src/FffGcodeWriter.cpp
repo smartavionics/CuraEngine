@@ -2354,6 +2354,9 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
 
     if (all_bridge_regions.size())
     {
+        // increase the size of the bridge regions by twice the amount that all skins are expanded so that the bridge and non-bridge skins don't overlap
+        all_bridge_regions = all_bridge_regions.offset(mesh.settings.get<coord_t>("skin_overlap_mm") * 2);
+
         // print the non-bridge skin regions
         for (const PolygonsPart& non_bridge_skin_part : skin_part.outline.difference(all_bridge_regions).splitIntoParts())
         {
