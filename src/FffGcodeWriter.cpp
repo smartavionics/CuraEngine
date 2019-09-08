@@ -2278,6 +2278,10 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
             sp.outline = bridge_skin_part;
             sp.inner_infill = skin_part.inner_infill.intersection(sp.outline);
 
+            // slightly increase the size of the skin infill so that it connects well to the surrounding walls or infill
+            const GCodePathConfig* config = (n > 1) ? &mesh_config.bridge_skin_config3 : (n > 0) ? &mesh_config.bridge_skin_config2 : &mesh_config.bridge_skin_config;
+            sp.inner_infill = sp.inner_infill.offset(config->getLineWidth() / 4);
+
             // determine the best angle for the skin lines - the current heuristic is that the skin lines should be parallel to the
             // direction of the skin area's longest unsupported edge
 
