@@ -2304,22 +2304,20 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
 
             Polygons unsupported_line_polys = bridge_regions[n].intersectionPolyLines(line_polys);
             double max_dist2 = 1000 * 1000; // ignore lines less than 1mm long
-            AngleDegrees line_angle = -1;
+            AngleDegrees line_angle = 0;
+            bool found_line_angle = false;
             for (ConstPolygonRef line_poly : unsupported_line_polys)
             {
                 double dist2 = vSize2(line_poly[0] - line_poly[1]);
                 if (dist2 > max_dist2)
                 {
                     max_dist2 = dist2;
-                    line_angle = angle(line_poly[0] - line_poly[1]) + 360;
-                    while (line_angle >= 360)
-                    {
-                        line_angle -= 360;
-                    }
+                    line_angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + 360;
+                    found_line_angle = true;
                 }
             }
 
-            if (line_angle < 0)
+            if (!found_line_angle)
             {
                 // there were no unsupported edges longer than 1mm so find the longest supported edge and use an angle 90 degrees to that
                 line_polys.clear();
@@ -2340,17 +2338,14 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
                     if (dist2 > max_dist2)
                     {
                         max_dist2 = dist2;
-                        line_angle = angle(line_poly[0] - line_poly[1]) + 360 + 90;
-                        while (line_angle >= 360)
-                        {
-                            line_angle -= 360;
-                        }
+                        line_angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + (360 + 90);
+                        found_line_angle = true;
                     }
                 }
             }
 
             Polygons ignored_perimeter_gaps;
-            processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something, n + 1, line_angle);
+            processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something, n + 1, (found_line_angle) ? &line_angle : nullptr);
         }
         all_bridge_regions.add(bridge_skin);
     }
@@ -2374,7 +2369,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
     }
 }
 
-void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something, int bridge_layer_nr, AngleDegrees line_angle) const
+void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SkinPart& skin_part, Polygons& concentric_perimeter_gaps, bool& added_something, int bridge_layer_nr, const AngleDegrees* line_angle) const
 {
     const size_t top_bottom_extruder_nr = mesh.settings.get<ExtruderTrain&>("top_bottom_extruder_nr").extruder_nr;
     if (extruder_nr != top_bottom_extruder_nr)
@@ -2415,14 +2410,14 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
 
     auto handle_bridge_skin = [&](const GCodePathConfig* config, const float density)
     {
-        AngleDegrees angle = -1;
+        AngleDegrees angle = 0;
 
         if (bridge_layer_nr > 0)
         {
-            if (line_angle > -1)
+            if (line_angle != nullptr)
             {
                 // use the angle that has been determined to be best for this skin
-                angle = line_angle;
+                angle = *line_angle;
             }
             else
             {
@@ -2443,12 +2438,13 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
         else
         {
             // determine angle using legacy function
-            angle = bridgeAngle(mesh.settings, skin_part.outline, storage, layer_nr);
-            if (angle < 0)
+            int int_angle = bridgeAngle(mesh.settings, skin_part.outline, storage, layer_nr);
+            if (int_angle < 0)
             {
                 // skin is not considered a bridge
                 return;
             }
+            angle = int_angle;
         }
 
         switch (bridge_layer_nr)
