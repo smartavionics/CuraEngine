@@ -2107,27 +2107,17 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
 
     // expand bridge regions to help avoid very narrow non-bridge regions being created
 
-    const size_t num_walls = mesh.settings.get<size_t>("wall_line_count");
-
-    coord_t bridge_skin_expansion = 0;
-
-    if (num_walls > 0)
-    {
-        // expand to cover all the wall lines
-        bridge_skin_expansion += 0.5 * mesh_config.inset0_config.getLineWidth() + (num_walls - 1) * mesh_config.insetX_config.getLineWidth();
-    }
-
-    // but if the bottom skin is expanded more than that, use that distance
-    bridge_skin_expansion = std::max(bridge_skin_expansion, mesh.settings.get<coord_t>("bottom_skin_expand_distance"));
-
-    // finally, expand by the amount the non-bridge skin will be expanded so that area is removed from the non-bridge skin
-    bridge_skin_expansion += mesh.settings.get<coord_t>("skin_overlap_mm");
+    // expand to cover at least the whole of the first wall line and if the bottom skin is expanded further than that, use that distance
+    coord_t bridge_skin_expansion = std::max(mesh_config.inset0_config.getLineWidth() / 2, mesh.settings.get<coord_t>("bottom_skin_expand_distance"));
 
     for (unsigned n = 0; n < bridge_regions.size(); ++n)
     {
         // print the bridge skin regions
 
         Polygons bridge_skin = skin_part.outline.intersection(bridge_regions[n].offset(bridge_skin_expansion));
+
+        // useful diagnostic aid, please don't remove
+        //gcode_layer.addPolygonsByOptimizer(bridge_skin, mesh_config.infill_config[0], nullptr, ZSeamConfig(), 0, false, 0.25);
 
         for (const PolygonsPart& bridge_skin_part : bridge_skin.splitIntoParts())
         {
