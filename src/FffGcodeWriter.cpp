@@ -1689,6 +1689,7 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
     const int seam_vertex_idx = storage.spiralize_seam_vertex_indices[layer_nr]; // use pre-computed seam vertex index for current layer
 
     std::vector<float> flows(wall_outline.size(), 1.0); // flow multiplier for each line segment
+    std::vector<Point> shifts(wall_outline.size()); // per vertex shift to compensate for line width changes
 
     const coord_t default_line_width = mesh.settings.get<coord_t>("wall_line_width_0");
     const double min_line_width = mesh.settings.get<Ratio>("spiralize_min_line_width");
@@ -1712,7 +1713,7 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
 #if 0
             // diagnostic - print vertex bisector lines
             gcode_layer.addTravel(lines[0][0]);
-            gcode_layer.addExtrusionMove(lines[0][1], mesh_config.inset0_config, SpaceFillType::Lines, 0.1);
+            gcode_layer.addExtrusionMove(lines[0][1], (n == seam_vertex_idx) ? mesh_config.insetX_config : mesh_config.inset0_config, SpaceFillType::Lines, 0.1);
 #endif
 
             lines = part.outline.intersectionPolyLines(lines);
@@ -1725,14 +1726,25 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
                     ++ln;
                 }
 
-                const coord_t line_width = vSize(lines[ln][1] - lines[ln][0]) * std::abs(std::sin(corner_rads / 2));
+                const double abs_sin = std::abs(std::sin(corner_rads / 2));
+                const coord_t line_width = vSize(lines[ln][1] - lines[ln][0]) * abs_sin;
 
                 flows[n] = std::max(std::min((double)line_width / default_line_width, max_line_width), min_line_width);
+                if (flows[n] > 1)
+                {
+                    // the wall is wider so move the vertex away from the outline
+                    shifts[n] = normal(bisector, default_line_width * (flows[n] - 1) / 2 / abs_sin);
+                }
+                else if(flows[n] < 1)
+                {
+                    // the wall is narrower so move the vertex towards the outline
+                    shifts[n] = normal(-bisector, default_line_width * (1 - flows[n]) / 2 / abs_sin);
+                }
             }
         }
     }
     // output a wall slice that is interpolated between the last and current walls
-    gcode_layer.spiralizeWallSlice(mesh_config.inset0_config, wall_outline, ConstPolygonRef(*last_wall_outline), seam_vertex_idx, last_seam_vertex_idx, is_top_layer, is_bottom_layer, flows);
+    gcode_layer.spiralizeWallSlice(mesh_config.inset0_config, wall_outline, ConstPolygonRef(*last_wall_outline), seam_vertex_idx, last_seam_vertex_idx, is_top_layer, is_bottom_layer, flows, shifts);
 }
 
 void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage, size_t layer_nr, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const Polygons& part_outline, Polygons *bridge_regions, Polygons *overhang_regions) const

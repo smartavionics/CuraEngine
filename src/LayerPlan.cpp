@@ -1179,7 +1179,7 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
     }
 }
 
-void LayerPlan::spiralizeWallSlice(const GCodePathConfig& config, ConstPolygonRef wall, ConstPolygonRef last_wall, const int seam_vertex_idx, const int last_seam_vertex_idx, const bool is_top_layer, const bool is_bottom_layer, const std::vector<float>& flows)
+void LayerPlan::spiralizeWallSlice(const GCodePathConfig& config, ConstPolygonRef wall, ConstPolygonRef last_wall, const int seam_vertex_idx, const int last_seam_vertex_idx, const bool is_top_layer, const bool is_bottom_layer, const std::vector<float>& flows, const std::vector<Point>& shifts)
 {
     const bool smooth_contours = Application::getInstance().current_slice->scene.current_mesh_group->settings.get<bool>("smooth_spiralized_contours");
 
@@ -1191,8 +1191,10 @@ void LayerPlan::spiralizeWallSlice(const GCodePathConfig& config, ConstPolygonRe
         // when not smoothing, we get to the (unchanged) outline for this layer as quickly as possible so that the remainder of the
         // outline wall has the correct direction - although this creates a little step, the end result is generally better because when the first
         // outline wall has the wrong direction (due to it starting from the finish point of the last layer) the visual effect is very noticeable
-        Point join_first_wall_at = LinearAlg2D::getClosestOnLineSegment(origin, wall[seam_vertex_idx], wall[(seam_vertex_idx + 1) % wall.size()]);
-        if (vSize(join_first_wall_at - origin) > 10)
+        const Point p0 = wall[seam_vertex_idx] + shifts[seam_vertex_idx];
+        const Point p1 = wall[(seam_vertex_idx + 1) % wall.size()] + shifts[(seam_vertex_idx + 1) % wall.size()];
+        const Point join_first_wall_at = LinearAlg2D::getClosestOnLineSegment(origin + shifts[seam_vertex_idx], p0, p1);
+        if (vSize(join_first_wall_at - (origin + shifts[seam_vertex_idx])) > 10)
         {
             addExtrusionMove(join_first_wall_at, config, SpaceFillType::Polygons, flows[seam_vertex_idx], true);
         }
@@ -1264,7 +1266,7 @@ void LayerPlan::spiralizeWallSlice(const GCodePathConfig& config, ConstPolygonRe
         wall_length += vSizeMM(p - p0);
         p0 = p;
 
-        const double flow = (is_bottom_layer) ? (min_bottom_layer_flow + ((1 - min_bottom_layer_flow) * wall_length / total_length)) : flows[idx];
+        const double flow = (is_bottom_layer) ? (min_bottom_layer_flow + ((std::max((double)flows[idx], min_bottom_layer_flow) - min_bottom_layer_flow) * wall_length / total_length)) : flows[idx];
 
         // if required, use interpolation to smooth the x/y coordinates between layers but not for the first spiralized layer
         // as that lies directly on top of a non-spiralized wall with exactly the same outline and not for the last point in each layer
@@ -1278,18 +1280,18 @@ void LayerPlan::spiralizeWallSlice(const GCodePathConfig& config, ConstPolygonRe
             if (cpp.isValid() && vSize2(cpp.location - p) <= max_dist2)
             {
                 // interpolate between cpp.location and p depending on how far we have progressed along wall
-                addExtrusionMove(cpp.location + (p - cpp.location) * (wall_length / total_length), config, SpaceFillType::Polygons, flow, true, speed_factor);
+                addExtrusionMove(shifts[idx] + cpp.location + (p - cpp.location) * (wall_length / total_length), config, SpaceFillType::Polygons, flow, true, speed_factor);
             }
             else
             {
                 // no point in the last wall was found close enough to the current wall point so don't interpolate
-                addExtrusionMove(p, config, SpaceFillType::Polygons, flow, true, speed_factor);
+                addExtrusionMove(shifts[idx] + p, config, SpaceFillType::Polygons, flow, true, speed_factor);
             }
         }
         else
         {
             // no smoothing, use point verbatim
-            addExtrusionMove(p, config, SpaceFillType::Polygons, flow, true, speed_factor);
+            addExtrusionMove(shifts[idx] + p, config, SpaceFillType::Polygons, flow, true, speed_factor);
         }
     }
 
@@ -1301,19 +1303,20 @@ void LayerPlan::spiralizeWallSlice(const GCodePathConfig& config, ConstPolygonRe
         wall_length = 0;
         for (int wall_point_idx = 1; wall_point_idx <= n_points && distance_coasted < min_spiral_coast_dist; wall_point_idx++)
         {
-            const Point& p = wall[(seam_vertex_idx + wall_point_idx) % n_points];
+            const size_t idx = (seam_vertex_idx + wall_point_idx) % n_points;
+            const Point& p = wall[idx];
             const double seg_length = vSizeMM(p - p0);
             wall_length += seg_length;
             p0 = p;
             // flow is reduced in step with the distance travelled so the wall width should remain roughly constant
-            double flow = flows[(seam_vertex_idx + wall_point_idx) % n_points] - (wall_length / total_length);
+            double flow = flows[idx] * (1 - (wall_length / total_length));
             if (flow < min_top_layer_flow)
             {
                 flow = 0;
                 distance_coasted += seg_length;
             }
             // reduce number of paths created when polygon has many points by limiting precision of flow
-            addExtrusionMove(p, config, SpaceFillType::Polygons, ((int)(flow * 20)) / 20.0, false, speed_factor);
+            addExtrusionMove(shifts[idx] + p, config, SpaceFillType::Polygons, ((int)(flow * 20)) / 20.0, false, speed_factor);
         }
     }
 }
