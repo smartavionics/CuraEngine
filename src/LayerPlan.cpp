@@ -1184,6 +1184,7 @@ void LayerPlan::spiralizeWallSlice(const GCodePathConfig& config, ConstPolygonRe
     const bool smooth_contours = Application::getInstance().current_slice->scene.current_mesh_group->settings.get<bool>("smooth_spiralized_contours");
 
     // once we are into the spiral we always start at the end point of the last layer (if any)
+    // NOTE: this travel move is now ignored when the g-code is being generated but we can't actually remove it
     const Point origin = (last_seam_vertex_idx >= 0 && !is_bottom_layer) ? last_wall[last_seam_vertex_idx] : wall[seam_vertex_idx];
     addTravel_simple(origin);
 
@@ -1838,15 +1839,29 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             }
             if (path.config->isTravelPath())
             { // early comp for travel paths, which are handled more simply
-                if (!path.perform_z_hop && final_travel_z != z && extruder_plan_idx == (extruder_plans.size() - 1) && path_idx == (paths.size() - 1))
+                const bool is_final_travel = (extruder_plan_idx == (extruder_plans.size() - 1) && path_idx == (paths.size() - 1));
+                if (is_final_travel)
                 {
-                    // Before the final travel, move up to the next layer height, on the current spot, with a sensible speed.
-                    Point3 current_position = gcode.getPosition();
-                    current_position.z = final_travel_z;
-                    gcode.writeTravel(current_position, extruder.settings.get<Velocity>("speed_z_hop"));
+                    if (path_idx > 0 && paths[path_idx - 1].spiralize)
+                    {
+                        // this is a final travel following a spiralized wall, ignore it
+                        continue;
+                    }
+                    if (!path.perform_z_hop && final_travel_z != z)
+                    {
+                        // Before the final travel, move up to the next layer height, on the current spot, with a sensible speed.
+                        Point3 current_position = gcode.getPosition();
+                        current_position.z = final_travel_z;
+                        gcode.writeTravel(current_position, extruder.settings.get<Velocity>("speed_z_hop"));
 
-                    // Prevent the final travel(s) from resetting to the 'previous' layer height.
-                    gcode.setZ(final_travel_z);
+                        // Prevent the final travel(s) from resetting to the 'previous' layer height.
+                        gcode.setZ(final_travel_z);
+                    }
+                }
+                else if (extruder_plan_idx == 0 && path_idx == 0 && paths.size() > 1 && paths[1].spiralize)
+                {
+                    // this is the first travel on the layer and it precedes a spiralized wall, ignore it
+                    continue;
                 }
                 for(unsigned int point_idx = 0; point_idx < path.points.size(); point_idx++)
                 {
