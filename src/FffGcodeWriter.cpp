@@ -1699,21 +1699,19 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
     {
         // wall line width can vary
 
-        for (unsigned n = 0; n < wall_outline.size(); ++n)
+        auto get_line_width = [&](const Point& prev_point, const Point& this_point, const Point& next_point, coord_t& line_width, Point& bisector, double& abs_sine)
         {
-            const Point& this_point = wall_outline[n];
-            const Point& prev_point = wall_outline[(n + wall_outline.size() - 1) % wall_outline.size()];
-            const Point& next_point = wall_outline[(n + 1) % wall_outline.size()];
             const double corner_rads = LinearAlg2D::getAngleLeft(prev_point, this_point, next_point);
 
-            Point bisector(rotate(normal(next_point - this_point, default_line_width * 5), corner_rads / 2));
+            bisector = rotate(normal(next_point - this_point, default_line_width * 5), corner_rads / 2);
+            abs_sine = std::abs(std::sin(corner_rads / 2));
 
             Polygons lines;
             lines.addLine(this_point - bisector, this_point + bisector);
 #if 0
             // diagnostic - print vertex bisector lines
             gcode_layer.addTravel(lines[0][0]);
-            gcode_layer.addExtrusionMove(lines[0][1], (n == seam_vertex_idx) ? mesh_config.insetX_config : mesh_config.inset0_config, SpaceFillType::Lines, 0.1);
+            gcode_layer.addExtrusionMove(lines[0][1], this_point == wall_outline[seam_vertex_idx] ? mesh_config.insetX_config : mesh_config.inset0_config, SpaceFillType::Lines, 0.1);
 #endif
 
             lines = part.outline.intersectionPolyLines(lines);
@@ -1726,21 +1724,72 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
                     ++ln;
                 }
 
-                const double abs_sin = std::abs(std::sin(corner_rads / 2));
-                const coord_t line_width = vSize(lines[ln][1] - lines[ln][0]) * abs_sin;
+                line_width = vSize(lines[ln][1] - lines[ln][0]) * abs_sine;
+            }
+        };
 
-                flows[n] = std::max(std::min((double)line_width / default_line_width, max_line_width), min_line_width);
-                if (flows[n] > 1)
+        for (unsigned n = 0; n < wall_outline.size(); ++n)
+        {
+            const Point& this_point = wall_outline[n];
+            const Point& prev_point = wall_outline[(n + wall_outline.size() - 1) % wall_outline.size()];
+            const Point& next_point = wall_outline[(n + 1) % wall_outline.size()];
+
+            Point bisector;
+            double abs_sine = 1;
+            coord_t line_width = default_line_width;
+
+            get_line_width(prev_point, this_point, next_point, line_width, bisector, abs_sine);
+
+            // flow[n] sets the line width used when drawing the line that finishes at wall_outline[n]
+            flows[n] = std::max(std::min((double)line_width / default_line_width, max_line_width), min_line_width);
+
+            if (flows[n] > 1)
+            {
+                // the wall is wider so move the vertex away from the outline
+                shifts[n] = normal(bisector, default_line_width * (flows[n] - 1) / 2 / abs_sine);
+            }
+            else if(flows[n] < 1)
+            {
+                // the wall is narrower so move the vertex towards the outline
+                shifts[n] = normal(-bisector, default_line_width * (1 - flows[n]) / 2 / abs_sine);
+            }
+        }
+
+        float prev_flow = flows.back();
+        for (unsigned n = 0; n < wall_outline.size(); ++n)
+        {
+            unsigned prev_n = ((n == 0) ? wall_outline.size() : n) - 1;
+
+            const float next_prev_flow = flows[n];
+
+            if (std::abs(flows[n] - prev_flow) >= 0.5)
+            {
+                // this point's flow differs from the previous point's flow by an appreciable amount so
+                // calculate the flow for an intermediate point and if that is fairly similar to the previous
+                // point's flow, use that for this point's flow (but don't change the shift)
+
+                const Point& this_point = wall_outline[n];
+                const Point& prev_point = wall_outline[prev_n];
+
+                // only check if the line segment length is at least a couple of line widths
+                if (vSize(this_point - prev_point) >= default_line_width * 2)
                 {
-                    // the wall is wider so move the vertex away from the outline
-                    shifts[n] = normal(bisector, default_line_width * (flows[n] - 1) / 2 / abs_sin);
-                }
-                else if(flows[n] < 1)
-                {
-                    // the wall is narrower so move the vertex towards the outline
-                    shifts[n] = normal(-bisector, default_line_width * (1 - flows[n]) / 2 / abs_sin);
+                    Point bisector;
+                    double abs_sine = 1;
+                    coord_t intermediate_line_width = default_line_width;
+
+                    // check the line width at 60% of the length of the line segment
+                    get_line_width(prev_point, prev_point + (this_point - prev_point) * 0.6, this_point, intermediate_line_width, bisector, abs_sine);
+
+                    float intermediate_flow = std::max(std::min((double)intermediate_line_width / default_line_width, max_line_width), min_line_width);
+
+                    if (std::abs(intermediate_flow - prev_flow) < 0.5)
+                    {
+                        flows[n] = intermediate_flow;
+                    }
                 }
             }
+            prev_flow = next_prev_flow;
         }
     }
     // output a wall slice that is interpolated between the last and current walls
