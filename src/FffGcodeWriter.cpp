@@ -377,6 +377,10 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
             {
                 mesh.infill_angles.push_back(22); // put most infill lines in between 45 and 0 degrees
             }
+            else if (infill_pattern == EFillMethod::GYROID_HI_RES || infill_pattern == EFillMethod::GYROID_MED_RES || infill_pattern == EFillMethod::GYROID_LOW_RES)
+            {
+                mesh.infill_angles.push_back(0);
+            }
             else
             {
                 mesh.infill_angles.push_back(45); // generally all infill patterns use 45 degrees
