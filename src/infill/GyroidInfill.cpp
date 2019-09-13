@@ -14,7 +14,7 @@ GyroidInfill::GyroidInfill() {
 GyroidInfill::~GyroidInfill() {
 }
 
-void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z, EFillMethod pattern)
+void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z, EFillMethod pattern, const Point& infill_origin)
 {
     // generate infill based on the gyroid equation: sin_x * cos_y + sin_y * cos_z + sin_z * cos_x = 0
     // kudos to the author of the Slic3r implementation equation code, the equation code here is based on that
@@ -41,6 +41,12 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
     std::vector<Point> chains[2]; // [start_points[], end_points[]]
     std::vector<unsigned> connected_to[2]; // [chain_indices[], chain_indices[]]
     std::vector<int> line_numbers; // which row/column line a chain is part of
+
+    const coord_t x_min = infill_origin.X - std::ceil((float)(infill_origin.X - aabb.min.X) / pitch) * pitch;
+    const coord_t y_min = infill_origin.Y - std::ceil((float)(infill_origin.Y - aabb.min.Y) / pitch + 0.25) * pitch;
+    const coord_t x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / pitch) * pitch;
+    const coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / pitch + 0.25) * pitch;
+
     if (std::abs(sin_z) <= std::abs(cos_z))
     {
         // "vertical" lines
@@ -60,14 +66,14 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
         }
         const unsigned num_coords = odd_line_coords.size();
         unsigned num_columns = 0;
-        for (coord_t x = (std::floor(aabb.min.X / pitch) - 2.25) * pitch; x <= aabb.max.X + pitch/2; x += pitch/2)
+        for (coord_t x = x_min - 1.25 * pitch; x < x_max; x += pitch/2)
         {
             bool is_first_point = true;
             Point last;
             bool last_inside = false;
             unsigned chain_end_index = 0;
             Point chain_end[2];
-            for (coord_t y = (std::floor(aabb.min.Y / pitch) - 1) * pitch; y <= aabb.max.Y + pitch; y += pitch)
+            for (coord_t y = y_min; y < y_max; y += pitch)
             {
                 for (unsigned i = 0; i < num_coords; ++i)
                 {
@@ -151,14 +157,14 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
         }
         const unsigned num_coords = odd_line_coords.size();
         unsigned num_rows = 0;
-        for (coord_t y = (std::floor(aabb.min.Y / pitch) - 1) * pitch; y <= aabb.max.Y + pitch/2; y += pitch/2)
+        for (coord_t y = y_min; y < y_max; y += pitch/2)
         {
             bool is_first_point = true;
             Point last;
             bool last_inside = false;
             unsigned chain_end_index = 0;
             Point chain_end[2];
-            for (coord_t x = (std::floor(aabb.min.X / pitch) - 1) * pitch; x <= aabb.max.X + pitch; x += pitch)
+            for (coord_t x = x_min; x < x_max; x += pitch)
             {
                 for (unsigned i = 0; i < num_coords; ++i)
                 {
