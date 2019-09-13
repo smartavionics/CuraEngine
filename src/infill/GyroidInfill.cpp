@@ -14,13 +14,31 @@ GyroidInfill::GyroidInfill() {
 GyroidInfill::~GyroidInfill() {
 }
 
-void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z, EFillMethod pattern, const Point& infill_origin)
+void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z, EFillMethod pattern, const Point& infill_origin, const AngleDegrees fill_angle)
 {
     // generate infill based on the gyroid equation: sin_x * cos_y + sin_y * cos_z + sin_z * cos_x = 0
     // kudos to the author of the Slic3r implementation equation code, the equation code here is based on that
 
+    const double fill_angle_rads = fill_angle / (180 / M_PI);
+
+    const auto rotate_around_origin = [&](const Point& point, const double rads)
+    {
+        return (rads != 0) ? infill_origin + rotate(point - infill_origin, rads) : point;
+    };
+
     const Polygons outline = in_outline.offset(outline_offset);
-    const AABB aabb(outline);
+    Polygons rotated_outline = outline;
+    if (fill_angle_rads != 0)
+    {
+        for (PolygonRef poly : rotated_outline)
+        {
+            for (Point& point : poly)
+            {
+                point = rotate_around_origin(point, -fill_angle_rads);
+            }
+        }
+    }
+    const AABB aabb(rotated_outline);
 
     int pitch = line_distance * 2.41; // this produces similar density to the "line" infill pattern
     int num_steps = 4;
@@ -78,6 +96,7 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
                 for (unsigned i = 0; i < num_coords; ++i)
                 {
                     Point current(x + ((num_columns & 1) ? odd_line_coords[i] : even_line_coords[i])/2 + pitch, y + (coord_t)(i * step));
+                    current = rotate_around_origin(current, fill_angle_rads);
                     bool current_inside = outline.inside(current, true);
                     if (!is_first_point)
                     {
@@ -169,6 +188,7 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
                 for (unsigned i = 0; i < num_coords; ++i)
                 {
                     Point current(x + (coord_t)(i * step), y + ((num_rows & 1) ? odd_line_coords[i] : even_line_coords[i])/2);
+                    current = rotate_around_origin(current, fill_angle_rads);
                     bool current_inside = outline.inside(current, true);
                     if (!is_first_point)
                     {

@@ -3,6 +3,7 @@
 
 #include "../utils/Coord_t.h"
 #include "../settings/EnumSettings.h" //For infill types.
+#include "../settings/types/AngleDegrees.h"
 #include "../utils/IntPoint.h"
 
 namespace cura
@@ -17,7 +18,7 @@ public:
 
     ~GyroidInfill();
 
-    static void generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z, EFillMethod pattern, const Point& infill_origin);
+    static void generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z, EFillMethod pattern, const Point& infill_origin, const AngleDegrees fill_angle);
     
 private:
 
