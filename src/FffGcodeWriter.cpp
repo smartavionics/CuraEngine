@@ -1604,7 +1604,8 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
                             , /*bool use_endpieces =*/ false
                             , /*bool skip_some_zags =*/ false
                             , /*int zag_skip_count =*/ 0
-                            , mesh.settings.get<coord_t>("cross_infill_pocket_size"));
+                            , mesh.settings.get<coord_t>("cross_infill_pocket_size")
+                            , mesh.settings.get<Ratio>("infill_scaling_z"));
                         infill_comp.generate(infill_polygons, infill_lines, mesh.cross_fill_provider, &mesh);
 
                         // normal processing for the infill that isn't below skin
@@ -1631,7 +1632,8 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
             , /*bool use_endpieces =*/ false
             , /*bool skip_some_zags =*/ false
             , /*int zag_skip_count =*/ 0
-            , mesh.settings.get<coord_t>("cross_infill_pocket_size"));
+            , mesh.settings.get<coord_t>("cross_infill_pocket_size")
+            , mesh.settings.get<Ratio>("infill_scaling_z"));
         infill_comp.generate(infill_polygons, infill_lines, mesh.cross_fill_provider, &mesh);
     }
     if (infill_lines.size() > 0 || infill_polygons.size() > 0)
