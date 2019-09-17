@@ -116,9 +116,16 @@ option (ENABLE_OPENMP
     "Use OpenMP for parallel code" ON)
 
 if (ENABLE_OPENMP)
-    FIND_PACKAGE( OpenMP )
-    if( OPENMP_FOUND )
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )
+    if (NOT APPLE)
+        FIND_PACKAGE( OpenMP )
+        if( OPENMP_FOUND )
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )
+        endif()
+    else()
+        if(EXISTS "/usr/local/include/omp.h")
+            set(OPENMP_FOUND 1)
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xpreprocessor -fopenmp -I/usr/local/include")
+        endif()
     endif()
 endif()
 
@@ -295,6 +302,10 @@ endif(WIN32)
 
 if (UNIX)
     target_link_libraries(_CuraEngine pthread)
+endif()
+
+if( APPLE AND OPENMP_FOUND )
+    target_link_libraries(_CuraEngine "/usr/local/lib/libomp.a")
 endif()
 
 if (NOT WIN32)
