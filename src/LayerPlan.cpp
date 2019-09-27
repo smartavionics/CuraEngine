@@ -115,6 +115,7 @@ LayerPlan::LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord
 , layer_thickness(layer_thickness)
 , has_prime_tower_planned_per_extruder(Application::getInstance().current_slice->scene.extruders.size(), false)
 , current_mesh("NONMESH")
+, max_path_time(0)
 , last_extruder_previous_layer(start_extruder)
 , last_planned_extruder(&Application::getInstance().current_slice->scene.extruders[start_extruder])
 , first_travel_destination_is_inside(false) // set properly when addTravel is called for the first time (otherwise not set properly)
@@ -360,6 +361,11 @@ void LayerPlan::setMesh(const std::string mesh_id)
     current_mesh = mesh_id;
 }
 
+void LayerPlan::setMaxPathTime(const double time)
+{
+    max_path_time = time;
+}
+
 void LayerPlan::moveInsideCombBoundary(const coord_t distance)
 {
     constexpr coord_t max_dist2 = MM2INT(2.0) * MM2INT(2.0); // if we are further than this distance, we conclude we are not inside even though we thought we were.
@@ -578,6 +584,15 @@ void LayerPlan::addExtrusionMove(Point p, const GCodePathConfig& config, SpaceFi
         GCodePath* path = getLatestPathWithConfig(config, space_fill_type, flow, spiralize, speed_factor);
         path->points.push_back(p);
         path->setFanSpeed(fan_speed);
+        if (max_path_time > 0)
+        {
+            // start a new path if the current path print time is at least max_path_time
+            path->length += vSize(p - *last_planned_position);
+            if (INT2MM(path->length) >= max_path_time * config.getSpeed() * speed_factor)
+            {
+                forceNewPathStart();
+            }
+        }
         last_planned_position = p;
     }
 }
@@ -2214,6 +2229,73 @@ void LayerPlan::optimizePaths(const Point& starting_position)
         //Merge paths whose endpoints are very close together into one line.
         MergeInfillLines merger(extr_plan);
         merger.mergeInfillLines(extr_plan.paths, starting_position);
+    }
+}
+
+void LayerPlan::handleMeshTemperatureOverride(const SliceMeshStorage& mesh)
+{
+    // asumes that this mesh was the last mesh sliced and so its paths are the last ones in the current extruder plan
+    ExtruderPlan& plan = extruder_plans.back();
+    const ExtruderTrain& extruder = Application::getInstance().current_slice->scene.extruders[plan.extruder_nr];
+
+    if (plan.paths.size() > 1)
+    {
+        const Temperature plan_temperature = extruder.settings.get<Temperature>("material_print_temperature");
+        double mesh_temperature_dawdle_time = mesh.settings.get<double>("mesh_temperature_dawdle_time");
+        Velocity mesh_temperature_dawdle_speed = mesh.settings.get<Velocity>("mesh_temperature_dawdle_speed");
+
+        double time_to_end = 0;
+        int revert_temp_idx = -1;
+        int path_idx;
+        for (path_idx = plan.paths.size() - 1; path_idx >= 0; --path_idx)
+        {
+            GCodePath& path = plan.paths[path_idx];
+            if (path.mesh_id != mesh.mesh_name)
+            {
+                break;
+            }
+            Velocity path_speed = path.config->getSpeed() * path.speed_factor;
+            double path_time = INT2MM(path.length) / path_speed;
+            if ((time_to_end + path_time) < mesh_temperature_dawdle_time)
+            {
+                if (!path.isTravelPath())
+                {
+                    path_time = INT2MM(path.length) / mesh_temperature_dawdle_speed;
+                }
+            }
+            else if (revert_temp_idx < 0)
+            {
+                revert_temp_idx = path_idx;
+            }
+            time_to_end += path_time;
+        }
+        if (revert_temp_idx >= 0)
+        {
+            // path_idx is currently indexing the last path in the previous mesh
+            // insert temperature override at the first path of this mesh
+            plan.insertCommand(++path_idx, plan.extruder_nr, plan_temperature + mesh.settings.get<Temperature>("mesh_temperature_delta"), false);
+
+            // modify the speed factors for the paths that follow the override command and the paths that precede the command to revert back to plan temperature
+            double time_from_start = 0;
+            while (path_idx < (int)plan.paths.size())
+            {
+                GCodePath& path = plan.paths[path_idx++];
+                Velocity path_speed = path.config->getSpeed() * path.speed_factor;
+                double path_time = INT2MM(path.length) / path_speed;
+                if ((time_from_start + path_time) < mesh_temperature_dawdle_time || path_idx > revert_temp_idx)
+                {
+                    if (!path.isTravelPath())
+                    {
+                        path.speed_factor *= mesh_temperature_dawdle_speed / path_speed;
+                        path_time = INT2MM(path.length) / mesh_temperature_dawdle_speed;
+                    }
+                }
+                time_from_start += path_time;
+            }
+
+            // insert command to revert temperature to the normal plan temperature
+            plan.insertCommand(revert_temp_idx, plan.extruder_nr, plan_temperature, false);
+        }
     }
 }
 

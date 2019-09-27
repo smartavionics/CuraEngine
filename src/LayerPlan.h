@@ -260,6 +260,7 @@ private:
     std::optional<Point> last_planned_position; //!< The last planned XY position of the print head (if known)
 
     std::string current_mesh; //<! A unique ID for the mesh of the last planned move.
+    double max_path_time; // when non-zero, paths are split when their print time reaches this value
 
     /*!
      * Whether the skirt or brim polygons have been processed into planned paths
@@ -437,6 +438,12 @@ public:
      * \param mesh_id A unique ID indicating the current mesh.
      */
     void setMesh(const std::string mesh_id);
+
+    /*!
+     * Set the path time limit
+     * \param time The new path time limit in seconds.
+     */
+    void setMaxPathTime(const double time);
 
     /*!
      * Set bridge_wall_mask.
@@ -679,6 +686,12 @@ public:
      * \param starting_position Start from this coordinate.
      * */
     void optimizePaths(const Point& starting_position);
+
+    /*!
+     * Slow down print speed in mesh regions where temperature is being ramped up or down and insert temperature commands
+     * \param mesh The mesh currently being printed.
+     */
+    void handleMeshTemperatureOverride(const SliceMeshStorage& mesh);
 };
 
 }//namespace cura

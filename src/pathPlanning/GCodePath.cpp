@@ -20,7 +20,8 @@ points(std::vector<Point>()),
 done(false),
 spiralize(spiralize),
 fan_speed(GCodePathConfig::FAN_SPEED_DEFAULT),
-estimates(TimeMaterialEstimates())
+estimates(TimeMaterialEstimates()),
+length(0)
 {
 }
 

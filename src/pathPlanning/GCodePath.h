@@ -46,6 +46,8 @@ public:
 
     TimeMaterialEstimates estimates; //!< Naive time and material estimates
 
+    coord_t length;
+
     /*!
      * \brief Creates a new g-code path.
      *

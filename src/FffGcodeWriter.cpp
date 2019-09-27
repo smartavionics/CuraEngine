@@ -1285,6 +1285,13 @@ void FffGcodeWriter::addMeshLayerToGCode(const SliceDataStorage& storage, const 
 
     gcode_layer.setMesh(mesh.mesh_name);
 
+    // if mesh modifies the nozzle temperature, limit path print times to around 1 second to ensure temperature commands are processed without too much delay
+    Temperature mesh_temperature_delta = mesh.settings.get<Temperature>("mesh_temperature_delta");
+    if (mesh_temperature_delta != 0)
+    {
+        gcode_layer.setMaxPathTime(1);
+    }
+
     if (mesh.isPrinted())
     {
         // "normal" meshes with walls, skin, infill, etc. get the traditional part ordering based on the z-seam settings
@@ -1333,6 +1340,14 @@ void FffGcodeWriter::addMeshLayerToGCode(const SliceDataStorage& storage, const 
         addMeshOpenPolyLinesToGCode(mesh, mesh_config, gcode_layer);
     }
     gcode_layer.setMesh("NONMESH");
+    if (mesh_temperature_delta != 0)
+    {
+        // slow down print speed in regions where temperature is being ramped up or down and insert temperature commands
+        gcode_layer.handleMeshTemperatureOverride(mesh);
+
+        // back to default behaviour, don't limit path times
+        gcode_layer.setMaxPathTime(0);
+    }
 }
 
 void FffGcodeWriter::addMeshPartToGCode(const SliceDataStorage& storage, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, const SliceLayerPart& part, LayerPlan& gcode_layer) const
