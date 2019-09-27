@@ -1128,6 +1128,7 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
     }
     orderOptimizer.optimize();
 
+    Point last_position;
     for (unsigned int order_idx = 0; order_idx < orderOptimizer.polyOrder.size(); order_idx++)
     {
         const unsigned int poly_idx = orderOptimizer.polyOrder[order_idx];
@@ -1141,10 +1142,14 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
         {
             continue;
         }
-        // try to avoid using combing when printing lines skin pattern
-        const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
-        addTravel(p0, false, min_comb_distance);
+        if (order_idx == 0 || p0 != last_position)
+        {
+            // try to avoid using combing when printing lines skin pattern
+            const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
+            addTravel(p0, false, min_comb_distance);
+        }
         addExtrusionMove(p1, config, space_fill_type, flow_ratio, false, 1.0, fan_speed);
+        last_position = p1;
 
         // Wipe
         if (wipe_dist != 0)
