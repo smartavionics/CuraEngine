@@ -1478,7 +1478,7 @@ void AreaSupport::generateSupportBottom(SliceDataStorage& storage, const SliceMe
         Polygons bottoms;
         generateSupportInterfaceLayer(global_support_areas_per_layer[layer_idx], mesh_outlines, bottom_line_width, bottom_outline_offset, minimum_bottom_area, bottoms);
 
-        if (false && layer_idx < support_layers.size() - 1)
+        if (layer_idx < support_layers.size() - 1)
         {
             Polygons test_polygons;
             const auto actual_support_offset = getActualSupportOffset();
@@ -1520,7 +1520,7 @@ void AreaSupport::generateSupportRoof(SliceDataStorage& storage, const SliceMesh
         Polygons roofs;
         generateSupportInterfaceLayer(global_support_areas_per_layer[layer_idx], mesh_outlines, roof_line_width, roof_outline_offset, minimum_roof_area, roofs);
 
-        if (false && layer_idx > 0)
+        if (layer_idx > 0)
         {
             Polygons test_polygons;
             const auto actual_support_offset = getActualSupportOffset();
