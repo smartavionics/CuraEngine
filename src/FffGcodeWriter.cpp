@@ -1845,11 +1845,10 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
 
         const coord_t layer_height = mesh_config.inset0_config.getLayerThickness();
 
-        // if support is enabled, add the support outlines also so we don't generate bridges over support
-
         const Settings& mesh_group_settings = Application::getInstance().current_slice->scene.current_mesh_group->settings;
-        if (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable"))
+        if (!mesh.settings.get<bool>("bridge_over_support") && (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable")))
         {
+            // add the support outlines so we don't generate bridges over support
             const coord_t z_distance_top = mesh.settings.get<coord_t>("support_top_distance");
             const size_t z_distance_top_layers = round_up_divide(z_distance_top, layer_height) + 1;
             const int support_layer_nr = layer_nr - z_distance_top_layers;
