@@ -2579,14 +2579,11 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
 
     double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
 
-    // if skin isn't a bridge but it is above support, do we need to modify the fan speed or print settings (speed, flow or density)?
-
-    if (layer_nr > 0 && skin_config == &mesh_config.skin_config && (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable")))
+    if (layer_nr > 0 && skin_config == &mesh_config.skin_config && mesh.settings.get<bool>("support_fan_enable"))
     {
-        if (mesh.settings.get<bool>("support_fan_enable")
-            || skin_config->getSpeed() != mesh_config.supported_skin_config.getSpeed()
-            || skin_config->getFlowRatio() != mesh_config.supported_skin_config.getFlowRatio()
-            || 1.0 != mesh.settings.get<Ratio>("support_supported_skin_density"))
+        // skin isn't a bridge but is it above support and we need to modify the fan speed?
+
+        if (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable"))
         {
             const coord_t layer_height = mesh_config.inset0_config.getLayerThickness();
             const coord_t z_distance_top = mesh.settings.get<coord_t>("support_top_distance");
@@ -2628,12 +2625,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
 
                 if (supported)
                 {
-                    if (mesh.settings.get<bool>("support_fan_enable"))
-                    {
-                        fan_speed = mesh.settings.get<Ratio>("support_supported_skin_fan_speed") * 100.0;
-                    }
-                    skin_config = &mesh_config.supported_skin_config;
-                    skin_density = mesh.settings.get<Ratio>("support_supported_skin_density");
+                    fan_speed = mesh.settings.get<Ratio>("support_supported_skin_fan_speed") * 100.0;
                 }
             }
         }
