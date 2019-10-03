@@ -2257,14 +2257,12 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
 
     Polygons all_bridge_regions;
 
-    // expand bridge regions to help avoid very narrow non-bridge regions being created
-
-    // expand to cover at least the whole of the first wall line and if the bottom skin is expanded further than that, use that distance
-    coord_t bridge_skin_expansion = std::max(mesh_config.inset0_config.getLineWidth() / 2, mesh.settings.get<coord_t>("bottom_skin_expand_distance"));
-
     for (unsigned n = 0; n < bridge_regions.size(); ++n)
     {
         // print the bridge skin regions
+
+        // on the first bridge layer, expand bridge skin to cover at least the whole of the first wall line
+        coord_t bridge_skin_expansion = (n == 0) ? mesh_config.inset0_config.getLineWidth() / 2 : 0;
 
         Polygons bridge_skin = skin_part.outline.intersection(bridge_regions[n].offset(bridge_skin_expansion));
 
