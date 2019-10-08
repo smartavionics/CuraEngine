@@ -2589,6 +2589,8 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
 
             if (support_layer_nr >= 0)
             {
+                const double min_supported_skin_area_to_frig_fan = skin_part.outline.area() * 0.1;
+
                 AABB skin_bb(skin_part.outline);
 
                 const SupportLayer& support_layer = storage.support.supportLayers[support_layer_nr];
@@ -2600,7 +2602,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
                     AABB support_roof_bb(support_layer.support_roof);
                     if (skin_bb.hit(support_roof_bb))
                     {
-                        supported = !skin_part.outline.intersection(support_layer.support_roof).empty();
+                        supported = skin_part.outline.intersection(support_layer.support_roof).area() >= min_supported_skin_area_to_frig_fan;
                     }
                 }
                 else
@@ -2610,7 +2612,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
                         AABB support_part_bb(support_part.getInfillArea());
                         if (skin_bb.hit(support_part_bb))
                         {
-                            supported = !skin_part.outline.intersection(support_part.getInfillArea()).empty();
+                            supported = skin_part.outline.intersection(support_part.getInfillArea()).area() >= min_supported_skin_area_to_frig_fan;
 
                             if (supported)
                             {
