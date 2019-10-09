@@ -2607,7 +2607,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
                 }
                 else
                 {
-                    for (auto support_part : support_layer.support_infill_parts)
+                    for (const SupportInfillPart& support_part : support_layer.support_infill_parts)
                     {
                         AABB support_part_bb(support_part.getInfillArea());
                         if (skin_bb.hit(support_part_bb))
