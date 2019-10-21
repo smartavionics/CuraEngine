@@ -873,18 +873,18 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     {
         // find the closest point on the wall outline to the z-seam hint point and use that for the wall's start/end location
 
-        // create a line that extends all the way across the mesh and passes through the z-seam hint point and either 0,0 or the middle of the mesh
-        const Point z_seam_hint = mesh.getZSeamHint();
-        coord_t approx_max_len = std::max(mesh.settings.get<coord_t>("machine_width"), mesh.settings.get<coord_t>("machine_depth")) * 1.414;
-        Point hint_vec = normal(Point(mesh.settings.get<coord_t>("z_seam_x"), mesh.settings.get<coord_t>("z_seam_y")), approx_max_len);
-        Point seam_vec_pt0 = -hint_vec;
-        Point seam_vec_pt1 = hint_vec;
+        // create a line that extends all the way across the mesh and passes through the z-seam hint point and the middle of the mesh
+        const Point abs_z_seam_hint = mesh.getZSeamHint();
+        const coord_t approx_max_len = std::max(mesh.settings.get<coord_t>("machine_width"), mesh.settings.get<coord_t>("machine_depth")) * 1.414;
+        const Point mesh_middle = mesh.bounding_box.flatten().getMiddle();
+        Point relative_z_seam_hint = abs_z_seam_hint;
         if (mesh.settings.get<bool>("z_seam_relative"))
         {
-            Point middle = mesh.bounding_box.flatten().getMiddle();
-            seam_vec_pt0 += middle;
-            seam_vec_pt1 += middle;
+            relative_z_seam_hint -= mesh_middle;
         }
+        const Point hint_vec = normal(relative_z_seam_hint, approx_max_len);
+        const Point seam_vec_pt0 = mesh_middle + hint_vec;
+        const Point seam_vec_pt1 = mesh_middle - hint_vec;
         // intersect that line with the wall polygon and find the resulting line end point that is closest to the z-seam hint point
         Polygons lines;
         lines.addLine(seam_vec_pt0, seam_vec_pt1);
@@ -897,7 +897,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         {
             for (unsigned i = 0; i < 2; ++i)
             {
-                coord_t dist = vSize2(z_seam_hint - line[i]);
+                coord_t dist = vSize2(abs_z_seam_hint - line[i]);
                 if (dist < min_dist2)
                 {
                     min_dist2 = dist;
