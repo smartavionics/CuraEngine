@@ -897,10 +897,10 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         {
             for (unsigned i = 0; i < 2; ++i)
             {
-                coord_t dist = vSize2(abs_z_seam_hint - line[i]);
-                if (dist < min_dist2)
+                coord_t dist2 = vSize2(abs_z_seam_hint - line[i]);
+                if (dist2 < min_dist2)
                 {
-                    min_dist2 = dist;
+                    min_dist2 = dist2;
                     closest = line[i];
                 }
             }
