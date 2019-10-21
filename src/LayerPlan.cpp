@@ -867,8 +867,68 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
 
 void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, WallOverlapComputation* wall_overlap_computation, coord_t wall_0_wipe_dist, float flow_ratio, bool always_retract)
 {
+    Point z_seam_point = wall[start_idx];
+
+    if (mesh.settings.get<EZSeamType>("z_seam_type") == EZSeamType::USER_SPECIFIED && mesh.settings.get<EZSeamCornerPrefType>("z_seam_corner") == EZSeamCornerPrefType::Z_SEAM_CORNER_PREF_NONE)
+    {
+        // find the closest point on the wall outline to the z-seam hint point and use that for the wall's start/end location
+
+        // create a line that extends all the way across the mesh and passes through the z-seam hint point and either 0,0 or the middle of the mesh
+        const Point z_seam_hint = mesh.getZSeamHint();
+        coord_t approx_max_len = std::max(mesh.settings.get<coord_t>("machine_width"), mesh.settings.get<coord_t>("machine_depth")) * 1.414;
+        Point hint_vec = normal(Point(mesh.settings.get<coord_t>("z_seam_x"), mesh.settings.get<coord_t>("z_seam_y")), approx_max_len);
+        Point seam_vec_pt0 = -hint_vec;
+        Point seam_vec_pt1 = hint_vec;
+        if (mesh.settings.get<bool>("z_seam_relative"))
+        {
+            Point middle = mesh.bounding_box.flatten().getMiddle();
+            seam_vec_pt0 += middle;
+            seam_vec_pt1 += middle;
+        }
+        // intersect that line with the wall polygon and find the resulting line end point that is closest to the z-seam hint point
+        Polygons lines;
+        lines.addLine(seam_vec_pt0, seam_vec_pt1);
+        Polygons wall_polys;
+        wall_polys.add(wall);
+        lines = wall_polys.intersectionPolyLines(lines);
+        Point closest = z_seam_point;
+        coord_t min_dist2 = approx_max_len * approx_max_len;
+        for (ConstPolygonRef line : lines)
+        {
+            for (unsigned i = 0; i < 2; ++i)
+            {
+                coord_t dist = vSize2(z_seam_hint - line[i]);
+                if (dist < min_dist2)
+                {
+                    min_dist2 = dist;
+                    closest = line[i];
+                }
+            }
+        }
+        if (vSize2(closest - z_seam_point) > 10)
+        {
+            if (LinearAlg2D::getDist2FromLine(closest, wall[start_idx], wall[(start_idx + 1) % wall.size()]) < 10)
+            {
+                // z_seam_point lies forwards of wall[start_idx]
+                z_seam_point = closest;
+            }
+            else if (LinearAlg2D::getDist2FromLine(closest, wall[start_idx], wall[(start_idx + wall.size() - 1) % wall.size()]) < 10)
+            {
+                // z_seam_point lies backwards of wall[start_idx] so decrement start_idx
+                z_seam_point = closest;
+                start_idx = (start_idx + wall.size() - 1) % wall.size();
+            }
+        }
+    }
+
     // make sure wall start point is not above air!
-    start_idx = locateFirstSupportedVertex(wall, start_idx);
+    int supported_start_idx = locateFirstSupportedVertex(wall, start_idx);
+
+    if (supported_start_idx != start_idx)
+    {
+        start_idx = supported_start_idx;
+        z_seam_point = wall[supported_start_idx];
+    }
 
     float non_bridge_line_volume = max_non_bridge_line_volume; // assume extruder is fully pressurised before first non-bridge line is output
     double speed_factor = 1.0; // start first line at normal speed
@@ -963,7 +1023,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
 
     bool first_line = true;
 
-    Point p0 = wall[start_idx];
+    Point p0 = z_seam_point;
 
     for (unsigned int point_idx = 1; point_idx < wall.size(); point_idx++)
     {
@@ -1031,6 +1091,19 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             else
             {
                 addWallLine(p0, p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, distance_to_bridge_start);
+            }
+
+            if (z_seam_point != p1)
+            {
+                if (is_small_feature)
+                {
+                    constexpr bool spiralize = false;
+                    addExtrusionMove(z_seam_point, non_bridge_config, SpaceFillType::Polygons, flow, spiralize, small_feature_speed_factor);
+                }
+                else
+                {
+                    addWallLine(p1, z_seam_point, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, distance_to_bridge_start);
+                }
             }
 
             if (wall_0_wipe_dist > 0)
