@@ -877,17 +877,11 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         const Point abs_z_seam_hint = mesh.getZSeamHint();
         const coord_t approx_max_len = std::max(mesh.settings.get<coord_t>("machine_width"), mesh.settings.get<coord_t>("machine_depth")) * 1.414;
         const Point mesh_middle = mesh.bounding_box.flatten().getMiddle();
-        Point relative_z_seam_hint = abs_z_seam_hint;
-        if (mesh.settings.get<bool>("z_seam_relative"))
-        {
-            relative_z_seam_hint -= mesh_middle;
-        }
-        const Point hint_vec = normal(relative_z_seam_hint, approx_max_len);
-        const Point seam_vec_pt0 = mesh_middle + hint_vec;
-        const Point seam_vec_pt1 = mesh_middle - hint_vec;
+        // hint_vec needs to be long enough so that its end points are further away from abs_z_seam_hint than approx_max_len
+        const Point hint_vec = normal(abs_z_seam_hint - mesh_middle, approx_max_len * 4);
         // intersect that line with the wall polygon and find the resulting line end point that is closest to the z-seam hint point
         Polygons lines;
-        lines.addLine(seam_vec_pt0, seam_vec_pt1);
+        lines.addLine(mesh_middle - hint_vec, mesh_middle + hint_vec);
         Polygons wall_polys;
         wall_polys.add(wall);
         lines = wall_polys.intersectionPolyLines(lines);
