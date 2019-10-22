@@ -869,11 +869,15 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
 {
     Point z_seam_point = wall[start_idx];
 
+    // when the z-seam location is user-specified and no corner preference has been specified, calculate an "exact" z-seam point that does not have to
+    // be located at a wall vertex, i.e. it can fall between vertices. This should eliminate the z-seam wobble that occurs due to the non-alignment of vertices
+    // between layers.
+
     if (mesh.settings.get<EZSeamType>("z_seam_type") == EZSeamType::USER_SPECIFIED && mesh.settings.get<EZSeamCornerPrefType>("z_seam_corner") == EZSeamCornerPrefType::Z_SEAM_CORNER_PREF_NONE)
     {
-        // find the closest point on the wall outline to the z-seam hint point and use that for the wall's start/end location
-
-        // create a line that extends all the way across the mesh and passes through the z-seam hint point and the middle of the mesh
+        // create a "hint line" that extends all the way across the mesh and passes through the z-seam hint point and the middle of the mesh
+        // then find the point on the wall outline that lies on the hint line and is closest to the z-seam hint point and use that for the wall's z_seam_point
+        // if no such point can be found, just use the point that has been previously calculated to be nearest the z-seam hint as the wall's z_seam_point
         const Point abs_z_seam_hint = mesh.getZSeamHint();
         const coord_t approx_max_len = std::max(mesh.settings.get<coord_t>("machine_width"), mesh.settings.get<coord_t>("machine_depth")) * 1.414;
         const Point mesh_middle = mesh.bounding_box.flatten().getMiddle();
@@ -899,18 +903,26 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                 }
             }
         }
-        if (vSize2(closest - z_seam_point) > 10)
+        if (vSize2(closest - z_seam_point) > 25)
         {
-            if (LinearAlg2D::getDist2FromLine(closest, wall[start_idx], wall[(start_idx + 1) % wall.size()]) < 10)
+            // find the wall line that closest lies on and set start_idx to the first point on that line
+            // the line is likely to be close to wall[start_idx] so test the nearest lines first
+            for (unsigned i = 0; i < (wall.size() + 1) / 2; ++i)
             {
-                // z_seam_point lies forwards of wall[start_idx]
-                z_seam_point = closest;
-            }
-            else if (LinearAlg2D::getDist2FromLine(closest, wall[start_idx], wall[(start_idx + wall.size() - 1) % wall.size()]) < 10)
-            {
-                // z_seam_point lies backwards of wall[start_idx] so decrement start_idx
-                z_seam_point = closest;
-                start_idx = (start_idx + wall.size() - 1) % wall.size();
+                // test lines forwards of wall[start_idx]
+                if (LinearAlg2D::getDist2FromLine(closest, wall[(start_idx + i) % wall.size()], wall[(start_idx + i + 1) % wall.size()]) < 25)
+                {
+                    z_seam_point = closest;
+                    start_idx = (start_idx + i) % wall.size();
+                    break;
+                }
+                // test lines backwards of wall[start_idx]
+                if (LinearAlg2D::getDist2FromLine(closest, wall[(start_idx + wall.size() - i - 1) % wall.size()], wall[(start_idx + wall.size() - i) % wall.size()]) < 25)
+                {
+                    z_seam_point = closest;
+                    start_idx = (start_idx + wall.size() - i - 1) % wall.size();
+                    break;
+                }
             }
         }
     }
