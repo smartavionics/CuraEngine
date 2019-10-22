@@ -903,18 +903,26 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                 }
             }
         }
-        if (vSize2(closest - z_seam_point) > 10)
+        if (vSize2(closest - z_seam_point) > 25)
         {
-            if (LinearAlg2D::getDist2FromLine(closest, wall[start_idx], wall[(start_idx + 1) % wall.size()]) < 10)
+            // find the wall line that closest lies on and set start_idx to the first point on that line
+            // the line is likely to be close to wall[start_idx] so test the nearest lines first
+            for (unsigned i = 0; i < (wall.size() + 1) / 2; ++i)
             {
-                // z_seam_point lies forwards of wall[start_idx]
-                z_seam_point = closest;
-            }
-            else if (LinearAlg2D::getDist2FromLine(closest, wall[start_idx], wall[(start_idx + wall.size() - 1) % wall.size()]) < 10)
-            {
-                // z_seam_point lies backwards of wall[start_idx] so decrement start_idx
-                z_seam_point = closest;
-                start_idx = (start_idx + wall.size() - 1) % wall.size();
+                // test lines forwards of wall[start_idx]
+                if (LinearAlg2D::getDist2FromLine(closest, wall[(start_idx + i) % wall.size()], wall[(start_idx + i + 1) % wall.size()]) < 25)
+                {
+                    z_seam_point = closest;
+                    start_idx = (start_idx + i) % wall.size();
+                    break;
+                }
+                // test lines backwards of wall[start_idx]
+                if (LinearAlg2D::getDist2FromLine(closest, wall[(start_idx + wall.size() - i - 1) % wall.size()], wall[(start_idx + wall.size() - i) % wall.size()]) < 25)
+                {
+                    z_seam_point = closest;
+                    start_idx = (start_idx + wall.size() - i - 1) % wall.size();
+                    break;
+                }
             }
         }
     }
