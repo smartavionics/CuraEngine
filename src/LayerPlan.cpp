@@ -879,50 +879,54 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         // then find the point on the wall outline that lies on the hint line and is closest to the z-seam hint point and use that for the wall's z_seam_point
         // if no such point can be found, just use the point that has been previously calculated to be nearest the z-seam hint as the wall's z_seam_point
         const Point abs_z_seam_hint = mesh.getZSeamHint();
-        const coord_t approx_max_len = std::max(mesh.settings.get<coord_t>("machine_width"), mesh.settings.get<coord_t>("machine_depth")) * 1.414;
         const Point mesh_middle = mesh.bounding_box.flatten().getMiddle();
-        // hint_vec needs to be long enough so that its end points are further away from abs_z_seam_hint than approx_max_len
-        const Point hint_vec = normal(abs_z_seam_hint - mesh_middle, approx_max_len * 4);
-        // intersect that line with the wall polygon and find the resulting line end point that is closest to the z-seam hint point
-        Polygons lines;
-        lines.addLine(mesh_middle - hint_vec, mesh_middle + hint_vec);
-        Polygons wall_polys;
-        wall_polys.add(wall);
-        lines = wall_polys.intersectionPolyLines(lines);
-        Point closest = z_seam_point;
-        coord_t min_dist2 = approx_max_len * approx_max_len;
-        for (ConstPolygonRef line : lines)
+        // we need the z-seam hint point to be at least a little distance from the middle of the mesh to be able to create a reliable hint line
+        if (vSize(abs_z_seam_hint - mesh_middle) > 1000)
         {
-            for (unsigned i = 0; i < 2; ++i)
+            const coord_t approx_max_len = std::max(mesh.settings.get<coord_t>("machine_width"), mesh.settings.get<coord_t>("machine_depth")) * 1.414;
+            // hint_vec needs to be long enough so that its end points are further away from abs_z_seam_hint than approx_max_len
+            const Point hint_vec = normal(abs_z_seam_hint - mesh_middle, approx_max_len * 4);
+            // intersect that line with the wall polygon and find the resulting line end point that is closest to the z-seam hint point
+            Polygons lines;
+            lines.addLine(mesh_middle - hint_vec, mesh_middle + hint_vec);
+            Polygons wall_polys;
+            wall_polys.add(wall);
+            lines = wall_polys.intersectionPolyLines(lines);
+            Point closest = z_seam_point;
+            coord_t min_dist2 = approx_max_len * approx_max_len;
+            for (ConstPolygonRef line : lines)
             {
-                coord_t dist2 = vSize2(abs_z_seam_hint - line[i]);
-                if (dist2 < min_dist2)
+                for (unsigned i = 0; i < 2; ++i)
                 {
-                    min_dist2 = dist2;
-                    closest = line[i];
+                    coord_t dist2 = vSize2(abs_z_seam_hint - line[i]);
+                    if (dist2 < min_dist2)
+                    {
+                        min_dist2 = dist2;
+                        closest = line[i];
+                    }
                 }
             }
-        }
-        if (vSize2(closest - z_seam_point) > 25)
-        {
-            // find the wall line that closest lies on and set start_idx to the first point on that line
-            // the line is likely to be close to wall[start_idx] so test the nearest lines first
-            for (unsigned i = 0; i < (wall.size() + 1) / 2; ++i)
+            if (vSize2(closest - z_seam_point) > 25)
             {
-                // test lines forwards of wall[start_idx]
-                int16_t beyond = 0;
-                if (LinearAlg2D::getDist2FromLineSegment(wall[(start_idx + i) % wall.size()], closest, wall[(start_idx + i + 1) % wall.size()], &beyond) < 25 && !beyond)
+                // find the wall line that closest lies on and set start_idx to the first point on that line
+                // the line is likely to be close to wall[start_idx] so test the nearest lines first
+                for (unsigned i = 0; i < (wall.size() + 1) / 2; ++i)
                 {
-                    z_seam_point = closest;
-                    start_idx = (start_idx + i) % wall.size();
-                    break;
-                }
-                // test lines backwards of wall[start_idx]
-                if (LinearAlg2D::getDist2FromLineSegment(wall[(start_idx + wall.size() - i - 1) % wall.size()], closest, wall[(start_idx + wall.size() - i) % wall.size()], &beyond) < 25 && !beyond)
-                {
-                    z_seam_point = closest;
-                    start_idx = (start_idx + wall.size() - i - 1) % wall.size();
-                    break;
+                    // test lines forwards of wall[start_idx]
+                    int16_t beyond = 0;
+                    if (LinearAlg2D::getDist2FromLineSegment(wall[(start_idx + i) % wall.size()], closest, wall[(start_idx + i + 1) % wall.size()], &beyond) < 25 && !beyond)
+                    {
+                        z_seam_point = closest;
+                        start_idx = (start_idx + i) % wall.size();
+                        break;
+                    }
+                    // test lines backwards of wall[start_idx]
+                    if (LinearAlg2D::getDist2FromLineSegment(wall[(start_idx + wall.size() - i - 1) % wall.size()], closest, wall[(start_idx + wall.size() - i) % wall.size()], &beyond) < 25 && !beyond)
+                    {
+                        z_seam_point = closest;
+                        start_idx = (start_idx + wall.size() - i - 1) % wall.size();
+                        break;
+                    }
                 }
             }
         }
