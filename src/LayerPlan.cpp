@@ -910,14 +910,15 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             for (unsigned i = 0; i < (wall.size() + 1) / 2; ++i)
             {
                 // test lines forwards of wall[start_idx]
-                if (LinearAlg2D::getDist2FromLine(closest, wall[(start_idx + i) % wall.size()], wall[(start_idx + i + 1) % wall.size()]) < 25)
+                int16_t beyond = 0;
+                if (LinearAlg2D::getDist2FromLineSegment(wall[(start_idx + i) % wall.size()], closest, wall[(start_idx + i + 1) % wall.size()], &beyond) < 25 && !beyond)
                 {
                     z_seam_point = closest;
                     start_idx = (start_idx + i) % wall.size();
                     break;
                 }
                 // test lines backwards of wall[start_idx]
-                if (LinearAlg2D::getDist2FromLine(closest, wall[(start_idx + wall.size() - i - 1) % wall.size()], wall[(start_idx + wall.size() - i) % wall.size()]) < 25)
+                if (LinearAlg2D::getDist2FromLineSegment(wall[(start_idx + wall.size() - i - 1) % wall.size()], closest, wall[(start_idx + wall.size() - i) % wall.size()], &beyond) < 25 && !beyond)
                 {
                     z_seam_point = closest;
                     start_idx = (start_idx + wall.size() - i - 1) % wall.size();
