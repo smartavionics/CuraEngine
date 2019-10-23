@@ -1382,7 +1382,7 @@ void FffGcodeWriter::addMeshPartToGCode(const SliceDataStorage& storage, const S
     added_something = added_something | processSkinAndPerimeterGaps(storage, gcode_layer, mesh, extruder_nr, mesh_config, part);
 
     //After a layer part, make sure the nozzle is inside the comb boundary, so we do not retract on the perimeter.
-    if (added_something && (!mesh_group_settings.get<bool>("magic_spiralize") || gcode_layer.getLayerNr() < static_cast<LayerIndex>(mesh.settings.get<size_t>("bottom_layers"))))
+    if (added_something && (!mesh_group_settings.get<bool>("magic_spiralize") || gcode_layer.getLayerNr() < static_cast<LayerIndex>(mesh.settings.get<size_t>("initial_bottom_layers"))))
     {
         coord_t innermost_wall_line_width = mesh.settings.get<coord_t>((mesh.settings.get<size_t>("wall_line_count") > 1) ? "wall_line_width_x" : "wall_line_width_0");
         if (gcode_layer.getLayerNr() == 0)
@@ -1944,12 +1944,12 @@ bool FffGcodeWriter::processInsets(const SliceDataStorage& storage, LayerPlan& g
                 // nothing to do
                 return false;
             }
-            const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
-            if (gcode_layer.getLayerNr() >= static_cast<LayerIndex>(bottom_layers))
+            const size_t initial_bottom_layers = mesh.settings.get<size_t>("initial_bottom_layers");
+            if (gcode_layer.getLayerNr() >= static_cast<LayerIndex>(initial_bottom_layers))
             {
                 spiralize = true;
             }
-            if (spiralize && gcode_layer.getLayerNr() == static_cast<LayerIndex>(bottom_layers) && !part.insets.empty() && extruder_nr == mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr)
+            if (spiralize && gcode_layer.getLayerNr() == static_cast<LayerIndex>(initial_bottom_layers) && !part.insets.empty() && extruder_nr == mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr)
             { // on the last normal layer first make the outer wall normally and then start a second outer wall from the same hight, but gradually moving upward
                 added_something = true;
                 setExtruder_addPrime(storage, gcode_layer, extruder_nr);
@@ -1958,7 +1958,7 @@ bool FffGcodeWriter::processInsets(const SliceDataStorage& storage, LayerPlan& g
                 {
                     // start this first wall at the same vertex the spiral starts
                     ConstPolygonRef spiral_inset = part.insets[0][0];
-                    const unsigned spiral_start_vertex = storage.spiralize_seam_vertex_indices[bottom_layers];
+                    const unsigned spiral_start_vertex = storage.spiralize_seam_vertex_indices[initial_bottom_layers];
                     if (spiral_start_vertex < spiral_inset.size())
                     {
                         gcode_layer.addTravel(spiral_inset[spiral_start_vertex]);
@@ -2465,14 +2465,9 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
         mesh.settings.get<EFillMethod>("top_bottom_pattern");
 
     AngleDegrees skin_angle = 45;
-    const bool skin_alternate_rotation = mesh.settings.get<bool>("skin_alternate_rotation") && (mesh.settings.get<size_t>("top_layers") >= 4 || mesh.settings.get<size_t>("bottom_layers") >= 4 );
     if (mesh.skin_angles.size() > 0)
     {
         skin_angle = mesh.skin_angles.at(layer_nr % mesh.skin_angles.size());
-    }
-    if (skin_alternate_rotation && (layer_nr / 2 ) & 1)
-    {
-        skin_angle -= 45;
     }
 
     // generate skin_polygons and skin_lines (and concentric_perimeter_gaps if needed)

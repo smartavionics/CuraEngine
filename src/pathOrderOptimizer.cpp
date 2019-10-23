@@ -13,6 +13,10 @@
 
 namespace cura {
 
+constexpr coord_t COINCIDENT_POINT_DISTANCE = 10; // In uM. Points closer than this may be considered overlapping / at the same place
+constexpr coord_t SQUARED_COINCIDENT_POINT_DISTANCE = COINCIDENT_POINT_DISTANCE * COINCIDENT_POINT_DISTANCE;
+
+
 /**
 *
 */
@@ -228,7 +232,7 @@ int PathOrderOptimizer::getRandomPointInPolygon(int poly_idx)
 
 static inline bool pointsAreCoincident(const Point& a, const Point& b)
 {
-    return vSize2(a - b) < 100; // points are closer than 10uM, consider them coincident
+    return vSize2(a - b) < SQUARED_COINCIDENT_POINT_DISTANCE; // points are closer than COINCIDENT_POINT_DISTANCE, consider them coincident
 }
 
 /**
