@@ -419,6 +419,8 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract, coord_t min_co
 
     const coord_t maximum_travel_resolution = extruder->settings.get<coord_t>("meshfix_maximum_travel_resolution");
 
+    const bool retraction_hop_enabled = extruder->settings.get<bool>("retraction_hop_enabled") || (layer_nr == 0 && extruder->settings.get<bool>("retraction_hop_only_on_initial_layer"));
+
     const bool is_first_travel_of_extruder_after_switch = extruder_plans.back().paths.size() == 1 && (extruder_plans.size() > 1 || last_extruder_previous_layer != getExtruder());
     bool bypass_combing = is_first_travel_of_extruder_after_switch && extruder->settings.get<bool>("retraction_hop_after_extruder_switch");
 
@@ -428,7 +430,7 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract, coord_t min_co
         bypass_combing = true; // first travel move is bogus; it is added after this and the previous layer have been planned in LayerPlanBuffer::addConnectingTravelMove
         first_travel_destination = p;
         first_travel_destination_is_inside = is_inside;
-        if (layer_nr == 0 && extruder->settings.get<bool>("retraction_enable") && extruder->settings.get<bool>("retraction_hop_enabled"))
+        if (layer_nr == 0 && extruder->settings.get<bool>("retraction_enable") && retraction_hop_enabled)
         {
             path->retract = true;
             path->perform_z_hop = true;
@@ -441,7 +443,7 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract, coord_t min_co
         path->retract = true;
         if (comb == nullptr)
         {
-            path->perform_z_hop = extruder->settings.get<bool>("retraction_hop_enabled");
+            path->perform_z_hop = retraction_hop_enabled;
         }
     }
 
@@ -526,7 +528,7 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract, coord_t min_co
                         path->retract = (direct_distance >= retraction_config.retraction_min_travel_distance);
                         if (path->retract)
                         {
-                            path->perform_z_hop = extruder->settings.get<bool>("retraction_hop_enabled");
+                            path->perform_z_hop = retraction_hop_enabled;
                         }
                     }
                 }
@@ -548,7 +550,7 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract, coord_t min_co
             moveInsideCombBoundary(innermost_wall_line_width);
         }
         path->retract = true;
-        path->perform_z_hop = extruder->settings.get<bool>("retraction_hop_enabled");
+        path->perform_z_hop = retraction_hop_enabled;
     }
 
     GCodePath& ret = addTravel_simple(p, path);
