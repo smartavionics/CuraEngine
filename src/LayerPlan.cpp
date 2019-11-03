@@ -445,6 +445,11 @@ GCodePath& LayerPlan::addTravel(Point p, bool force_comb_retract, coord_t min_co
         }
     }
 
+    if (layer_nr == 0 && comb != nullptr && extruder->settings.get<bool>("travel_no_combing_on_initial_layer"))
+    {
+        bypass_combing = true;
+    }
+
     if (comb != nullptr && !bypass_combing)
     {
         CombPaths combPaths;
