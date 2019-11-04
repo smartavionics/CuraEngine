@@ -921,6 +921,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                         break;
                     }
                     // test lines backwards of wall[start_idx]
+                    beyond = 0;
                     if (LinearAlg2D::getDist2FromLineSegment(wall[(start_idx + wall.size() - i - 1) % wall.size()], closest, wall[(start_idx + wall.size() - i) % wall.size()], &beyond) < 25 && !beyond)
                     {
                         z_seam_point = closest;
