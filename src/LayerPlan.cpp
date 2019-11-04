@@ -930,6 +930,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                         break;
                     }
                     // test lines backwards of wall[start_idx]
+                    beyond = 0;
                     if (LinearAlg2D::getDist2FromLineSegment(wall[(start_idx + wall.size() - i - 1) % wall.size()], closest, wall[(start_idx + wall.size() - i) % wall.size()], &beyond) < 25 && !beyond)
                     {
                         z_seam_point = closest;
@@ -1090,7 +1091,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     if (wall.size() > 2)
     {
         const Point& p1 = wall[start_idx];
-        const float flow = (wall_overlap_computation) ? flow_ratio * wall_overlap_computation->getFlow(p0, p1) : flow_ratio;
+        const float flow = (wall_overlap_computation) ? flow_ratio * wall_overlap_computation->getFlow(p0, z_seam_point) : flow_ratio;
 
         if (!bridge_wall_mask.empty() && distance_to_bridge_start == 0)
         {
