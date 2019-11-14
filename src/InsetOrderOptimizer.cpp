@@ -452,7 +452,9 @@ void InsetOrderOptimizer::processOuterWallInsets(const bool include_outer, const
             // just like we did for the holes, ensure that a single outer wall inset is started close to the z seam position
             // but if there is more than one outer wall level 1 inset, don't bother to move as it may actually be a waste of time because
             // there may not be an inset immediately inside of where the z seam is located so we would end up moving again anyway
-            if (num_level_1_insets == 1)
+            // Update: if z-seams are "exact", don't do the move either
+            const bool exact_z_seams = (mesh.settings.get<EZSeamType>("z_seam_type") == EZSeamType::USER_SPECIFIED && mesh.settings.get<EZSeamCornerPrefType>("z_seam_corner") == EZSeamCornerPrefType::Z_SEAM_CORNER_PREF_NONE);
+            if (num_level_1_insets == 1 && !exact_z_seams)
             {
                 // move to the location of the vertex in the innermost inset that's closest to the z seam location
                 const Point dest = part_inner_walls[0][PolygonUtils::findNearestVert(z_seam_location, part_inner_walls[0])];
