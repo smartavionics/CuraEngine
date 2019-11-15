@@ -1825,7 +1825,8 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
     {
         // accumulate the outlines of all of the parts that are on the layer below
 
-        Polygons outlines_below;
+        Polygons bridge_outlines_below;
+        Polygons overhang_outlines_below;
         AABB boundaryBox(part_outline);
         for (const SliceMeshStorage& m : storage.meshes)
         {
@@ -1835,16 +1836,20 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
                 {
                     if (boundaryBox.hit(prevLayerPart.boundaryBox))
                     {
-                        outlines_below.add(prevLayerPart.outline);
+                        bridge_outlines_below.add(prevLayerPart.outline);
                     }
                 }
             }
         }
 
+        overhang_outlines_below = bridge_outlines_below;
+
         const coord_t layer_height = mesh_config.inset0_config.getLayerThickness();
 
         const Settings& mesh_group_settings = Application::getInstance().current_slice->scene.current_mesh_group->settings;
-        if (!mesh.settings.get<bool>("bridge_over_support") && (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable")))
+        const bool bridge_over_support = mesh.settings.get<bool>("bridge_over_support");
+        const bool wall_overhang_over_support = mesh.settings.get<bool>("wall_overhang_over_support");
+        if ((!bridge_over_support || !wall_overhang_over_support) && (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable")))
         {
             // add the support outlines so we don't generate bridges over support
             const coord_t z_distance_top = mesh.settings.get<coord_t>("support_top_distance");
@@ -1880,19 +1885,27 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
                 if (support.size())
                 {
                     // expand support regions to avoid generating bridge walls and skins in the gap between the support and the model
-                    outlines_below.add(support.offset(mesh.settings.get<coord_t>("support_xy_distance") + 10));
+                    support = support.offset(mesh.settings.get<coord_t>("support_xy_distance") + 10);
+                    if (!bridge_over_support)
+                    {
+                        bridge_outlines_below.add(support);
+                    }
+                    if (!wall_overhang_over_support)
+                    {
+                        overhang_outlines_below.add(support);
+                    }
                 }
             }
         }
 
         const int half_outer_wall_width = mesh_config.inset0_config.getLineWidth() / 2;
 
-        // remove those parts of the layer below that are narrower than a wall line width as they will not be printed
-
-        outlines_below = outlines_below.offset(-half_outer_wall_width).offset(half_outer_wall_width);
-
         if (bridge_settings_enabled)
         {
+            // remove those parts of the layer below that are narrower than a wall line width as they will not be printed
+
+            bridge_outlines_below = bridge_outlines_below.offset(-half_outer_wall_width).offset(half_outer_wall_width);
+
             // max_air_gap is the max allowed width of the unsupported region below the wall line
             // if the unsupported region is wider than max_air_gap, the wall line will be printed using bridge settings
 
@@ -1901,7 +1914,7 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
             // subtract the outlines of the parts below this part to give the shapes of the unsupported regions and then
             // shrink those shapes so that any that are narrower than two times max_air_gap will be removed
 
-            Polygons compressed_air(part_outline.difference(outlines_below).offset(-max_air_gap));
+            Polygons compressed_air(part_outline.difference(bridge_outlines_below).offset(-max_air_gap));
 
             // now expand the air regions by the same amount as they were shrunk plus half the outer wall line width
             // which is required because when the walls are being generated, the vertices do not fall on the part's outline
@@ -1912,12 +1925,16 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
 
         if (wall_overhang_detection_enabled)
         {
+            // remove those parts of the layer below that are narrower than a wall line width as they will not be printed
+
+            overhang_outlines_below = overhang_outlines_below.offset(-half_outer_wall_width).offset(half_outer_wall_width);
+
             // the overhang mask is set to the area of the current part's outline minus the region that is considered to be supported
             // the supported region is made up of those areas that really are supported by either model or support on the layer below
             // expanded to take into account the overhang angle, the greater the overhang angle, the larger the supported area is
             // considered to be
             const coord_t overhang_width = layer_height * std::tan(wall_overhang_angle / (180 / M_PI));
-            overhang_regions->add(part_outline.offset(-half_outer_wall_width).difference(outlines_below.offset(10 + overhang_width - half_outer_wall_width)).offset(10));
+            overhang_regions->add(part_outline.offset(-half_outer_wall_width).difference(overhang_outlines_below.offset(10 + overhang_width - half_outer_wall_width)).offset(10));
         }
     }
 }
