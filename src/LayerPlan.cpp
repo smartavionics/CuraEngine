@@ -699,7 +699,8 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
     const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
     const Ratio bridge_wall_coast = mesh.settings.get<Ratio>("bridge_wall_coast");
     Ratio overhang_speed_factor = mesh.settings.get<Ratio>("wall_overhang_speed_factor");
-    const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(p0, true) && overhang_mask.inside(p1, true));
+    const Point mid(p0 + (p1 - p0)/2);
+    const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(p0, true) && overhang_mask.inside(p1, true) && overhang_mask.inside(mid, true));
     const double fan_speed = (is_overhang) ? (double)mesh.settings.get<Ratio>("wall_overhang_fan_speed") * 100.0 : GCodePathConfig::FAN_SPEED_DEFAULT;
 
     if (is_overhang)
@@ -707,7 +708,6 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
         // use the distance from the mid point of the line segment to the inside edge of the overhang mask to modify the overhang speed factor
         // the closer the line segment is to the inside edge of the overhang mask, the closer the overhang speed factor is to 1.0
         // the effect of this is to smooth the speed transition
-        Point mid(p0 + (p1 - p0)/2);
         const coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
         ClosestPolygonPoint cpp = PolygonUtils::findClosest(mid + normal(turn90CCW(p1 - mid), wall_line_width_0), overhang_mask);
         if (cpp.isValid())
