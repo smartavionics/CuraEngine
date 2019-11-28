@@ -721,6 +721,9 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                // std::cerr << layer_nr << ": speed_factor = " << overhang_speed_factor << "\n";
             }
         }
+        // ensure the speed factor does not produce a speed less than the minimum speed allowed
+        const Velocity min_speed = fan_speed_layer_time_settings_per_extruder[getExtruder()].cool_min_speed;
+        overhang_speed_factor = std::max((double)overhang_speed_factor, (double)(min_speed / non_bridge_config.getSpeed()));
     }
 
     Point cur_point = p0;
