@@ -693,18 +693,16 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
     const double acceleration_factor = 0.75; // must be < 1, the larger the value, the slower the acceleration
     const bool spiralize = false;
 
-//    const FanSpeedLayerTimeSettings& fan_speed_layer_time_settings = fan_speed_layer_time_settings_per_extruder[getExtruder()];
-//    const double default_fan_speed = (layer_nr >= fan_speed_layer_time_settings.cool_fan_min_layer) ? fan_speed_layer_time_settings.cool_fan_speed_min : 0;
-
     const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
     const Ratio bridge_wall_coast = mesh.settings.get<Ratio>("bridge_wall_coast");
     Ratio overhang_speed_factor = mesh.settings.get<Ratio>("wall_overhang_speed_factor");
     const Point mid(p0 + (p1 - p0)/2);
     const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(p0, true) && overhang_mask.inside(p1, true) && overhang_mask.inside(mid, true));
-    const double fan_speed = (is_overhang) ? (double)mesh.settings.get<Ratio>("wall_overhang_fan_speed") * 100.0 : GCodePathConfig::FAN_SPEED_DEFAULT;
+    double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
 
     if (is_overhang)
     {
+        fan_speed = (double)mesh.settings.get<Ratio>("wall_overhang_fan_speed") * 100.0;
         // use the distance from the mid point of the line segment to the inside edge of the overhang mask to modify the overhang speed factor
         // the closer the line segment is to the inside edge of the overhang mask, the closer the overhang speed factor is to 1.0
         // the effect of this is to smooth the speed transition
@@ -717,8 +715,11 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
             if (dist < overhang_width)
             {
                 overhang_speed_factor = 1.0 + (overhang_speed_factor - 1.0) * dist / overhang_width;
-//                fan_speed = round(std::max(0.0, std::min(fan_speed, default_fan_speed + (fan_speed - default_fan_speed) * dist / overhang_width)) / 20) * 20;
-               // std::cerr << layer_nr << ": speed_factor = " << overhang_speed_factor << "\n";
+                if (std::abs(overhang_speed_factor - 1.0) < 0.2)
+                {
+                    // speed is within 20% of normal, use normal fan speed
+                    fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
+                }
             }
         }
         // ensure the speed factor does not produce a speed less than the minimum speed allowed
