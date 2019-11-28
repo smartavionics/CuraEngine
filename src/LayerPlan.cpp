@@ -707,18 +707,26 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
         // the closer the line segment is to the inside edge of the overhang mask, the closer the overhang speed factor is to 1.0
         // the effect of this is to smooth the speed transition
         const coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
-        ClosestPolygonPoint cpp = PolygonUtils::findClosest(mid + normal(turn90CCW(p1 - mid), wall_line_width_0), overhang_mask);
-        if (cpp.isValid())
+        // end is normal to the line mid point spaced a wall line width to the inside of the polygon
+        const Point end(mid + normal(turn90CCW(p1 - mid), wall_line_width_0));
+        if (!overhang_mask.inside(end, true))
         {
-            const coord_t overhang_width = layer_thickness * std::tan(mesh.settings.get<AngleDegrees>("wall_overhang_angle") / (180 / M_PI));
-            const coord_t dist = vSize(cpp.location - mid);
-            if (dist < overhang_width)
+            // end is not inside the overhang mask area so unless the outline polygon is a very weird shape end must be
+            // located nearer to the inside edge of the mask than the outer edge
+            ClosestPolygonPoint cpp = PolygonUtils::findClosest(end, overhang_mask);
+            if (cpp.isValid())
             {
-                overhang_speed_factor = 1.0 + (overhang_speed_factor - 1.0) * dist / overhang_width;
-                if (std::abs(overhang_speed_factor - 1.0) < 0.2)
+                // cpp.location is now the point on the inside edge of the overhang mask that is nearest to mid
+                const coord_t overhang_width = layer_thickness * std::tan(mesh.settings.get<AngleDegrees>("wall_overhang_angle") / (180 / M_PI));
+                const coord_t dist = vSize(cpp.location - mid);
+                if (dist < overhang_width)
                 {
-                    // speed is within 20% of normal, use normal fan speed
-                    fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
+                    overhang_speed_factor = 1.0 + (overhang_speed_factor - 1.0) * dist / overhang_width;
+                    if (std::abs(overhang_speed_factor - 1.0) < 0.2)
+                    {
+                        // speed is within 20% of normal, use normal fan speed
+                        fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
+                    }
                 }
             }
         }
