@@ -1933,7 +1933,7 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
             // the supported region is made up of those areas that really are supported by either model or support on the layer below
             // expanded to take into account the overhang angle, the greater the overhang angle, the larger the supported area is
             // considered to be
-            const coord_t overhang_width = layer_height * std::tan(wall_overhang_angle / (180 / M_PI));
+            const coord_t overhang_width = layer_height * std::tan(wall_overhang_angle / (180 / M_PI)) / 2;
             overhang_regions->add(part_outline.offset(-half_outer_wall_width).difference(overhang_outlines_below.offset(10 + overhang_width - half_outer_wall_width)).offset(10));
         }
     }

@@ -693,11 +693,35 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
     const double acceleration_factor = 0.75; // must be < 1, the larger the value, the slower the acceleration
     const bool spiralize = false;
 
+//    const FanSpeedLayerTimeSettings& fan_speed_layer_time_settings = fan_speed_layer_time_settings_per_extruder[getExtruder()];
+//    const double default_fan_speed = (layer_nr >= fan_speed_layer_time_settings.cool_fan_min_layer) ? fan_speed_layer_time_settings.cool_fan_speed_min : 0;
+
     const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
     const Ratio bridge_wall_coast = mesh.settings.get<Ratio>("bridge_wall_coast");
-    const Ratio overhang_speed_factor = mesh.settings.get<Ratio>("wall_overhang_speed_factor");
-    const bool is_overhang = (!overhang_mask.empty() && (overhang_mask.inside(p0, true) || overhang_mask.inside(p1, true)));
+    Ratio overhang_speed_factor = mesh.settings.get<Ratio>("wall_overhang_speed_factor");
+    const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(p0, true) && overhang_mask.inside(p1, true));
     const double fan_speed = (is_overhang) ? (double)mesh.settings.get<Ratio>("wall_overhang_fan_speed") * 100.0 : GCodePathConfig::FAN_SPEED_DEFAULT;
+
+    if (is_overhang)
+    {
+        // use the distance from the mid point of the line segment to the inside edge of the overhang mask to modify the overhang speed factor
+        // the closer the line segment is to the inside edge of the overhang mask, the closer the overhang speed factor is to 1.0
+        // the effect of this is to smooth the speed transition
+        Point mid(p0 + (p1 - p0)/2);
+        const coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
+        ClosestPolygonPoint cpp = PolygonUtils::findClosest(mid + normal(turn90CCW(p1 - mid), wall_line_width_0), overhang_mask);
+        if (cpp.isValid())
+        {
+            const coord_t overhang_width = layer_thickness * std::tan(mesh.settings.get<AngleDegrees>("wall_overhang_angle") / (180 / M_PI));
+            const coord_t dist = vSize(cpp.location - mid);
+            if (dist < overhang_width)
+            {
+                overhang_speed_factor = 1.0 + (overhang_speed_factor - 1.0) * dist / overhang_width;
+//                fan_speed = round(std::max(0.0, std::min(fan_speed, default_fan_speed + (fan_speed - default_fan_speed) * dist / overhang_width)) / 20) * 20;
+               // std::cerr << layer_nr << ": speed_factor = " << overhang_speed_factor << "\n";
+            }
+        }
+    }
 
     Point cur_point = p0;
 
