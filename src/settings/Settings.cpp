@@ -331,19 +331,32 @@ template<> EFillMethod Settings::get<EFillMethod>(const std::string& key) const
     }
     else if (value == "gyroid")
     {
-        return EFillMethod::GYROID_HI_RES;
+        return EFillMethod::GYROID;
     }
-    else if (value == "gyroid_med_res")
+    else if (value == "schwarz_p")
     {
-        return EFillMethod::GYROID_MED_RES;
-    }
-    else if (value == "gyroid_low_res")
-    {
-        return EFillMethod::GYROID_LOW_RES;
+        return EFillMethod::SCHWARZ_P;
     }
     else //Default.
     {
         return EFillMethod::NONE;
+    }
+}
+
+template<> EFillResolution Settings::get<EFillResolution>(const std::string& key) const
+{
+    const std::string& value = get<std::string>(key);
+    if (value == "low_resolution")
+    {
+        return EFillResolution::LOW_RESOLUTION;
+    }
+    else if (value == "medium_resolution")
+    {
+        return EFillResolution::MEDIUM_RESOLUTION;
+    }
+    else
+    {
+        return EFillResolution::HIGH_RESOLUTION;
     }
 }
 

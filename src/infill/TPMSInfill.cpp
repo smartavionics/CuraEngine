@@ -1,24 +1,23 @@
 //Copyright (c) 2018 Ultimaker B.V.
 //CuraEngine is released under the terms of the AGPLv3 or higher.
 
-#include "GyroidInfill.h"
+// Implement a few TPMS (Triply Periodic Minimal Surfaces) infill patterns
+
+#include "TPMSInfill.h"
 #include "../utils/AABB.h"
 #include "../utils/linearAlg2D.h"
 #include "../utils/polygon.h"
 
 namespace cura {
 
-GyroidInfill::GyroidInfill() {
+TPMSInfill::TPMSInfill() {
 }
 
-GyroidInfill::~GyroidInfill() {
+TPMSInfill::~TPMSInfill() {
 }
 
-void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z, EFillMethod pattern, const Point& infill_origin, const AngleDegrees fill_angle)
+void TPMSInfill::generate(Polygons& result_lines, const bool zig_zaggify, const coord_t outline_offset, const coord_t infill_line_width, const coord_t line_distance, const Polygons& in_outline, const coord_t z, const EFillMethod pattern, const EFillResolution resolution, const Point& infill_origin, const AngleDegrees fill_angle)
 {
-    // generate infill based on the gyroid equation: sin_x * cos_y + sin_y * cos_z + sin_z * cos_x = 0
-    // kudos to the author of the Slic3r implementation equation code, the equation code here is based on that
-
     const double fill_angle_rads = fill_angle / (180 / M_PI);
 
     const auto rotate_around_origin = [&](const Point& point, const double rads)
@@ -43,7 +42,7 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
     int pitch = line_distance * 2.41; // this produces similar density to the "line" infill pattern
     int num_steps = 4;
     int step = pitch / num_steps;
-    const int max_steps = (pattern == EFillMethod::GYROID_LOW_RES) ? 4 : (pattern == EFillMethod::GYROID_MED_RES) ? 8 : 16;
+    const int max_steps = (resolution == EFillResolution::LOW_RESOLUTION) ? 4 : (resolution == EFillResolution::MEDIUM_RESOLUTION) ? 8 : 16;
     while (step > 500 && num_steps < max_steps)
     {
         num_steps *= 2;
@@ -53,8 +52,6 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
     const double z_rads = 2 * M_PI * z / pitch;
     const double cos_z = std::cos(z_rads);
     const double sin_z = std::sin(z_rads);
-    std::vector<coord_t> odd_line_coords;
-    std::vector<coord_t> even_line_coords;
     Polygons result;
     std::vector<Point> chains[2]; // [start_points[], end_points[]]
     std::vector<unsigned> connected_to[2]; // [chain_indices[], chain_indices[]]
@@ -65,24 +62,292 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
     const coord_t x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / pitch) * pitch;
     const coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / pitch + 0.25) * pitch;
 
-    if (std::abs(sin_z) <= std::abs(cos_z))
+    if (pattern == EFillMethod::GYROID)
     {
-        // "vertical" lines
-        const double phase_offset = ((cos_z < 0) ? M_PI : 0) + M_PI;
-        for (coord_t y = 0; y < pitch; y += step)
+        // generate infill based on the gyroid equation: sin_x * cos_y + sin_y * cos_z + sin_z * cos_x = 0
+        // kudos to the author of the Slic3r implementation equation code, the equation code here is based on that
+
+        std::vector<coord_t> odd_line_coords;
+        std::vector<coord_t> even_line_coords;
+        if (std::abs(sin_z) <= std::abs(cos_z))
+        {
+            // "vertical" lines
+            const double phase_offset = ((cos_z < 0) ? M_PI : 0) + M_PI;
+            for (coord_t y = 0; y < pitch; y += step)
+            {
+                const double y_rads = 2 * M_PI * y / pitch;
+                const double a = cos_z;
+                const double b = std::sin(y_rads + phase_offset);
+                const double odd_c = sin_z * std::cos(y_rads + phase_offset);
+                const double even_c = sin_z * std::cos(y_rads + phase_offset + M_PI);
+                const double h = std::sqrt(a * a + b * b);
+                const double odd_x_rads = ((h != 0) ? std::asin(odd_c / h) + std::asin(b / h) : 0) - M_PI/2;
+                const double even_x_rads = ((h != 0) ? std::asin(even_c / h) + std::asin(b / h) : 0) - M_PI/2;
+                odd_line_coords.push_back(odd_x_rads / M_PI * pitch);
+                even_line_coords.push_back(even_x_rads / M_PI * pitch);
+            }
+            const unsigned num_coords = odd_line_coords.size();
+            unsigned num_columns = 0;
+            for (coord_t x = x_min - 1.25 * pitch; x < x_max; x += pitch/2)
+            {
+                bool is_first_point = true;
+                Point last;
+                bool last_inside = false;
+                unsigned chain_end_index = 0;
+                Point chain_end[2];
+                for (coord_t y = y_min; y < y_max; y += pitch)
+                {
+                    for (unsigned i = 0; i < num_coords; ++i)
+                    {
+                        Point current(x + ((num_columns & 1) ? odd_line_coords[i] : even_line_coords[i])/2 + pitch, y + (coord_t)(i * step));
+                        current = rotate_around_origin(current, fill_angle_rads);
+                        bool current_inside = outline.inside(current, true);
+                        if (!is_first_point)
+                        {
+                            if (last_inside && current_inside)
+                            {
+                                // line doesn't hit the boundary, add the whole line
+                                result.addLine(last, current);
+                            }
+                            else if (last_inside != current_inside)
+                            {
+                                // line hits the boundary, add the part that's inside the boundary
+                                Polygons line;
+                                line.addLine(last, current);
+                                line = outline.intersectionPolyLines(line);
+                                if (line.size() > 0)
+                                {
+                                    // some of the line is inside the boundary
+                                    result.addLine(line[0][0], line[0][1]);
+                                    if (zig_zaggify)
+                                    {
+                                        chain_end[chain_end_index] = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
+                                        if (++chain_end_index == 2)
+                                        {
+                                            chains[0].push_back(chain_end[0]);
+                                            chains[1].push_back(chain_end[1]);
+                                            chain_end_index = 0;
+                                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                                            line_numbers.push_back(num_columns);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    // none of the line is inside the boundary so the point that's actually on the boundary
+                                    // is the chain end
+                                    if (zig_zaggify)
+                                    {
+                                        chain_end[chain_end_index] = (last_inside) ? last : current;
+                                        if (++chain_end_index == 2)
+                                        {
+                                            chains[0].push_back(chain_end[0]);
+                                            chains[1].push_back(chain_end[1]);
+                                            chain_end_index = 0;
+                                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                                            line_numbers.push_back(num_columns);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        last = current;
+                        last_inside = current_inside;
+                        is_first_point = false;
+                    }
+                }
+                ++num_columns;
+            }
+        }
+        else
+        {
+            // "horizontal" lines
+            const double phase_offset = (sin_z < 0) ? M_PI : 0;
+            for (coord_t x = 0; x < pitch; x += step)
+            {
+                const double x_rads = 2 * M_PI * x / pitch;
+                const double a = sin_z;
+                const double b = std::cos(x_rads + phase_offset);
+                const double odd_c = cos_z * std::sin(x_rads + phase_offset + M_PI);
+                const double even_c = cos_z * std::sin(x_rads + phase_offset);
+                const double h = std::sqrt(a * a + b * b);
+                const double odd_y_rads = ((h != 0) ? std::asin(odd_c / h) + std::asin(b / h) : 0) + M_PI/2;
+                const double even_y_rads = ((h != 0) ? std::asin(even_c / h) + std::asin(b / h) : 0) + M_PI/2;
+                odd_line_coords.push_back(odd_y_rads / M_PI * pitch);
+                even_line_coords.push_back(even_y_rads / M_PI * pitch);
+            }
+            const unsigned num_coords = odd_line_coords.size();
+            unsigned num_rows = 0;
+            for (coord_t y = y_min; y < y_max; y += pitch/2)
+            {
+                bool is_first_point = true;
+                Point last;
+                bool last_inside = false;
+                unsigned chain_end_index = 0;
+                Point chain_end[2];
+                for (coord_t x = x_min; x < x_max; x += pitch)
+                {
+                    for (unsigned i = 0; i < num_coords; ++i)
+                    {
+                        Point current(x + (coord_t)(i * step), y + ((num_rows & 1) ? odd_line_coords[i] : even_line_coords[i])/2);
+                        current = rotate_around_origin(current, fill_angle_rads);
+                        bool current_inside = outline.inside(current, true);
+                        if (!is_first_point)
+                        {
+                            if (last_inside && current_inside)
+                            {
+                                // line doesn't hit the boundary, add the whole line
+                                result.addLine(last, current);
+                            }
+                            else if (last_inside != current_inside)
+                            {
+                                // line hits the boundary, add the part that's inside the boundary
+                                Polygons line;
+                                line.addLine(last, current);
+                                line = outline.intersectionPolyLines(line);
+                                if (line.size() > 0)
+                                {
+                                    // some of the line is inside the boundary
+                                    result.addLine(line[0][0], line[0][1]);
+                                    if (zig_zaggify)
+                                    {
+                                        chain_end[chain_end_index] = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
+                                        if (++chain_end_index == 2)
+                                        {
+                                            chains[0].push_back(chain_end[0]);
+                                            chains[1].push_back(chain_end[1]);
+                                            chain_end_index = 0;
+                                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                                            line_numbers.push_back(num_rows);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    // none of the line is inside the boundary so the point that's actually on the boundary
+                                    // is the chain end
+                                    if (zig_zaggify)
+                                    {
+                                        chain_end[chain_end_index] = (last_inside) ? last : current;
+                                        if (++chain_end_index == 2)
+                                        {
+                                            chains[0].push_back(chain_end[0]);
+                                            chains[1].push_back(chain_end[1]);
+                                            chain_end_index = 0;
+                                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                                            line_numbers.push_back(num_rows);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        last = current;
+                        last_inside = current_inside;
+                        is_first_point = false;
+                    }
+                }
+                ++num_rows;
+            }
+        }
+    }
+    else if (pattern == EFillMethod::SCHWARZ_P)
+    {
+        std::vector<bool> gaps;
+        std::vector<coord_t> x_coords;
+        std::vector<coord_t> y_coords;
+
+        bool at_start = true;
+        double large_y_inc = step / 4.0;
+        double small_y_inc = step / 16.0;
+        double y_inc = small_y_inc;
+        for (double y = 0; y < pitch/2; y += y_inc)
         {
             const double y_rads = 2 * M_PI * y / pitch;
-            const double a = cos_z;
-            const double b = std::sin(y_rads + phase_offset);
-            const double odd_c = sin_z * std::cos(y_rads + phase_offset);
-            const double even_c = sin_z * std::cos(y_rads + phase_offset + M_PI);
-            const double h = std::sqrt(a * a + b * b);
-            const double odd_x_rads = ((h != 0) ? std::asin(odd_c / h) + std::asin(b / h) : 0) - M_PI/2;
-            const double even_x_rads = ((h != 0) ? std::asin(even_c / h) + std::asin(b / h) : 0) - M_PI/2;
-            odd_line_coords.push_back(odd_x_rads / M_PI * pitch);
-            even_line_coords.push_back(even_x_rads / M_PI * pitch);
+            double x_val = std::cos(y_rads) + cos_z;
+            bool gap = x_val < -1.0 || x_val > 1.0;
+            if (at_start)
+            {
+                if (gap)
+                {
+                    if (gaps.empty())
+                    {
+                        gaps.push_back(true);
+                        x_coords.push_back(0);
+                        y_coords.push_back(0);
+                    }
+                    continue;
+                }
+                if (!gaps.empty())
+                {
+                    gaps.push_back(false);
+                    x_coords.push_back(std::acos((x_val < 0) ? -1.0 : 1.0) / M_PI / 2 * pitch + pitch/4);
+                    y_coords.push_back(y);
+                }
+                at_start = false;
+                y_inc = large_y_inc;
+            }
+            else if (gap)
+            {
+                if (y_inc != small_y_inc)
+                {
+                    y -= y_inc;
+                    y_inc = small_y_inc;
+                    continue;
+                }
+                else
+                {
+                    gaps.push_back(false);
+                    x_coords.push_back(std::acos((x_val < 0) ? -1.0 : 1.0) / M_PI / 2 * pitch + pitch/4);
+                    y_coords.push_back(y);
+                }
+            }
+
+            if (gap)
+            {
+                if(gaps.empty() || !gaps.back())
+                {
+                    gaps.push_back(true);
+                    x_coords.push_back(0);
+                    y_coords.push_back(0);
+                }
+            }
+            else
+            {
+                gaps.push_back(false);
+                x_coords.push_back(std::acos(x_val) / M_PI / 2 * pitch + pitch/4);
+                y_coords.push_back(y);
+            }
         }
-        const unsigned num_coords = odd_line_coords.size();
+
+        // value for y == pitch/2
+        double x_val = cos_z - 1;
+        if (x_val < -1.0)
+        {
+            gaps.push_back(true);
+            x_coords.push_back(0);
+            y_coords.push_back(0);
+        }
+        else
+        {
+            gaps.push_back(false);
+            x_coords.push_back(std::acos(x_val) / M_PI / 2 * pitch + pitch/4);
+            y_coords.push_back(pitch/2);
+        }
+
+        // mirror values below pitch/2
+
+        for (int i = x_coords.size() - 2; i > 0; --i)
+        {
+            gaps.push_back(gaps[i]);
+            x_coords.push_back(x_coords[i]);
+            y_coords.push_back(pitch - y_coords[i]);
+        }
+
+        const unsigned num_coords = x_coords.size();
         unsigned num_columns = 0;
         for (coord_t x = x_min - 1.25 * pitch; x < x_max; x += pitch/2)
         {
@@ -95,7 +360,13 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
             {
                 for (unsigned i = 0; i < num_coords; ++i)
                 {
-                    Point current(x + ((num_columns & 1) ? odd_line_coords[i] : even_line_coords[i])/2 + pitch, y + (coord_t)(i * step));
+                    if (gaps[i])
+                    {
+                        is_first_point = true;
+                        continue;
+                    }
+                    
+                    Point current(x + ((num_columns & 1) ? -x_coords[i] : x_coords[i]) + pitch, y + y_coords[i]);
                     current = rotate_around_origin(current, fill_angle_rads);
                     bool current_inside = outline.inside(current, true);
                     if (!is_first_point)
@@ -155,98 +426,6 @@ void GyroidInfill::generateTotalGyroidInfill(Polygons& result_lines, bool zig_za
                 }
             }
             ++num_columns;
-        }
-    }
-    else
-    {
-        // "horizontal" lines
-        const double phase_offset = (sin_z < 0) ? M_PI : 0;
-        for (coord_t x = 0; x < pitch; x += step)
-        {
-            const double x_rads = 2 * M_PI * x / pitch;
-            const double a = sin_z;
-            const double b = std::cos(x_rads + phase_offset);
-            const double odd_c = cos_z * std::sin(x_rads + phase_offset + M_PI);
-            const double even_c = cos_z * std::sin(x_rads + phase_offset);
-            const double h = std::sqrt(a * a + b * b);
-            const double odd_y_rads = ((h != 0) ? std::asin(odd_c / h) + std::asin(b / h) : 0) + M_PI/2;
-            const double even_y_rads = ((h != 0) ? std::asin(even_c / h) + std::asin(b / h) : 0) + M_PI/2;
-            odd_line_coords.push_back(odd_y_rads / M_PI * pitch);
-            even_line_coords.push_back(even_y_rads / M_PI * pitch);
-        }
-        const unsigned num_coords = odd_line_coords.size();
-        unsigned num_rows = 0;
-        for (coord_t y = y_min; y < y_max; y += pitch/2)
-        {
-            bool is_first_point = true;
-            Point last;
-            bool last_inside = false;
-            unsigned chain_end_index = 0;
-            Point chain_end[2];
-            for (coord_t x = x_min; x < x_max; x += pitch)
-            {
-                for (unsigned i = 0; i < num_coords; ++i)
-                {
-                    Point current(x + (coord_t)(i * step), y + ((num_rows & 1) ? odd_line_coords[i] : even_line_coords[i])/2);
-                    current = rotate_around_origin(current, fill_angle_rads);
-                    bool current_inside = outline.inside(current, true);
-                    if (!is_first_point)
-                    {
-                        if (last_inside && current_inside)
-                        {
-                            // line doesn't hit the boundary, add the whole line
-                            result.addLine(last, current);
-                        }
-                        else if (last_inside != current_inside)
-                        {
-                            // line hits the boundary, add the part that's inside the boundary
-                            Polygons line;
-                            line.addLine(last, current);
-                            line = outline.intersectionPolyLines(line);
-                            if (line.size() > 0)
-                            {
-                                // some of the line is inside the boundary
-                                result.addLine(line[0][0], line[0][1]);
-                                if (zig_zaggify)
-                                {
-                                    chain_end[chain_end_index] = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
-                                    if (++chain_end_index == 2)
-                                    {
-                                        chains[0].push_back(chain_end[0]);
-                                        chains[1].push_back(chain_end[1]);
-                                        chain_end_index = 0;
-                                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                        line_numbers.push_back(num_rows);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // none of the line is inside the boundary so the point that's actually on the boundary
-                                // is the chain end
-                                if (zig_zaggify)
-                                {
-                                    chain_end[chain_end_index] = (last_inside) ? last : current;
-                                    if (++chain_end_index == 2)
-                                    {
-                                        chains[0].push_back(chain_end[0]);
-                                        chains[1].push_back(chain_end[1]);
-                                        chain_end_index = 0;
-                                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                        line_numbers.push_back(num_rows);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    last = current;
-                    last_inside = current_inside;
-                    is_first_point = false;
-                }
-            }
-            ++num_rows;
         }
     }
 

@@ -8,7 +8,7 @@
 #include "infill.h"
 #include "sliceDataStorage.h"
 #include "infill/ImageBasedDensityProvider.h"
-#include "infill/GyroidInfill.h"
+#include "infill/TPMSInfill.h"
 #include "infill/NoZigZagConnectorProcessor.h"
 #include "infill/SierpinskiFill.h"
 #include "infill/SierpinskiFillProvider.h"
@@ -98,7 +98,7 @@ void Infill::_generate(Polygons& result_polygons, Polygons& result_lines, const 
     if (in_outline.empty()) return;
     if (line_distance == 0) return;
 
-    if (pattern == EFillMethod::ZIG_ZAG || (zig_zaggify && (pattern == EFillMethod::LINES || pattern == EFillMethod::TRIANGLES || pattern == EFillMethod::GRID || pattern == EFillMethod::CUBIC || pattern == EFillMethod::TETRAHEDRAL || pattern == EFillMethod::QUARTER_CUBIC || pattern == EFillMethod::TRIHEXAGON || pattern == EFillMethod::GYROID_HI_RES || pattern == EFillMethod::GYROID_MED_RES || pattern == EFillMethod::GYROID_LOW_RES)))
+    if (pattern == EFillMethod::ZIG_ZAG || (zig_zaggify && (pattern == EFillMethod::LINES || pattern == EFillMethod::TRIANGLES || pattern == EFillMethod::GRID || pattern == EFillMethod::CUBIC || pattern == EFillMethod::TETRAHEDRAL || pattern == EFillMethod::QUARTER_CUBIC || pattern == EFillMethod::TRIHEXAGON || pattern == EFillMethod::GYROID || pattern == EFillMethod::SCHWARZ_P)))
     {
         const float width_scale = (mesh) ? (float)mesh->settings.get<coord_t>("layer_height") / mesh->settings.get<coord_t>("infill_sparse_thickness") : 1;
         outline_offset -= width_scale * infill_line_width / 2; // the infill line zig zag connections must lie next to the border, not on it
@@ -150,10 +150,9 @@ void Infill::_generate(Polygons& result_polygons, Polygons& result_lines, const 
         }
         generateCrossInfill(*cross_fill_provider, result_polygons, result_lines);
         break;
-    case EFillMethod::GYROID_HI_RES:
-    case EFillMethod::GYROID_MED_RES:
-    case EFillMethod::GYROID_LOW_RES:
-        generateGyroidInfill(result_lines, pattern);
+    case EFillMethod::GYROID:
+    case EFillMethod::SCHWARZ_P:
+        generateTPMSInfill(result_lines, pattern);
         break;
     default:
         logError("Fill pattern has unknown value.\n");
@@ -253,9 +252,10 @@ void Infill::multiplyInfill(Polygons& result_polygons, Polygons& result_lines)
     }
 }
 
-void Infill::generateGyroidInfill(Polygons& result_lines, EFillMethod pattern)
+void Infill::generateTPMSInfill(Polygons& result_lines, EFillMethod pattern)
 {
-    GyroidInfill::generateTotalGyroidInfill(result_lines, zig_zaggify, outline_offset + infill_overlap, infill_line_width, line_distance, in_outline, z, pattern, infill_origin, fill_angle);
+    TPMSInfill tpms_infill;
+    tpms_infill.generate(result_lines, zig_zaggify, outline_offset + infill_overlap, infill_line_width, line_distance, in_outline, z, pattern, resolution, infill_origin, fill_angle);
 }
 
 void Infill::generateConcentricInfill(Polygons& result, int inset_value)

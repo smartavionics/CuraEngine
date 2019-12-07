@@ -12,14 +12,14 @@ namespace cura
 
 class Polygons;
 
-class GyroidInfill
+class TPMSInfill
 {
 public:
-    GyroidInfill();
+    TPMSInfill();
 
-    ~GyroidInfill();
+    ~TPMSInfill();
 
-    static void generateTotalGyroidInfill(Polygons& result_lines, bool zig_zaggify, coord_t outline_offset, coord_t infill_line_width, coord_t line_distance, const Polygons& in_outline, coord_t z, EFillMethod pattern, const Point& infill_origin, const AngleDegrees fill_angle);
+    void generate(Polygons& result_lines, const bool zig_zaggify, const coord_t outline_offset, const coord_t infill_line_width, const coord_t line_distance, const Polygons& in_outline, const coord_t z, const EFillMethod pattern, const EFillResolution resolution, const Point& infill_origin, const AngleDegrees fill_angle);
     
 private:
 
