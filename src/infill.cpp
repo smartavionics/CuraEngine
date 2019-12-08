@@ -254,8 +254,8 @@ void Infill::multiplyInfill(Polygons& result_polygons, Polygons& result_lines)
 
 void Infill::generateTPMSInfill(Polygons& result_lines, EFillMethod pattern)
 {
-    TPMSInfill tpms_infill;
-    tpms_infill.generate(result_lines, zig_zaggify, outline_offset + infill_overlap, infill_line_width, line_distance, in_outline, z, pattern, resolution, infill_origin, fill_angle);
+    TPMSInfill tpms_infill(zig_zaggify, line_distance, z, pattern, resolution, infill_origin, fill_angle);
+    tpms_infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
 }
 
 void Infill::generateConcentricInfill(Polygons& result, int inset_value)
