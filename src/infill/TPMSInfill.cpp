@@ -50,7 +50,7 @@ void TPMSInfill::generate(Polygons& result_lines, const Polygons& outline)
     {
         pitch *= 2.41;
     }
-    else if (pattern == EFillMethod::SCHWARZ_P)
+    else if (pattern == EFillMethod::SCHWARZ_P || pattern == EFillMethod::SCHWARZ_D)
     {
         pitch *= 1.94;
     }
@@ -76,6 +76,10 @@ void TPMSInfill::generate(Polygons& result_lines, const Polygons& outline)
     else if (pattern == EFillMethod::SCHWARZ_P)
     {
         generateSchwarzPCoordinates(result_lines, outline, pitch, step);
+    }
+    else if (pattern == EFillMethod::SCHWARZ_D)
+    {
+        generateSchwarzDCoordinates(result_lines, outline, pitch, step);
     }
 
     if (zig_zaggify && chains[0].size() > 0)
@@ -470,6 +474,117 @@ void TPMSInfill::generateSchwarzPCoordinates(Polygons& result, const Polygons& o
             }
         }
         ++num_columns;
+    }
+}
+
+void TPMSInfill::generateSchwarzDCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step)
+{
+    // generate Schwarz D "Primitive" surface defined by equation: sin(x) sin(y) sin(z) + sin(x) cos(y) cos(z) + cos(x) sin(y) cos(z) + cos(x) cos(y) sin(z) = 0
+    // see https://en.wikipedia.org/wiki/Schwarz_minimal_surface
+
+    const double cos_z = std::cos(2 * M_PI * z / pitch);
+    const double sin_z = std::sin(2 * M_PI * z / pitch);
+
+    std::vector<coord_t> x_coords;
+    std::vector<coord_t> y_coords;
+
+    double x_inc = step / 4.0;
+
+    for (double x = 0; x < pitch; x += x_inc)
+    {
+        const double x_rads = M_PI * x / pitch;
+        const double sin_x = std::sin(x_rads);
+        const double cos_x = std::cos(x_rads);
+
+        const double A = sin_x * sin_z;
+        const double B = cos_x * cos_z;
+        const double C = sin_x * cos_z;
+        const double D = cos_x * sin_z;
+        const double y_rads = std::atan(-(C + D) / (A + B));
+
+        x_coords.push_back(x);
+        y_coords.push_back(y_rads / M_PI * pitch);
+    }
+
+    // repeat the lines over the infill area
+    const unsigned num_coords = x_coords.size();
+    unsigned num_cols = 0;
+    for (coord_t x = x_min - 1.25 * pitch; x < x_max; x += pitch)
+    {
+        unsigned chain_end_index = 0;
+        Point chain_end[2];
+        for (coord_t y = y_min; y < y_max; y += pitch)
+        {
+            bool is_first_point = true;
+            Point last;
+            bool last_inside = false;
+            for (unsigned i = 0; i < num_coords; ++i)
+            {
+                Point current(x + x_coords[i], y + y_coords[i]);
+                if (i > 0 && std::abs(y_coords[i-1] - y_coords[i]) > pitch/2)
+                {
+                    // it's a discontinuity, start a new line
+                    is_first_point = true;
+                }
+                current = rotate_around_origin(current, fill_angle_rads);
+                bool current_inside = outline.inside(current, true);
+                if (!is_first_point)
+                {
+                    if (last_inside && current_inside)
+                    {
+                        // line doesn't hit the boundary, add the whole line
+                        result.addLine(last, current);
+                    }
+                    else if (last_inside != current_inside)
+                    {
+                        // line hits the boundary, add the part that's inside the boundary
+                        Polygons line;
+                        line.addLine(last, current);
+                        line = outline.intersectionPolyLines(line);
+                        if (line.size() > 0)
+                        {
+                            // some of the line is inside the boundary
+                            result.addLine(line[0][0], line[0][1]);
+                            if (zig_zaggify)
+                            {
+                                chain_end[chain_end_index] = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
+                                if (++chain_end_index == 2)
+                                {
+                                    chains[0].push_back(chain_end[0]);
+                                    chains[1].push_back(chain_end[1]);
+                                    chain_end_index = 0;
+                                    connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                                    connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                                    line_numbers.push_back(num_cols);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // none of the line is inside the boundary so the point that's actually on the boundary
+                            // is the chain end
+                            if (zig_zaggify)
+                            {
+                                chain_end[chain_end_index] = (last_inside) ? last : current;
+                                if (++chain_end_index == 2)
+                                {
+                                    chains[0].push_back(chain_end[0]);
+                                    chains[1].push_back(chain_end[1]);
+                                    chain_end_index = 0;
+                                    connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                                    connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                                    line_numbers.push_back(num_cols);
+                                }
+                            }
+                        }
+                    }
+                }
+                last = current;
+                last_inside = current_inside;
+                is_first_point = false;
+            }
+        }
+        ++num_cols;
     }
 }
 

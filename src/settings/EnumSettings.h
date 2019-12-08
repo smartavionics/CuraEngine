@@ -28,6 +28,7 @@ enum class EFillMethod
     CROSS_3D,
     GYROID,
     SCHWARZ_P,
+    SCHWARZ_D,
     NONE  // NOTE: Should remain last! (May be used in testing to enumarate the enum.)
 };
 
