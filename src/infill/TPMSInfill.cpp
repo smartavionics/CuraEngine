@@ -39,7 +39,16 @@ void TPMSInfill::generate(Polygons& result_lines, const bool zig_zaggify, const 
     }
     const AABB aabb(rotated_outline);
 
-    int pitch = line_distance * 2.41; // this produces similar density to the "line" infill pattern
+    int pitch = line_distance;
+    // scale pitch so that total amount of filament used matches the amount used by the "line" infill pattern
+    if (pattern == EFillMethod::GYROID)
+    {
+        pitch *= 2.41;
+    }
+    else if (pattern == EFillMethod::SCHWARZ_P)
+    {
+        pitch *= 1.94;
+    }
     int num_steps = 4;
     int step = pitch / num_steps;
     const int max_steps = (resolution == EFillResolution::LOW_RESOLUTION) ? 4 : (resolution == EFillResolution::MEDIUM_RESOLUTION) ? 8 : 16;
