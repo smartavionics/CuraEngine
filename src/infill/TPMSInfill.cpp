@@ -285,7 +285,8 @@ void TPMSInfill::generateGyroidCoordinates(Polygons& result, const Polygons& out
 
 void TPMSInfill::generateSchwarzPCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step)
 {
-    // generate Schwarz P "Primitive" surface (see https://en.wikipedia.org/wiki/Schwarz_minimal_surface)
+    // generate Schwarz P "Primitive" surface defined by equation: cos(x) + cos(y) + cos(z) = 0
+    // see https://en.wikipedia.org/wiki/Schwarz_minimal_surface
 
     const double cos_z = std::cos(2 * M_PI * z / pitch);
 
