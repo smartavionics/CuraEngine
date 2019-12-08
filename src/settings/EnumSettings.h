@@ -26,10 +26,16 @@ enum class EFillMethod
     ZIG_ZAG,
     CROSS,
     CROSS_3D,
-    GYROID_HI_RES,
-    GYROID_MED_RES,
-    GYROID_LOW_RES,
+    GYROID,
+    SCHWARZ_P,
     NONE  // NOTE: Should remain last! (May be used in testing to enumarate the enum.)
+};
+
+enum class EFillResolution
+{
+    LOW_RESOLUTION,
+    MEDIUM_RESOLUTION,
+    HIGH_RESOLUTION
 };
 
 /*!
