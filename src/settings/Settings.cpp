@@ -337,6 +337,10 @@ template<> EFillMethod Settings::get<EFillMethod>(const std::string& key) const
     {
         return EFillMethod::SCHWARZ_P;
     }
+    else if (value == "schwarz_d")
+    {
+        return EFillMethod::SCHWARZ_D;
+    }
     else //Default.
     {
         return EFillMethod::NONE;

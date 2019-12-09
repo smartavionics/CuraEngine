@@ -45,6 +45,7 @@ private:
 
     void generateGyroidCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
     void generateSchwarzPCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
+    void generateSchwarzDCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
     void generateConnections(Polygons& result, const Polygons& outline);
 };
 
