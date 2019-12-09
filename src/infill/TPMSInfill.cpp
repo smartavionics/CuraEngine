@@ -50,10 +50,15 @@ void TPMSInfill::generate(Polygons& result_lines, const Polygons& outline)
     {
         pitch *= 2.41;
     }
-    else if (pattern == EFillMethod::SCHWARZ_P || pattern == EFillMethod::SCHWARZ_D)
+    else if (pattern == EFillMethod::SCHWARZ_P)
     {
         pitch *= 1.94;
     }
+    else if (pattern == EFillMethod::SCHWARZ_D)
+    {
+        pitch *= 1.5;
+    }
+
     int num_steps = 4;
     int step = pitch / num_steps;
     const int max_steps = (resolution == EFillResolution::LOW_RESOLUTION) ? 4 : (resolution == EFillResolution::MEDIUM_RESOLUTION) ? 8 : 16;
@@ -482,15 +487,15 @@ void TPMSInfill::generateSchwarzDCoordinates(Polygons& result, const Polygons& o
     // generate Schwarz D "Primitive" surface defined by equation: sin(x) sin(y) sin(z) + sin(x) cos(y) cos(z) + cos(x) sin(y) cos(z) + cos(x) cos(y) sin(z) = 0
     // see https://en.wikipedia.org/wiki/Schwarz_minimal_surface
 
-    const double cos_z = std::cos(2 * M_PI * z / pitch);
-    const double sin_z = std::sin(2 * M_PI * z / pitch);
+    const double cos_z = std::cos(M_PI * z / pitch);
+    const double sin_z = std::sin(M_PI * z / pitch);
 
     std::vector<coord_t> x_coords;
     std::vector<coord_t> y_coords;
 
     double x_inc = step / 4.0;
 
-    for (double x = 0; x < pitch; x += x_inc)
+    for (double x = 0; x <= pitch; x += x_inc)
     {
         const double x_rads = M_PI * x / pitch;
         const double sin_x = std::sin(x_rads);
@@ -520,12 +525,15 @@ void TPMSInfill::generateSchwarzDCoordinates(Polygons& result, const Polygons& o
             bool last_inside = false;
             for (unsigned i = 0; i < num_coords; ++i)
             {
-                Point current(x + x_coords[i], y + y_coords[i]);
-                if (i > 0 && std::abs(y_coords[i-1] - y_coords[i]) > pitch/2)
+                coord_t y_coord = y_coords[i];
+                unsigned last_i = (i + num_coords - 1) % num_coords;
+                bool discontinuity = false;
+                if (std::abs(y_coords[last_i] - y_coords[i]) > pitch/2)
                 {
-                    // it's a discontinuity, start a new line
-                    is_first_point = true;
+                    y_coord += (y_coords[last_i] < y_coords[i]) ? -pitch : pitch;
+                    discontinuity = true;
                 }
+                Point current(x + x_coords[i], y + y_coord);
                 current = rotate_around_origin(current, fill_angle_rads);
                 bool current_inside = outline.inside(current, true);
                 if (!is_first_point)
@@ -579,8 +587,16 @@ void TPMSInfill::generateSchwarzDCoordinates(Polygons& result, const Polygons& o
                         }
                     }
                 }
-                last = current;
-                last_inside = current_inside;
+                if (discontinuity)
+                {
+                    last = rotate_around_origin(Point(x + x_coords[i], y + y_coords[i]), fill_angle_rads);
+                    last_inside = outline.inside(last, true);
+                }
+                else
+                {
+                    last = current;
+                    last_inside = current_inside;
+                }
                 is_first_point = false;
             }
         }
