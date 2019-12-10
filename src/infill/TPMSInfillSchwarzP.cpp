@@ -200,6 +200,11 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
 
     int connections_remaining = connection_points.size();
 
+    if (connections_remaining == 0)
+    {
+        return;
+    }
+
     unsigned last_connection_point_id = std::numeric_limits<unsigned>::max();
 
     for (ConstPolygonRef outline_poly : outline)
