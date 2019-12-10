@@ -224,13 +224,6 @@ private:
     std::vector<std::vector<std::vector<InfillLineSegment*>>> crossings_on_line;
 
     /*!
-     * Generate TPMS infill
-     * \param result (output) The resulting polygons
-     * \param pattern The space filling pattern of the infill to generate
-     */
-    void generateTPMSInfill(Polygons& result, EFillMethod pattern);
-
-    /*!
      * Generate sparse concentric infill
      * 
      * Also adds \ref Infill::perimeter_gaps between \ref Infill::in_outline and the first wall
