@@ -81,9 +81,7 @@ class TPMSInfillSchwarzD : public TPMSInfill
     using TPMSInfill::TPMSInfill;
 
 private:
-    std::vector<Point> chains[2]; // [start_points[], end_points[]]
-    std::vector<unsigned> connected_to[2]; // [chain_indices[], chain_indices[]]
-    std::vector<int> line_numbers; // which row/column line a chain is part of
+    std::vector<Point> connection_points;
 
     void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
 
