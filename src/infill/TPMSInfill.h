@@ -35,9 +35,14 @@ private:
     coord_t y_min; //!< min Y coordinate of generated infill
     coord_t y_max; //!< max Y coordinate of generated infill
 
+    // for Gyroid connections
     std::vector<Point> chains[2]; // [start_points[], end_points[]]
     std::vector<unsigned> connected_to[2]; // [chain_indices[], chain_indices[]]
     std::vector<int> line_numbers; // which row/column line a chain is part of
+
+    // for Schwarz P connections
+    std::vector<Point> connection_points;
+    std::vector<unsigned> connection_ids;
 
 private:
 
@@ -46,7 +51,10 @@ private:
     void generateGyroidCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
     void generateSchwarzPCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
     void generateSchwarzDCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
-    void generateConnections(Polygons& result, const Polygons& outline);
+
+    void generateGyroidConnections(Polygons& result, const Polygons& outline);
+    void generateSchwarzPConnections(Polygons& result, const Polygons& outline);
+    void generateSchwarzDConnections(Polygons& result, const Polygons& outline);
 };
 
 } // namespace cura
