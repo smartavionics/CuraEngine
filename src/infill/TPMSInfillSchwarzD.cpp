@@ -1,0 +1,216 @@
+//Copyright (c) 2019 Ultimaker B.V.
+//CuraEngine is released under the terms of the AGPLv3 or higher.
+
+#include "TPMSInfill.h"
+#include "../utils/linearAlg2D.h"
+#include "../utils/polygon.h"
+
+namespace cura {
+
+void TPMSInfillSchwarzD::generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step)
+{
+    // generate Schwarz D "Primitive" surface defined by equation: sin(x) sin(y) sin(z) + sin(x) cos(y) cos(z) + cos(x) sin(y) cos(z) + cos(x) cos(y) sin(z) = 0
+    // see https://en.wikipedia.org/wiki/Schwarz_minimal_surface
+
+    const double cos_z = std::cos(M_PI * z / pitch);
+    const double sin_z = std::sin(M_PI * z / pitch);
+
+    std::vector<coord_t> x_coords;
+    std::vector<coord_t> y_coords;
+
+    double x_inc = step / 4.0;
+
+    for (double x = 0; x <= pitch; x += x_inc)
+    {
+        const double x_rads = M_PI * x / pitch;
+        const double sin_x = std::sin(x_rads);
+        const double cos_x = std::cos(x_rads);
+
+        const double A = sin_x * sin_z;
+        const double B = cos_x * cos_z;
+        const double C = sin_x * cos_z;
+        const double D = cos_x * sin_z;
+        const double y_rads = std::atan(-(C + D) / (A + B));
+
+        x_coords.push_back(x);
+        y_coords.push_back(y_rads / M_PI * pitch);
+    }
+
+    // repeat the lines over the infill area
+    const unsigned num_coords = x_coords.size();
+    for (coord_t x = x_min - 1.25 * pitch; x < x_max; x += pitch)
+    {
+        for (coord_t y = y_min; y < y_max + pitch; y += pitch)
+        {
+            bool is_first_point = true;
+            Point last;
+            bool last_inside = false;
+            for (unsigned i = 0; i < num_coords; ++i)
+            {
+                coord_t y_coord = y_coords[i];
+                unsigned last_i = (i + num_coords - 1) % num_coords;
+                bool discontinuity = false;
+                if (std::abs(y_coords[last_i] - y_coords[i]) > pitch/2)
+                {
+                    y_coord += (y_coords[last_i] < y_coords[i]) ? -pitch : pitch;
+                    discontinuity = true;
+                }
+                Point current(x + x_coords[i], y + y_coord);
+                current = rotate_around_origin(current, fill_angle_rads);
+                bool current_inside = outline.inside(current, true);
+                if (!is_first_point)
+                {
+                    if (last_inside && current_inside)
+                    {
+                        // line doesn't hit the boundary, add the whole line
+                        result.addLine(last, current);
+                    }
+                    else if (last_inside != current_inside)
+                    {
+                        // line hits the boundary, add the part that's inside the boundary
+                        Polygons line;
+                        line.addLine(last, current);
+                        line = outline.intersectionPolyLines(line);
+                        if (line.size() > 0)
+                        {
+                            // some of the line is inside the boundary
+                            result.addLine(line[0][0], line[0][1]);
+                            if (zig_zaggify)
+                            {
+                                connection_points.push_back(line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1]);
+                            }
+                        }
+                        else
+                        {
+                            // none of the line is inside the boundary so the point that's actually on the boundary
+                            // is the chain end
+                            if (zig_zaggify)
+                            {
+                                connection_points.push_back((last_inside) ? last : current);
+                            }
+                        }
+                    }
+                }
+                if (discontinuity)
+                {
+                    last = rotate_around_origin(Point(x + x_coords[i], y + y_coords[i]), fill_angle_rads);
+                    last_inside = outline.inside(last, true);
+                }
+                else
+                {
+                    last = current;
+                    last_inside = current_inside;
+                }
+                is_first_point = false;
+            }
+        }
+    }
+}
+
+void TPMSInfillSchwarzD::generateConnections(Polygons& result, const Polygons& outline)
+{
+    // zig-zaggification consists of simply joining alternate connection ends with lines that follow the outline
+
+    int connections_remaining = connection_points.size();
+
+    if (connections_remaining == 0)
+    {
+        return;
+    }
+
+    for (ConstPolygonRef outline_poly : outline)
+    {
+        std::vector<Point> connector_points; // the points that make up a connector line
+
+        bool drawing = false; // true when a connector line is being (potentially) created
+
+        Point cur_point; // current point of interest - either an outline point or a connection point
+
+        // go round all of the region's outline and find the connections that meet it
+        // quit the loop early if we have seen all the connections and are not currently drawing a connector
+        for (unsigned outline_point_index = 0; (connections_remaining > 0 || drawing) && outline_point_index < outline_poly.size(); ++outline_point_index)
+        {
+            Point op0 = outline_poly[outline_point_index];
+            Point op1 = outline_poly[(outline_point_index + 1) % outline_poly.size()];
+            std::vector<unsigned> points_on_outline_connection_point_index;
+
+            // collect the connections that meet this segment of the outline
+            for (unsigned connection_points_index = 0; connection_points_index < connection_points.size(); ++connection_points_index)
+            {
+                // don't include connections that are close to the segment but are beyond the segment ends
+                short beyond = 0;
+                if (LinearAlg2D::getDist2FromLineSegment(op0, connection_points[connection_points_index], op1, &beyond) < 10 && !beyond)
+                {
+                    points_on_outline_connection_point_index.push_back(connection_points_index);
+                }
+            }
+
+            if (outline_point_index == 0 || vSize2(op0 - cur_point) > 100)
+            {
+                // this is either the first outline point or it is another outline point that is not too close to cur_point
+
+                cur_point = op0;
+                if (drawing)
+                {
+                    // include the start point of this outline segment in the connector
+                    connector_points.push_back(op0);
+                }
+            }
+
+            // iterate through each of the connection points that meet the current outline segment
+            while (points_on_outline_connection_point_index.size() > 0)
+            {
+                // find the nearest connection point to the current point
+                unsigned nearest_connection_point_index = 0;
+                float nearest_point_dist2 = std::numeric_limits<float>::infinity();
+                for (unsigned pi = 0; pi < points_on_outline_connection_point_index.size(); ++pi)
+                {
+                    float dist2 = vSize2f(connection_points[points_on_outline_connection_point_index[pi]] - cur_point);
+                    if (dist2 < nearest_point_dist2)
+                    {
+                        nearest_point_dist2 = dist2;
+                        nearest_connection_point_index = pi;
+                    }
+                }
+
+                // make the connection point the current point and add it to the connector line
+                cur_point = connection_points[points_on_outline_connection_point_index[nearest_connection_point_index]];
+
+                if (drawing && connector_points.size() > 0 && vSize2(cur_point - connector_points.back()) < 100)
+                {
+                    // this connection point will be too close to the last connector point so throw away the last connector point
+                    connector_points.pop_back();
+                }
+                connector_points.push_back(cur_point);
+
+                if (drawing)
+                {
+                    for (unsigned pi = 1; pi < connector_points.size(); ++pi)
+                    {
+                        result.addLine(connector_points[pi - 1], connector_points[pi]);
+                    }
+                    drawing = false;
+                    connector_points.clear();
+                }
+                else
+                {
+                    // we have just jumped a gap so now we want to start drawing again
+                    drawing = true;
+                }
+
+                // done with this connection point
+                points_on_outline_connection_point_index.erase(points_on_outline_connection_point_index.begin() + nearest_connection_point_index);
+
+                // decrement total amount of work to do
+                --connections_remaining;
+            }
+        }
+
+        if (connections_remaining < 1)
+        {
+            break;
+        }
+    }
+}
+
+} // namespace cura

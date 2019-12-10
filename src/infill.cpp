@@ -151,9 +151,22 @@ void Infill::_generate(Polygons& result_polygons, Polygons& result_lines, const 
         generateCrossInfill(*cross_fill_provider, result_polygons, result_lines);
         break;
     case EFillMethod::GYROID:
+        {
+            TPMSInfillGyroid infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle);
+            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
+        }
+        break;
     case EFillMethod::SCHWARZ_P:
+        {
+            TPMSInfillSchwarzP infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle);
+            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
+        }
+        break;
     case EFillMethod::SCHWARZ_D:
-        generateTPMSInfill(result_lines, pattern);
+        {
+            TPMSInfillSchwarzD infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle);
+            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
+        }
         break;
     default:
         logError("Fill pattern has unknown value.\n");
@@ -251,12 +264,6 @@ void Infill::multiplyInfill(Polygons& result_polygons, Polygons& result_lines)
         }
         result_polygons.clear(); // the output should only contain polylines
     }
-}
-
-void Infill::generateTPMSInfill(Polygons& result_lines, EFillMethod pattern)
-{
-    TPMSInfill tpms_infill(zig_zaggify, line_distance, z, pattern, resolution, infill_origin, fill_angle);
-    tpms_infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
 }
 
 void Infill::generateConcentricInfill(Polygons& result, int inset_value)

@@ -191,6 +191,9 @@ set(engine_SRCS # Except main.cpp.
     src/infill/SpaghettiInfillPathGenerator.cpp
     src/infill/SubDivCube.cpp
     src/infill/TPMSInfill.cpp
+    src/infill/TPMSInfillGyroid.cpp
+    src/infill/TPMSInfillSchwarzP.cpp
+    src/infill/TPMSInfillSchwarzD.cpp
 
     src/pathPlanning/Comb.cpp
     src/pathPlanning/GCodePath.cpp
