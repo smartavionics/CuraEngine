@@ -81,7 +81,10 @@ class TPMSInfillSchwarzD : public TPMSInfill
     using TPMSInfill::TPMSInfill;
 
 private:
+    typedef int ConnectionId;
+
     std::vector<Point> connection_points;
+    std::vector<ConnectionId> connection_ids;
 
     void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
 

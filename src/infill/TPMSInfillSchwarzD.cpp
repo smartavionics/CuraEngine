@@ -5,6 +5,8 @@
 #include "../utils/linearAlg2D.h"
 #include "../utils/polygon.h"
 
+#include <unordered_map>
+
 namespace cura {
 
 void TPMSInfillSchwarzD::generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step)
@@ -38,7 +40,7 @@ void TPMSInfillSchwarzD::generateCoordinates(Polygons& result, const Polygons& o
 
     // repeat the lines over the infill area
     const unsigned num_coords = x_coords.size();
-    for (coord_t x = x_min - 1.25 * pitch; x < x_max; x += pitch)
+    for (coord_t x = x_min; x < x_max; x += pitch)
     {
         for (coord_t y = y_min; y < y_max + pitch; y += pitch)
         {
@@ -77,7 +79,22 @@ void TPMSInfillSchwarzD::generateCoordinates(Polygons& result, const Polygons& o
                             result.addLine(line[0][0], line[0][1]);
                             if (zig_zaggify)
                             {
-                                connection_points.push_back(line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1]);
+                                Point connection_point = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
+                                connection_points.push_back(connection_point);
+                                ConnectionId connection_id = 0;
+                                const int col = (connection_point.X - x_min) / pitch;
+                                const int row = (connection_point.Y - y_min) / pitch;
+                                if (std::abs(cos_z) >= 0.707)
+                                {
+                                    // sloping backwards (\\)
+                                    connection_id = -col - row;
+                                }
+                                else
+                                {
+                                    // sloping forwards (//)
+                                    connection_id = col - row;
+                                }
+                                connection_ids.push_back(connection_id);
                             }
                         }
                         else
@@ -86,7 +103,22 @@ void TPMSInfillSchwarzD::generateCoordinates(Polygons& result, const Polygons& o
                             // is the chain end
                             if (zig_zaggify)
                             {
-                                connection_points.push_back((last_inside) ? last : current);
+                                Point connection_point = (last_inside) ? last : current;
+                                connection_points.push_back(connection_point);
+                                ConnectionId connection_id = 0;
+                                const int col = (connection_point.X - x_min) / pitch;
+                                const int row = (connection_point.Y - y_min) / pitch;
+                                if (std::abs(cos_z) >= 0.707)
+                                {
+                                    // sloping backwards (\\)
+                                    connection_id = -col - row;
+                                }
+                                else
+                                {
+                                    // sloping forwards (//)
+                                    connection_id = col - row;
+                                }
+                                connection_ids.push_back(connection_id);
                             }
                         }
                     }
@@ -121,6 +153,11 @@ void TPMSInfillSchwarzD::generateConnections(Polygons& result, const Polygons& o
     for (ConstPolygonRef outline_poly : outline)
     {
         std::vector<Point> connector_points; // the points that make up a connector line
+
+        ConnectionId last_point_id = std::numeric_limits<ConnectionId>::max();
+
+        std::unordered_map<ConnectionId, std::vector<ConnectionId>> connections_to;
+        std::unordered_map<ConnectionId, std::vector<ConnectionId>> connections_from;
 
         bool drawing = false; // true when a connector line is being (potentially) created
 
@@ -183,20 +220,38 @@ void TPMSInfillSchwarzD::generateConnections(Polygons& result, const Polygons& o
                 }
                 connector_points.push_back(cur_point);
 
+                const ConnectionId this_point_id = connection_ids[points_on_outline_connection_point_index[nearest_connection_point_index]];
+
                 if (drawing)
                 {
-                    for (unsigned pi = 1; pi < connector_points.size(); ++pi)
+                    std::vector<ConnectionId>& from = connections_from[this_point_id];
+                    std::vector<ConnectionId>& to = connections_to[this_point_id];
+                    if (this_point_id != last_point_id && std::find(from.begin(), from.end(), last_point_id) == from.end() && std::find(to.begin(), to.end(), last_point_id) == to.end())
                     {
-                        result.addLine(connector_points[pi - 1], connector_points[pi]);
+                        for (unsigned pi = 1; pi < connector_points.size(); ++pi)
+                        {
+                            result.addLine(connector_points[pi - 1], connector_points[pi]);
+                        }
+                        drawing = false;
+                        connector_points.clear();
+
+                        from.push_back(last_point_id);
+                        connections_to[last_point_id].push_back(this_point_id);
                     }
-                    drawing = false;
-                    connector_points.clear();
+                    else
+                    {
+                        // start a new connector from the current location
+                        connector_points.clear();
+                        connector_points.push_back(cur_point);
+                    }
                 }
                 else
                 {
                     // we have just jumped a gap so now we want to start drawing again
                     drawing = true;
                 }
+
+                last_point_id = this_point_id;
 
                 // done with this connection point
                 points_on_outline_connection_point_index.erase(points_on_outline_connection_point_index.begin() + nearest_connection_point_index);
