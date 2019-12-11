@@ -192,11 +192,7 @@ void TPMSInfillSchwarzP::generateCoordinates(Polygons& result, const Polygons& o
 
 void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& outline)
 {
-    // zig-zaggification consists of joining alternate chain ends to make a chain of chains
-    // the basic algorithm is that we follow the infill area boundary and as we progress we are either drawing a connector or not
-    // whenever we come across the end of a chain we toggle the connector drawing state
-    // things are made more complicated by the fact that we want to avoid generating loops and so we need to keep track
-    // of the indentity of the first chain in a connected sequence
+    // zig-zaggification consists of simply joining alternate connection ends with lines that follow the outline
 
     int connections_remaining = connection_points.size();
 
@@ -211,20 +207,17 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
     {
         std::vector<Point> connector_points; // the points that make up a connector line
 
-        // we need to remember the first chain processed and the path to it from the first outline point
-        // so that later we can possibly connect to it from the last chain processed
+        // we need to remember the first connection processed and the path to it from the first outline point
+        // so that later we can possibly connect to it from the last connection processed
         unsigned first_connection_index = std::numeric_limits<unsigned>::max();
         std::vector<Point> path_to_first_connection;
 
         bool drawing = false; // true when a connector line is being (potentially) created
 
-        // keep track of the chain+point that a connector line started at
-        unsigned connector_start_chain_index = std::numeric_limits<unsigned>::max();
+        Point cur_point; // current point of interest - either an outline point or a connection
 
-        Point cur_point; // current point of interest - either an outline point or a chain end
-
-        // go round all of the region's outline and find the chain ends that meet it
-        // quit the loop early if we have seen all the chain ends and are not currently drawing a connector
+        // go round all of the region's outline and find the connections that meet it
+        // quit the loop early if we have seen all the connections and are not currently drawing a connector
         for (unsigned outline_point_index = 0; (connections_remaining > 0 || drawing) && outline_point_index < outline_poly.size(); ++outline_point_index)
         {
             Point op0 = outline_poly[outline_point_index];
@@ -234,7 +227,7 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
             // collect the connections that meet this segment of the outline
             for (unsigned connection_points_index = 0; connection_points_index < connection_points.size(); ++connection_points_index)
             {
-                // don't include chain ends that are close to the segment but are beyond the segment ends
+                // don't include connections that are close to the segment but are beyond the segment ends
                 short beyond = 0;
                 if (LinearAlg2D::getDist2FromLineSegment(op0, connection_points[connection_points_index], op1, &beyond) < 10 && !beyond)
                 {
@@ -248,7 +241,7 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
 
                 if (first_connection_index == std::numeric_limits<unsigned>::max())
                 {
-                    // include the outline point in the path to the first chain
+                    // include the outline point in the path to the first connection
                     path_to_first_connection.push_back(op0);
                 }
 
@@ -276,19 +269,19 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
                     }
                 }
 
-                // make the chain end the current point and add it to the connector line
+                // make the connection the current point and add it to the connector line
                 cur_point = connection_points[points_on_outline_connection_point_index[nearest_connection_point_index]];
 
                 if (drawing && connector_points.size() > 0 && vSize2(cur_point - connector_points.back()) < 100)
                 {
-                    // this chain end will be too close to the last connector point so throw away the last connector point
+                    // this connection will be too close to the last connector point so throw away the last connector point
                     connector_points.pop_back();
                 }
                 connector_points.push_back(cur_point);
 
                 if (first_connection_index == std::numeric_limits<unsigned>::max())
                 {
-                    // this is the first chain to be processed, remember it
+                    // this is the first connection to be processed, remember it
                     first_connection_index = nearest_connection_point_index;
                     path_to_first_connection.push_back(cur_point);
                 }
@@ -297,10 +290,6 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
 
                 if (drawing)
                 {
-                    // add the connector line segments but only if
-                    //  1 - the start/end points are not the opposite ends of the same chain
-                    //  2 - the other end of the current chain is not connected to the chain the connector line is coming from
-
                     if (last_connection_point_id != connection_point_id)
                     {
                         for (unsigned pi = 1; pi < connector_points.size(); ++pi)
@@ -309,36 +298,24 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
                         }
                         drawing = false;
                         connector_points.clear();
-                        last_connection_point_id = std::numeric_limits<unsigned>::max();
                     }
                     else
                     {
                         // start a new connector from the current location
                         connector_points.clear();
                         connector_points.push_back(cur_point);
-
-                        // remember the connection point that the connector started from
-                        last_connection_point_id = connection_point_id;
                     }
                 }
                 else
                 {
                     // we have just jumped a gap so now we want to start drawing again
                     drawing = true;
-
-                    // remember the connection point that the connector started from
-                    last_connection_point_id = connection_point_id;
-/*
-                    // if this connector is the first to be created or we are not connecting chains from the same row/column,
-                    // remember the chain+point that this connector is starting from
-                    if (connector_start_chain_index == std::numeric_limits<unsigned>::max())
-                    {
-                        connector_start_chain_index = points_on_outline_connection_point_index[nearest_connection_point_index];
-                    }
-*/
                 }
 
-                // done with this chain end
+                // remember the connection point that the connector started from
+                last_connection_point_id = connection_point_id;
+
+                // done with this connection
                 points_on_outline_connection_point_index.erase(points_on_outline_connection_point_index.begin() + nearest_connection_point_index);
 
                 // decrement total amount of work to do
@@ -347,18 +324,17 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
         }
 
         // we have now visited all the points in the outline, if a connector was (potentially) being drawn
-        // check whether the first chain is already connected to the last chain and, if not, draw the
-        // connector between
+        // draw the connector between the last and first connections
+
         if (drawing && first_connection_index != std::numeric_limits<unsigned>::max())
-        // && first_connection_index != connector_start_chain_index)
         {
-            // output the connector line segments from the last chain to the first point in the outline
+            // output the connector line segments from the last connection to the first point in the outline
             connector_points.push_back(outline_poly[0]);
             for (unsigned pi = 1; pi < connector_points.size(); ++pi)
             {
                 result.addLine(connector_points[pi - 1], connector_points[pi]);
             }
-            // output the connector line segments from the first point in the outline to the first chain
+            // output the connector line segments from the first point in the outline to the first connection
             for (unsigned pi = 1; pi < path_to_first_connection.size(); ++pi)
             {
                 result.addLine(path_to_first_connection[pi - 1], path_to_first_connection[pi]);
