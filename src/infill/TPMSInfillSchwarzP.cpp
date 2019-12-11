@@ -117,7 +117,7 @@ void TPMSInfillSchwarzP::generateCoordinates(Polygons& result, const Polygons& o
     // repeat the lines over the infill area
     const unsigned num_coords = x_coords.size();
     unsigned num_columns = 0;
-    for (coord_t x = x_min; x < x_max; x += pitch/2)
+    for (coord_t x = x_min - pitch; x < x_max; x += pitch/2)
     {
         bool is_first_point = true;
         Point last;
