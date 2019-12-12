@@ -1271,25 +1271,50 @@ void FffGcodeWriter::addMeshLayerToGCode(const SliceDataStorage& storage, const 
         return;
     }
 
-    const ExtruderTrain& train = Application::getInstance().current_slice->scene.extruders[extruder_nr];
     gcode_layer.setMesh(mesh.mesh_name);
 
-    ZSeamConfig z_seam_config(mesh.settings.get<EZSeamType>("z_seam_type"), mesh.getZSeamHint(), mesh.settings.get<EZSeamCornerPrefType>("z_seam_corner"));
-    const Point layer_start_position(train.settings.get<coord_t>("layer_start_x"), train.settings.get<coord_t>("layer_start_y"));
-    PathOrderOptimizer part_order_optimizer(layer_start_position, z_seam_config);
-    for (unsigned int part_idx = 0; part_idx < layer.parts.size(); part_idx++)
+    if (mesh.isPrinted())
     {
-        const SliceLayerPart& part = layer.parts[part_idx];
-        ConstPolygonRef part_representative = (part.insets.size() > 0) ? part.insets[0][0] : part.outline[0];
-        part_order_optimizer.addPolygon(part_representative);
+        // "normal" meshes with walls, skin, infill, etc. get the traditional part ordering based on the z-seam settings
+        ZSeamConfig z_seam_config(mesh.settings.get<EZSeamType>("z_seam_type"), mesh.getZSeamHint(), mesh.settings.get<EZSeamCornerPrefType>("z_seam_corner"));
+        PathOrderOptimizer part_order_optimizer(gcode_layer.getLastPlannedPositionOrStartingPosition(), z_seam_config);
+        for (unsigned int part_idx = 0; part_idx < layer.parts.size(); part_idx++)
+        {
+            const SliceLayerPart& part = layer.parts[part_idx];
+            part_order_optimizer.addPolygon((part.insets.size() > 0) ? part.insets[0][0] : part.outline[0]);
+        }
+        part_order_optimizer.optimize();
+        for (int part_idx : part_order_optimizer.polyOrder)
+        {
+            const SliceLayerPart& part = layer.parts[part_idx];
+            addMeshPartToGCode(storage, mesh, extruder_nr, mesh_config, part, gcode_layer);
+        }
     }
-    part_order_optimizer.optimize();
+    else
+    {
+        // infill meshes and anything else that doesn't have walls (so no z-seams) get parts ordered by closeness to the last planned position
 
-    for (int part_idx : part_order_optimizer.polyOrder)
-    {
-        const SliceLayerPart& part = layer.parts[part_idx];
-        addMeshPartToGCode(storage, mesh, extruder_nr, mesh_config, part, gcode_layer);
+        std::vector<const SliceLayerPart*> parts; // use pointers to avoid recreating the SliceLayerPart objects
+
+        for(const SliceLayerPart& part_ref : layer.parts)
+        {
+            parts.emplace_back(&part_ref);
+        }
+
+        while (parts.size())
+        {
+            PathOrderOptimizer part_order_optimizer(gcode_layer.getLastPlannedPositionOrStartingPosition());
+            for (auto part : parts)
+            {
+                part_order_optimizer.addPolygon((part->insets.size() > 0) ? part->insets[0][0] : part->outline[0]);
+            }
+            part_order_optimizer.optimize();
+            const int nearest_part_index = part_order_optimizer.polyOrder[0];
+            addMeshPartToGCode(storage, mesh, extruder_nr, mesh_config, *parts[nearest_part_index], gcode_layer);
+            parts.erase(parts.begin() + nearest_part_index);
+        }
     }
+
     processIroning(mesh, layer, mesh_config.ironing_config, gcode_layer);
     if (mesh.settings.get<ESurfaceMode>("magic_mesh_surface_mode") != ESurfaceMode::NORMAL && extruder_nr == mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr)
     {
@@ -1330,7 +1355,7 @@ void FffGcodeWriter::addMeshPartToGCode(const SliceDataStorage& storage, const S
     added_something = added_something | processSkinAndPerimeterGaps(storage, gcode_layer, mesh, extruder_nr, mesh_config, part);
 
     //After a layer part, make sure the nozzle is inside the comb boundary, so we do not retract on the perimeter.
-    if (added_something && (!mesh_group_settings.get<bool>("magic_spiralize") || gcode_layer.getLayerNr() < static_cast<LayerIndex>(mesh.settings.get<size_t>("bottom_layers"))))
+    if (added_something && (!mesh_group_settings.get<bool>("magic_spiralize") || gcode_layer.getLayerNr() < static_cast<LayerIndex>(mesh.settings.get<size_t>("initial_bottom_layers"))))
     {
         coord_t innermost_wall_line_width = mesh.settings.get<coord_t>((mesh.settings.get<size_t>("wall_line_count") > 1) ? "wall_line_width_x" : "wall_line_width_0");
         if (gcode_layer.getLayerNr() == 0)
@@ -1510,6 +1535,85 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
         }
 
         Polygons in_outline = part.infill_area_per_combine_per_density[density_idx][0];
+
+        // if infill walls are required below the boundaries of skin regions above, partition the infill along the boundary edge
+
+        size_t skin_edge_support_layers = mesh.settings.get<size_t>("skin_edge_support_layers");
+        if (skin_edge_support_layers > 0)
+        {
+            Polygons skin_above;        // skin regions on the immediate layer above
+            Polygons skin_above_upper;  // skin regions on the 2nd and subsequent layers above
+
+            for (size_t i = 1; i <= skin_edge_support_layers; ++i)
+            {
+                const size_t skin_layer_nr = gcode_layer.getLayerNr() + i;
+                if (skin_layer_nr < mesh.layers.size())
+                {
+                    for (const SliceLayerPart& part : mesh.layers[skin_layer_nr].parts)
+                    {
+                        for (const SkinPart& skin_part : part.skin_parts)
+                        {
+                            if (i == 1)
+                            {
+                                skin_above.add(skin_part.outline);
+                            }
+                            else
+                            {
+                                skin_above_upper.add(skin_part.outline);
+                            }
+                        }
+                    }
+                }
+            }
+
+            constexpr double min_area_multiplier = 25;
+            const double min_area = INT2MM(infill_line_width) * INT2MM(infill_line_width) * min_area_multiplier;
+
+            Polygons infill_below_skin = skin_above.intersection(in_outline);
+            infill_below_skin.removeSmallAreas(min_area);
+
+            // combine the skin regions with a small gap between them
+            constexpr coord_t tiny_infill_offset = 10;
+            infill_below_skin.add(skin_above_upper.unionPolygons().intersection(in_outline).difference(infill_below_skin.offset(tiny_infill_offset)));
+            infill_below_skin.removeSmallAreas(min_area);
+
+            if (infill_below_skin.size())
+            {
+                // need to take skin/infill overlap that was added in SkinInfillAreaComputation::generateInfill() into account
+                const coord_t infill_skin_overlap = mesh.settings.get<coord_t>((part.insets.size() > 1) ? "wall_line_width_x" : "wall_line_width_0") / 2;
+
+                if (infill_below_skin.offset(-(infill_skin_overlap + tiny_infill_offset)).size())
+                {
+                    // there is infill below skin, is there also infill that isn't below skin?
+                    Polygons infill_not_below_skin = in_outline.difference(infill_below_skin);
+                    infill_not_below_skin.removeSmallAreas(min_area);
+
+                    if (infill_not_below_skin.offset(-(infill_skin_overlap + tiny_infill_offset)).size())
+                    {
+                        constexpr Polygons* perimeter_gaps = nullptr;
+                        constexpr bool connected_zigzags = false;
+                        constexpr bool use_endpieces = false;
+                        constexpr bool skip_some_zags = false;
+                        constexpr int zag_skip_count = 0;
+
+                        // infill region with skin above has to have at least one infill wall line
+                        Infill infill_comp(pattern, zig_zaggify_infill, connect_polygons, infill_below_skin, /*outline_offset =*/ 0
+                            , infill_line_width, infill_line_distance_here, infill_overlap, infill_multiplier, infill_angle, gcode_layer.z, infill_shift, std::max(1, (int)wall_line_count), infill_origin
+                            , perimeter_gaps
+                            , connected_zigzags
+                            , use_endpieces
+                            , skip_some_zags
+                            , zag_skip_count
+                            , mesh.settings.get<coord_t>("cross_infill_pocket_size"));
+                        infill_comp.generate(infill_polygons, infill_lines, mesh.cross_fill_provider, &mesh);
+
+                        // normal processing for the infill that isn't below skin
+                        in_outline = infill_not_below_skin;
+                    }
+                }
+            }
+        }
+
         const coord_t circumference = in_outline.polygonLength();
         //Originally an area of 0.4*0.4*2 (2 line width squares) was found to be a good threshold for removal.
         //However we found that this doesn't scale well with polygons with larger circumference (https://github.com/Ultimaker/Cura/issues/3992).
@@ -1538,7 +1642,8 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
         if (!infill_polygons.empty())
         {
             constexpr bool force_comb_retract = false;
-            gcode_layer.addTravel(infill_polygons[0][0], force_comb_retract);
+            // start the infill polygons at the nearest vertex to the current location
+            gcode_layer.addTravel(PolygonUtils::findNearestVert(gcode_layer.getLastPlannedPositionOrStartingPosition(), infill_polygons).p(), force_comb_retract);
             gcode_layer.addPolygonsByOptimizer(infill_polygons, mesh_config.infill_config[0]);
         }
         std::optional<Point> near_start_location;
@@ -1717,12 +1822,12 @@ bool FffGcodeWriter::processInsets(const SliceDataStorage& storage, LayerPlan& g
                 // nothing to do
                 return false;
             }
-            const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
-            if (gcode_layer.getLayerNr() >= static_cast<LayerIndex>(bottom_layers))
+            const size_t initial_bottom_layers = mesh.settings.get<size_t>("initial_bottom_layers");
+            if (gcode_layer.getLayerNr() >= static_cast<LayerIndex>(initial_bottom_layers))
             {
                 spiralize = true;
             }
-            if (spiralize && gcode_layer.getLayerNr() == static_cast<LayerIndex>(bottom_layers) && !part.insets.empty() && extruder_nr == mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr)
+            if (spiralize && gcode_layer.getLayerNr() == static_cast<LayerIndex>(initial_bottom_layers) && !part.insets.empty() && extruder_nr == mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr)
             { // on the last normal layer first make the outer wall normally and then start a second outer wall from the same hight, but gradually moving upward
                 added_something = true;
                 setExtruder_addPrime(storage, gcode_layer, extruder_nr);
@@ -1731,7 +1836,7 @@ bool FffGcodeWriter::processInsets(const SliceDataStorage& storage, LayerPlan& g
                 {
                     // start this first wall at the same vertex the spiral starts
                     ConstPolygonRef spiral_inset = part.insets[0][0];
-                    const unsigned spiral_start_vertex = storage.spiralize_seam_vertex_indices[bottom_layers];
+                    const unsigned spiral_start_vertex = storage.spiralize_seam_vertex_indices[initial_bottom_layers];
                     if (spiral_start_vertex < spiral_inset.size())
                     {
                         gcode_layer.addTravel(spiral_inset[spiral_start_vertex]);
@@ -2230,14 +2335,9 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
         mesh.settings.get<EFillMethod>("top_bottom_pattern");
 
     AngleDegrees skin_angle = 45;
-    const bool skin_alternate_rotation = mesh.settings.get<bool>("skin_alternate_rotation") && (mesh.settings.get<size_t>("top_layers") >= 4 || mesh.settings.get<size_t>("bottom_layers") >= 4 );
     if (mesh.skin_angles.size() > 0)
     {
         skin_angle = mesh.skin_angles.at(layer_nr % mesh.skin_angles.size());
-    }
-    if (skin_alternate_rotation && (layer_nr / 2 ) & 1)
-    {
-        skin_angle -= 45;
     }
 
     // generate skin_polygons and skin_lines (and concentric_perimeter_gaps if needed)
