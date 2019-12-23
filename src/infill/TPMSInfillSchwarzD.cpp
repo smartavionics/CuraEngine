@@ -154,6 +154,11 @@ void TPMSInfillSchwarzD::generateConnections(Polygons& result, const Polygons& o
     {
         std::vector<Point> connector_points; // the points that make up a connector line
 
+        // we need to remember the first connection processed and the path to it from the first outline point
+        // so that later we can possibly connect to it from the last connection processed
+        ConnectionId first_connection_id = std::numeric_limits<ConnectionId>::max();
+        std::vector<Point> path_to_first_connection;
+
         ConnectionId last_point_id = std::numeric_limits<ConnectionId>::max();
 
         std::unordered_map<ConnectionId, std::vector<ConnectionId>> connections_to;
@@ -185,6 +190,12 @@ void TPMSInfillSchwarzD::generateConnections(Polygons& result, const Polygons& o
             if (outline_point_index == 0 || vSize2(op0 - cur_point) > 100)
             {
                 // this is either the first outline point or it is another outline point that is not too close to cur_point
+
+                if (first_connection_id == std::numeric_limits<ConnectionId>::max())
+                {
+                    // include the outline point in the path to the first connection
+                    path_to_first_connection.push_back(op0);
+                }
 
                 cur_point = op0;
                 if (drawing)
@@ -222,6 +233,13 @@ void TPMSInfillSchwarzD::generateConnections(Polygons& result, const Polygons& o
 
                 const ConnectionId this_point_id = connection_ids[points_on_outline_connection_point_index[nearest_connection_point_index]];
 
+                if (first_connection_id == std::numeric_limits<ConnectionId>::max())
+                {
+                    // this is the first connection to be processed, remember it
+                    first_connection_id = this_point_id;
+                    path_to_first_connection.push_back(cur_point);
+                }
+
                 if (drawing)
                 {
                     std::vector<ConnectionId>& from = connections_from[this_point_id];
@@ -258,6 +276,24 @@ void TPMSInfillSchwarzD::generateConnections(Polygons& result, const Polygons& o
 
                 // decrement total amount of work to do
                 --connections_remaining;
+            }
+        }
+
+        // we have now visited all the points in the outline, if a connector was (potentially) being drawn
+        // draw the connector between the last and first connections
+
+        if (drawing && first_connection_id != std::numeric_limits<ConnectionId>::max() && first_connection_id != last_point_id)
+        {
+            // output the connector line segments from the last connection to the first point in the outline
+            connector_points.push_back(outline_poly[0]);
+            for (unsigned pi = 1; pi < connector_points.size(); ++pi)
+            {
+                result.addLine(connector_points[pi - 1], connector_points[pi]);
+            }
+            // output the connector line segments from the first point in the outline to the first connection
+            for (unsigned pi = 1; pi < path_to_first_connection.size(); ++pi)
+            {
+                result.addLine(path_to_first_connection[pi - 1], path_to_first_connection[pi]);
             }
         }
 
