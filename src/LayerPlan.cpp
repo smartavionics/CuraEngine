@@ -731,11 +731,6 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                 if (dist < overhang_width)
                 {
                     overhang_speed_factor = 1.0 + (overhang_speed_factor - 1.0) * dist / overhang_width;
-                    if (std::abs(overhang_speed_factor - 1.0) < 0.2)
-                    {
-                        // speed is within 20% of normal, use normal fan speed
-                        fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
-                    }
                 }
             }
         }
