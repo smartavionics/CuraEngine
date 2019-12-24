@@ -6,7 +6,7 @@
 
 namespace cura
 {
-GCodePath::GCodePath(const GCodePathConfig& config, std::string mesh_id, const SpaceFillType space_fill_type, const Ratio flow, const bool spiralize, const Ratio speed_factor) :
+GCodePath::GCodePath(const GCodePathConfig& config, std::string mesh_id, const SpaceFillType space_fill_type, const Ratio flow, const bool spiralize, const Ratio speed_factor, const double fan_speed) :
 config(&config),
 mesh_id(mesh_id),
 space_fill_type(space_fill_type),
@@ -19,7 +19,7 @@ skip_agressive_merge_hint(false),
 points(std::vector<Point>()),
 done(false),
 spiralize(spiralize),
-fan_speed(GCodePathConfig::FAN_SPEED_DEFAULT),
+fan_speed(fan_speed),
 estimates(TimeMaterialEstimates()),
 length(0)
 {

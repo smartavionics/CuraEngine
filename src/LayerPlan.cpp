@@ -85,14 +85,14 @@ double ExtruderPlan::getMaterial(std::vector<double>* amounts) const
     return total;
 }
 
-GCodePath* LayerPlan::getLatestPathWithConfig(const GCodePathConfig& config, SpaceFillType space_fill_type, const Ratio flow, bool spiralize, const Ratio speed_factor)
+GCodePath* LayerPlan::getLatestPathWithConfig(const GCodePathConfig& config, SpaceFillType space_fill_type, const Ratio flow, bool spiralize, const Ratio speed_factor, const double fan_speed)
 {
     std::vector<GCodePath>& paths = extruder_plans.back().paths;
-    if (paths.size() > 0 && paths.back().config == &config && !paths.back().done && paths.back().flow == flow && paths.back().speed_factor == speed_factor && paths.back().mesh_id == current_mesh) // spiralize can only change when a travel path is in between
+    if (paths.size() > 0 && paths.back().config == &config && !paths.back().done && paths.back().flow == flow && paths.back().speed_factor == speed_factor && paths.back().mesh_id == current_mesh && paths.back().fan_speed == fan_speed) // spiralize can only change when a travel path is in between
     {
         return &paths.back();
     }
-    paths.emplace_back(config, current_mesh, space_fill_type, flow, spiralize, speed_factor);
+    paths.emplace_back(config, current_mesh, space_fill_type, flow, spiralize, speed_factor, fan_speed);
     GCodePath* ret = &paths.back();
     ret->skip_agressive_merge_hint = mode_skip_agressive_merge;
     return ret;
@@ -600,9 +600,8 @@ void LayerPlan::addExtrusionMove(Point p, const GCodePathConfig& config, SpaceFi
     // ignore extrusions less than 5uM long
     if(vSize2(p - *last_planned_position) >= 25)
     {
-        GCodePath* path = getLatestPathWithConfig(config, space_fill_type, flow, spiralize, speed_factor);
+        GCodePath* path = getLatestPathWithConfig(config, space_fill_type, flow, spiralize, speed_factor, fan_speed);
         path->points.push_back(p);
-        path->setFanSpeed(fan_speed);
         if (max_path_time > 0)
         {
             // start a new path if the current path print time is at least max_path_time

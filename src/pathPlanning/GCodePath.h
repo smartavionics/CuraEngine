@@ -4,6 +4,7 @@
 #ifndef PATH_PLANNING_G_CODE_PATH_H
 #define PATH_PLANNING_G_CODE_PATH_H
 
+#include "../GCodePathConfig.h"
 #include "../SpaceFillType.h"
 #include "../settings/types/Ratio.h"
 #include "../utils/IntPoint.h"
@@ -12,8 +13,6 @@
 
 namespace cura 
 {
-
-class GCodePathConfig;
 
 /*!
  * A class for representing a planned path.
@@ -58,9 +57,10 @@ public:
      * \param flow The flow rate to print this path with.
      * \param spiralize Gradually increment the z-coordinate while traversing
      * \param speed_factor The factor that the travel speed will be multiplied with
+     * \param fan_speed fan speed override for this path
      * this path.
      */
-    GCodePath(const GCodePathConfig& config, std::string mesh_id, const SpaceFillType space_fill_type, const Ratio flow, const bool spiralize, const Ratio speed_factor = 1.0);
+    GCodePath(const GCodePathConfig& config, std::string mesh_id, const SpaceFillType space_fill_type, const Ratio flow, const bool spiralize, const Ratio speed_factor = 1.0, const double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT);
 
     /*!
      * Whether this config is the config of a travel path.
