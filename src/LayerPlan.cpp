@@ -1239,7 +1239,7 @@ unsigned LayerPlan::locateFirstSupportedVertex(ConstPolygonRef wall, const unsig
     }
 }
 
-void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, SpaceFillType space_fill_type, bool enable_travel_optimization, int wipe_dist, float flow_ratio, std::optional<Point> near_start_location, double fan_speed)
+void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, SpaceFillType space_fill_type, bool enable_travel_optimization, int wipe_dist, float flow_ratio, std::optional<Point> near_start_location, double fan_speed, const float avoid_freq)
 {
     Polygons boundary;
     if (enable_travel_optimization && comb_boundary_inside2.size() > 0)
@@ -1270,6 +1270,16 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
     }
     orderOptimizer.optimize();
 
+    coord_t min_avoid_len = 0;
+    coord_t max_avoid_len = 0;
+    if (avoid_freq != 0)
+    {
+        // to avoid resonance, all lines whose length is between min_avoid_len and max_avoid_len are printed slower
+        const float avoid_len = MM2INT(config.getSpeed()) / avoid_freq / 2;
+        min_avoid_len = avoid_len / 1.2f;
+        max_avoid_len = avoid_len * 1.2f;
+    }
+
     Point last_position;
     for (unsigned int order_idx = 0; order_idx < orderOptimizer.polyOrder.size(); order_idx++)
     {
@@ -1284,13 +1294,29 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
         {
             continue;
         }
+        coord_t travel_len = 0;
         if (order_idx == 0 || p0 != last_position)
         {
             // try to avoid using combing when printing lines skin pattern
             const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
             addTravel(p0, false, min_comb_distance);
+            if (avoid_freq != 0)
+            {
+                travel_len = vSize(p0 - last_position);
+            }
         }
-        addExtrusionMove(p1, config, space_fill_type, flow_ratio, false, 1.0, fan_speed);
+        double speed_factor = 1.0;
+        if (avoid_freq != 0)
+        {
+            coord_t len = vSize(p1 - p0) + travel_len;
+            if (len >= min_avoid_len && len <= max_avoid_len)
+            {
+                // ensure the speed factor does not produce a speed less than the minimum speed allowed
+                const Velocity min_speed = fan_speed_layer_time_settings_per_extruder[getExtruder()].cool_min_speed;
+                speed_factor = std::max((double)min_avoid_len / len, (double)(min_speed / config.getSpeed()));
+            }
+        }
+        addExtrusionMove(p1, config, space_fill_type, flow_ratio, false, speed_factor, fan_speed);
         last_position = p1;
 
         // Wipe
@@ -1320,7 +1346,7 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
 
             if (wipe)
             {
-                addExtrusionMove(p1 + normal(p1-p0, wipe_dist), config, space_fill_type, 0.0, false, 1.0, fan_speed);
+                addExtrusionMove(p1 + normal(p1-p0, wipe_dist), config, space_fill_type, 0.0, false, speed_factor, fan_speed);
             }
         }
     }
