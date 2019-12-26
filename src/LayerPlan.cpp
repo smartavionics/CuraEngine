@@ -711,7 +711,10 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
 
     if (is_overhang)
     {
-        fan_speed = (double)mesh.settings.get<Ratio>("wall_overhang_fan_speed") * 100.0;
+        if (layer_nr > 1)
+        {
+            fan_speed = (double)mesh.settings.get<Ratio>("wall_overhang_fan_speed") * 100.0;
+        }
         // use the distance from the mid point of the line segment to the inside edge of the overhang mask to modify the overhang speed factor
         // the closer the line segment is to the inside edge of the overhang mask, the closer the overhang speed factor is to 1.0
         // the effect of this is to smooth the speed transition
