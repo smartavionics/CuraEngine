@@ -1630,7 +1630,7 @@ void ExtruderPlan::processFanSpeedAndMinimalLayerTime(bool force_minimal_layer_t
         // once cool_fan_min_layer has been reached, the fan runs no slower than cool_fan_speed_min
         fan_speed = fan_speed_layer_time_settings.cool_fan_speed_min;
     }
-    double totalLayerTime = estimates.unretracted_travel_time + estimates.extrude_time;
+    const double totalLayerTime = totalPrintTime;
     if (force_minimal_layer_time && totalLayerTime < fan_speed_layer_time_settings.cool_min_layer_time)
     {
         fan_speed = fan_speed_layer_time_settings.cool_fan_speed_max;
