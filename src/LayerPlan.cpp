@@ -1308,6 +1308,10 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
         double speed_factor = 1.0;
         if (avoid_freq != 0)
         {
+            // use the combined length of the line and the preceding travel move (if any)
+            // I don't think it matters that the travel speed is going to be greater than the
+            // print speed because the distances of interest are short and so it is unlikely that the
+            // travel speed (or even the print speed) will be achieved
             coord_t len = vSize(p1 - p0) + travel_len;
             if (len >= min_avoid_len && len <= max_avoid_len)
             {
