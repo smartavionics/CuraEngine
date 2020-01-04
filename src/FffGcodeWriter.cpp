@@ -3023,6 +3023,57 @@ bool FffGcodeWriter::addSupportRoofsToGCode(const SliceDataStorage& storage, Lay
     }
 
     Polygons infill_outline = support_layer.support_roof;
+
+    coord_t support_roof_top_layer_line_distance = roof_extruder.settings.get<coord_t>("support_roof_top_layer_line_distance");
+    if (support_roof_top_layer_line_distance != support_roof_line_distance)
+    {
+        // the top layer of the roof has a different density to the roof on the layers below
+        const int next_layer_nr = std::max(0, gcode_layer.getLayerNr() + 1);
+        if ((size_t)next_layer_nr < storage.support.supportLayers.size())
+        {
+            const SupportLayer& next_support_layer = storage.support.supportLayers[next_layer_nr];
+            // the regions of this layer's roof that are not covered by roof on the next layer are the top layer
+            // use shrink/expand to remove any very thin regions
+            Polygons top_roof_outline = infill_outline.difference(next_support_layer.support_roof).offset(-5).offset(5);
+            if (!top_roof_outline.empty())
+            {
+                Infill roof_computation(
+                    pattern, zig_zaggify_infill, connect_polygons, top_roof_outline, outline_offset, gcode_layer.configs_storage.support_roof_config.getLineWidth(),
+                    support_roof_top_layer_line_distance, support_roof_overlap, infill_multiplier, fill_angle, gcode_layer.z, extra_infill_shift,
+                    wall_line_count, infill_origin, perimeter_gaps, connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count, pocket_size
+                    );
+                Polygons roof_polygons;
+                Polygons roof_lines;
+                roof_computation.generate(roof_polygons, roof_lines);
+                if (!roof_polygons.empty() || !roof_lines.empty())
+                {
+                    setExtruder_addPrime(storage, gcode_layer, roof_extruder_nr);
+                    gcode_layer.setIsInside(false); // going to print stuff outside print object, i.e. support
+                    if (!roof_polygons.empty())
+                    {
+                        constexpr bool force_comb_retract = false;
+                        gcode_layer.addTravel(roof_polygons[0][0], force_comb_retract);
+                        gcode_layer.addPolygonsByOptimizer(roof_polygons, gcode_layer.configs_storage.support_roof_config);
+                    }
+                    constexpr bool enable_travel_optimization = false;
+                    constexpr coord_t wipe_dist = 0;
+                    constexpr float flow = 1.0;
+                    std::optional<Point> near_start_location;
+                    constexpr double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
+                    const float avoid_freq = (pattern == EFillMethod::LINES || pattern == EFillMethod::ZIG_ZAG) ? roof_extruder.settings.get<double>("avoid_frequency") : 0.0;
+                    gcode_layer.addLinesByOptimizer(roof_lines, gcode_layer.configs_storage.support_roof_config, (pattern == EFillMethod::ZIG_ZAG) ? SpaceFillType::PolyLines : SpaceFillType::Lines, enable_travel_optimization, wipe_dist, flow, near_start_location, fan_speed, avoid_freq);
+                }
+
+                // now remove the top layer roof outline from this layer's roof outline
+                infill_outline = infill_outline.difference(top_roof_outline).offset(-5).offset(5);
+                if (infill_outline.empty())
+                {
+                    return true;
+                }
+            }
+        }
+    }
+
     Polygons wall;
     // make sure there is a wall if this is on the first layer
     if (gcode_layer.getLayerNr() == 0)
