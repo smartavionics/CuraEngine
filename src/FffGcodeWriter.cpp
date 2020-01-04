@@ -3033,8 +3033,9 @@ bool FffGcodeWriter::addSupportRoofsToGCode(const SliceDataStorage& storage, Lay
         {
             const SupportLayer& next_support_layer = storage.support.supportLayers[next_layer_nr];
             // the regions of this layer's roof that are not covered by roof on the next layer are the top layer
-            // use shrink/expand to remove any very thin regions
-            Polygons top_roof_outline = infill_outline.difference(next_support_layer.support_roof).offset(-5).offset(5);
+            // use shrink/expand to remove any extremely thin regions due to numerical errors and make the top layer region a line width wider as
+            // that should simplify the regions when the model is getting wider with increasing height.
+            Polygons top_roof_outline = infill_outline.difference(next_support_layer.support_roof).offset(-5).offset(5 + support_roof_line_width).intersection(infill_outline);
             if (!top_roof_outline.empty())
             {
                 Infill roof_computation(
