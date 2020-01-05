@@ -58,7 +58,7 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}")
 
 set(CURA_ENGINE_VERSION "master" CACHE STRING "Version name of Cura")
 
-option(BUILD_TESTS OFF)
+option(BUILD_TESTS "Build tests" OFF)
 
 # Add a compiler flag to check the output for insane values if we are in debug mode.
 if(CMAKE_BUILD_TYPE_UPPER MATCHES "DEBUG" OR CMAKE_BUILD_TYPE_UPPER MATCHES "RELWITHDEBINFO")
