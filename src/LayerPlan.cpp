@@ -1092,6 +1092,8 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
 
     Point p0 = z_seam_point;
 
+    const coord_t max_spurious_fat_segment_length = std::max((coord_t)50, mesh.settings.get<coord_t>("meshfix_maximum_resolution"));
+    const coord_t max_spurious_fat_segment_length2 = max_spurious_fat_segment_length * max_spurious_fat_segment_length;
     for (unsigned int point_idx = 1; point_idx <= wall.size(); point_idx++)
     {
         const Point& p1 = wall[(start_idx + point_idx) % wall.size()];
@@ -1106,9 +1108,8 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         // the overlap compensation is not perfect, it can produce short non-flow reduced line segments within a sequence of flow reduced
         // line segments and so to try and avoid printing the spurious fat line segments we require that their lengths are above a threshold
 
-        const coord_t max_spurious_fat_segment_length2 = 2500; // 50 microns
 
-        if (flow >= wall_min_flow && (first_line || !travel_required || vSize2f(p0 - p1) > max_spurious_fat_segment_length2))
+        if (flow >= wall_min_flow && (first_line || !travel_required || !wall_overlap_computation || vSize2f(p0 - p1) > max_spurious_fat_segment_length2))
         {
             if (first_line || travel_required)
             {
