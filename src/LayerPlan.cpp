@@ -705,6 +705,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
 
     const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
     const Ratio bridge_wall_coast = mesh.settings.get<Ratio>("bridge_wall_coast");
+    const Ratio bridge_wall_end_boost = mesh.settings.get<Ratio>("bridge_wall_end_boost");
     Ratio overhang_speed_factor = mesh.settings.get<Ratio>("wall_overhang_speed_factor");
     const Point mid(p0 + (p1 - p0)/2);
     const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(p0, true) && overhang_mask.inside(p1, true) && overhang_mask.inside(mid, true));
@@ -887,6 +888,8 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                         cur_point = b1;
                         // after a bridge segment, start slow and accelerate to avoid under-extrusion due to extruder lag
                         speed_factor = std::max(std::min(Ratio(bridge_config.getSpeed() / non_bridge_config.getSpeed()), 1.0_r), 0.5_r);
+                        // user can control amount of boost
+                        speed_factor = 1 - (1 - speed_factor) * bridge_wall_end_boost;
                     }
                     distance_to_bridge_start = 0;
                 }
