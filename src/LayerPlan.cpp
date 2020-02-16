@@ -1244,7 +1244,204 @@ unsigned LayerPlan::locateFirstSupportedVertex(ConstPolygonRef wall, const unsig
     }
 }
 
-void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, SpaceFillType space_fill_type, bool enable_travel_optimization, int wipe_dist, float flow_ratio, std::optional<Point> near_start_location, double fan_speed, const float avoid_freq)
+void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const float flow, const GCodePathConfig& config, SpaceFillType space_fill_type, const double speed_factor, const double fan_speed, const SliceMeshStorage* mesh, float& gradient_infill_last_flow)
+{
+    const coord_t infill_line_distance = mesh->settings.get<coord_t>("infill_line_distance");
+    const float gradient_infill_min_flow = mesh->settings.get<Ratio>("gradient_infill_min_flow");
+    const float gradient_infill_max_flow = mesh->settings.get<Ratio>("gradient_infill_max_flow");
+    const float gradient_infill_speed_factor = mesh->settings.get<Ratio>("gradient_infill_speed_factor");
+    const EGradientInfillType gradient_infill_type = mesh->settings.get<EGradientInfillType>("gradient_infill_type");
+    const coord_t line_len = vSize(p1 - p0);
+
+    const Polygons outline = mesh->layers[layer_nr].getOutlines();
+    const coord_t gradient_infill_dist = mesh->settings.get<coord_t>("gradient_infill_dist");
+
+    auto addLine = [&](const Point& from, const Point& to) {
+        Point mid = (from + to) / 2;
+        coord_t dist = 0;
+        if (gradient_infill_type == EGradientInfillType::LINEAR_2D || gradient_infill_type == EGradientInfillType::LINEAR_2D_PLUS || gradient_infill_type == EGradientInfillType::LINEAR_3D)
+        {
+            ClosestPolygonPoint cpp = PolygonUtils::findClosest(mid, outline);
+            if (cpp.isValid())
+            {
+                dist = vSize(cpp.location - mid);
+            }
+            if (gradient_infill_type == EGradientInfillType::LINEAR_2D_PLUS)
+            {
+                if (z < dist)
+                {
+                    dist = z;
+                }
+                coord_t top_dist = mesh->layers.back().printZ - mesh->layers[layer_nr].printZ;
+                if (top_dist < dist)
+                {
+                    dist = top_dist;
+                }
+            }
+            else if (gradient_infill_type == EGradientInfillType::LINEAR_3D)
+            {
+                coord_t top_dist = mesh->layers[layer_nr].thickness;
+                coord_t bot_dist = 0;
+                for (int ln = 1; ln < layer_nr && (layer_nr + ln) < (int)mesh->layers.size(); ++ln)
+                {
+                    if (!mesh->layers[layer_nr + ln].getOutlines().inside(mid))
+                    {
+                        break;
+                    }
+                    top_dist += mesh->layers[layer_nr + ln].thickness;
+                    if (ln < layer_nr)
+                    {
+                        if (!mesh->layers[layer_nr - ln].getOutlines().inside(mid))
+                        {
+                            break;
+                        }
+                        bot_dist += mesh->layers[layer_nr - ln].thickness;
+                    }
+                }
+                if (top_dist < dist)
+                {
+                    dist = top_dist;
+                }
+                if (bot_dist < dist)
+                {
+                    dist = bot_dist;
+                }
+            }
+        }
+        else
+        {
+            dist = std::min(vSize(mid - p0), vSize(mid - p1));
+        }
+        const float fl = std::max(gradient_infill_max_flow - (gradient_infill_max_flow - gradient_infill_min_flow) * dist / gradient_infill_dist, gradient_infill_min_flow);
+        float sf = 1;
+        const float last_fl = gradient_infill_last_flow;
+        if (fl != last_fl)
+        {
+            if (gradient_infill_speed_factor > 1)
+            {
+                sf = gradient_infill_speed_factor * ((fl > last_fl) ? (fl / last_fl) : last_fl / fl);
+            }
+            else if (gradient_infill_speed_factor < 1)
+            {
+                sf = std::max(1 - ((1 - gradient_infill_speed_factor) * ((fl > last_fl) ? fl / last_fl : last_fl / fl)), 0.1f);
+            }
+        }
+        addExtrusionMove(to, config, space_fill_type, fl * flow, false, sf * speed_factor, fan_speed);
+        gradient_infill_last_flow = fl;
+    };
+
+    const EFillMethod infill_pattern = mesh->settings.get<EFillMethod>("infill_pattern");
+
+    bool infill_is_short_lines = false;
+
+    switch (infill_pattern)
+    {
+        case EFillMethod::GYROID:
+        case EFillMethod::SCHWARZ_P:
+        case EFillMethod::SCHWARZ_D:
+            infill_is_short_lines = true;
+            break;
+        default:
+            break;
+    }
+
+    if (infill_is_short_lines && gradient_infill_type != EGradientInfillType::LINEAR_1D)
+    {
+        addLine(p0, p1);
+    }
+    else if (line_len >= infill_line_distance)
+    {
+        if(true)
+        {
+            // divide infill line up into 3 sections: start, middle, end
+            // the start and end sections are sub-divided into small segments and the middle section is subdivided into large segments
+            const int max_small_segs = 4;
+            const coord_t small_seg_len = gradient_infill_dist / max_small_segs;
+            const coord_t large_seg_len = std::max(small_seg_len * 2, infill_line_distance);
+            const int num_small_segs = std::min((int)(line_len / (small_seg_len * 2)), max_small_segs);
+
+            Point last(p0);
+            for (int i = 1; i <= num_small_segs; ++i)
+            {
+                Point next = p0 + normal(p1 - p0, small_seg_len * i);
+                addLine(last, next);
+                last = next;
+            }
+
+            Point limit(p1 - normal(p1 - p0, small_seg_len * num_small_segs));
+
+            if (gradient_infill_type != EGradientInfillType::LINEAR_1D)
+            {
+                while (vSize(limit - last) >= 1.1f * large_seg_len)
+                {
+                    Point next = last + normal(p1 - p0, large_seg_len);
+                    addLine(last, next);
+                    last = next;
+                }
+            }
+            else
+            {
+                addLine(last, limit);
+                last = limit;
+            }
+
+            for (int i = num_small_segs; i >= 0; --i)
+            {
+                Point next = p1 - normal(p1 - p0, small_seg_len * i);
+                addLine(last, next);
+                last = next;
+            }
+        }
+#if 0
+        if(gradient_infill_type == EGradientInfillType::EXPONENTIAL)
+        {
+            const float gradient_infill_exp_factor = mesh->settings.get<double>("gradient_infill_exp_factor");
+            const float pos_inc = 0.1f;
+            float pos = pos_inc;
+            float fl = gradient_infill_max_flow;
+            Point pa;
+            while (fl > gradient_infill_min_flow && pos < 0.5f)
+            {
+                pa = p0 + normal(p1 - p0, dist * pos);
+                addExtrusionMove(pa, config, space_fill_type, fl * flow, false, speed_factor, fan_speed);
+                pos += pos_inc;
+                fl /= gradient_infill_exp_factor;
+            }
+            pos -= pos_inc;
+            if (pos >= 0.5f)
+            {
+                pos = 0.5f;
+            }
+            else
+            {
+                pos = 1.0f - pos;
+            }
+            if (fl < gradient_infill_min_flow)
+            {
+                fl = gradient_infill_min_flow;
+            }
+            pa = (p1 - (pa - p0));
+            addExtrusionMove(pa, config, space_fill_type, fl * flow, false, speed_factor, fan_speed);
+            fl *= gradient_infill_exp_factor;
+            pos += pos_inc;
+            while (fl <= gradient_infill_max_flow && pos <= 1.0f)
+            {
+                pa = p0 + normal(p1 - p0, dist * pos);
+                addExtrusionMove(pa, config, space_fill_type, fl * flow, false, speed_factor, fan_speed);
+                pos += pos_inc;
+                fl *= gradient_infill_exp_factor;
+            }
+            addExtrusionMove(p1, config, space_fill_type, gradient_infill_max_flow * flow, false, speed_factor, fan_speed);
+        }
+#endif
+    }
+    else
+    {
+        addExtrusionMove(p1, config, space_fill_type, flow, false, speed_factor, fan_speed);
+    }
+}
+
+void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, SpaceFillType space_fill_type, bool enable_travel_optimization, int wipe_dist, float flow_ratio, std::optional<Point> near_start_location, double fan_speed, const float avoid_freq, const SliceMeshStorage* mesh)
 {
     Polygons boundary;
     if (enable_travel_optimization && comb_boundary_inside2.size() > 0)
@@ -1284,6 +1481,8 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
         min_avoid_len = avoid_len / 1.2f;
         max_avoid_len = avoid_len * 1.2f;
     }
+
+    float gradient_infill_last_flow = 1;
 
     Point last_position;
     for (unsigned int order_idx = 0; order_idx < orderOptimizer.polyOrder.size(); order_idx++)
@@ -1325,7 +1524,14 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
                 speed_factor = std::max((double)min_avoid_len / len, (double)(min_speed / config.getSpeed()));
             }
         }
-        addExtrusionMove(p1, config, space_fill_type, flow_ratio, false, speed_factor, fan_speed);
+        if(config.type == PrintFeatureType::Infill && mesh != nullptr && mesh->settings.get<EGradientInfillType>("gradient_infill_type") != EGradientInfillType::NONE)
+        {
+            addGradientInfillLine(p0, p1, flow_ratio, config, space_fill_type, speed_factor, fan_speed, mesh, gradient_infill_last_flow);
+        }
+        else
+        {
+            addExtrusionMove(p1, config, space_fill_type, flow_ratio, false, speed_factor, fan_speed);
+        }
         last_position = p1;
 
         // Wipe
