@@ -1686,16 +1686,16 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
             near_start_location = infill_lines[rand() % infill_lines.size()][0];
         }
         const bool enable_travel_optimization = mesh.settings.get<bool>("infill_enable_travel_optimization");
+        const float avoid_freq = (pattern == EFillMethod::LINES || pattern == EFillMethod::ZIG_ZAG) ? mesh.settings.get<double>("avoid_frequency") : 0.0;
         if (pattern == EFillMethod::GRID || pattern == EFillMethod::LINES || pattern == EFillMethod::TRIANGLES || pattern == EFillMethod::CUBIC || pattern == EFillMethod::TETRAHEDRAL || pattern == EFillMethod::QUARTER_CUBIC || pattern == EFillMethod::CUBICSUBDIV)
         {
-            const float avoid_freq = (pattern == EFillMethod::LINES || pattern == EFillMethod::ZIG_ZAG) ? mesh.settings.get<double>("avoid_frequency") : 0.0;
             gcode_layer.addLinesByOptimizer(infill_lines, mesh_config.infill_config[0], SpaceFillType::Lines, enable_travel_optimization
-                , mesh.settings.get<coord_t>("infill_wipe_dist"), /*float_ratio = */ 1.0, near_start_location, GCodePathConfig::FAN_SPEED_DEFAULT, avoid_freq);
+                , mesh.settings.get<coord_t>("infill_wipe_dist"), /*float_ratio = */ 1.0, near_start_location, GCodePathConfig::FAN_SPEED_DEFAULT, avoid_freq, &mesh);
         }
         else
         {
             gcode_layer.addLinesByOptimizer(infill_lines, mesh_config.infill_config[0], (pattern == EFillMethod::ZIG_ZAG) ? SpaceFillType::PolyLines : SpaceFillType::Lines, enable_travel_optimization
-                , /* wipe_dist = */ 0, /*float_ratio = */ 1.0, near_start_location);
+                , /* wipe_dist = */ 0, /*float_ratio = */ 1.0, near_start_location, GCodePathConfig::FAN_SPEED_DEFAULT, avoid_freq, &mesh);
         }
     }
     return added_something;

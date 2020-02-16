@@ -613,6 +613,20 @@ public:
     void addWalls(const Polygons& walls, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, WallOverlapComputation* wall_overlap_computation, const ZSeamConfig& z_seam_config = ZSeamConfig(), coord_t wall_0_wipe_dist = 0, float flow_ratio = 1.0, bool always_retract = false);
 
     /*!
+     * Add an infill line to the gcode adjusting its flow and speed to produce gradient infill
+     * \param p0 The infill line's start point
+     * \param p1 The infill line's end point
+     * \param flow The infill line's baseline flow
+     * \param config The config of the line
+     * \param space_fill_type The type of space filling used to generate the line segments (should be either Lines or PolyLines!)
+     * \param speed_factor The infill line's baseline speed
+     * \param fan_speed Fan speed override for this line
+     * \param mesh The current mesh being added to the layer plan
+     * \param gradient_infill_last_flow The last flow value calculated by this function
+     */
+    void addGradientInfillLine(const Point& p0, const Point& p1, const float flow, const GCodePathConfig& config, SpaceFillType space_fill_type, const double speed_factor, const double fan_speed, const SliceMeshStorage* mesh, float& gradient_infill_last_flow);
+
+    /*!
      * Add lines to the gcode with optimized order.
      * \param polygons The lines
      * \param config The config of the lines
@@ -623,8 +637,9 @@ public:
      * \param near_start_location Optional: Location near where to add the first line. If not provided the last position is used.
      * \param fan_speed optional fan speed override for this path
      * \param avoid_freq if non-zero, adjust print speed to avoid generating lines that would move the hotend cyclicly at this frequency
+     * \param mesh (optional) the current mesh being added to the layer plan
      */
-    void addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, SpaceFillType space_fill_type, bool enable_travel_optimization = false, int wipe_dist = 0, float flow_ratio = 1.0, std::optional<Point> near_start_location = std::optional<Point>(), double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT, const float avoid_freq = 0);
+    void addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, SpaceFillType space_fill_type, bool enable_travel_optimization = false, int wipe_dist = 0, float flow_ratio = 1.0, std::optional<Point> near_start_location = std::optional<Point>(), double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT, const float avoid_freq = 0, const SliceMeshStorage* mesh = nullptr);
 
     /*!
      * Add a spiralized slice of wall that is interpolated in X/Y between \p last_wall and \p wall.

@@ -347,6 +347,31 @@ template<> EFillMethod Settings::get<EFillMethod>(const std::string& key) const
     }
 }
 
+template<> EGradientInfillType Settings::get<EGradientInfillType>(const std::string& key) const
+{
+    const std::string& value = get<std::string>(key);
+    if (value == "linear_1d")
+    {
+        return EGradientInfillType::LINEAR_1D;
+    }
+    else if (value == "linear_2d")
+    {
+        return EGradientInfillType::LINEAR_2D;
+    }
+    else if (value == "linear_2d+")
+    {
+        return EGradientInfillType::LINEAR_2D_PLUS;
+    }
+    else if (value == "linear_3d")
+    {
+        return EGradientInfillType::LINEAR_3D;
+    }
+    else
+    {
+        return EGradientInfillType::NONE;
+    }
+}
+
 template<> EFillResolution Settings::get<EFillResolution>(const std::string& key) const
 {
     const std::string& value = get<std::string>(key);

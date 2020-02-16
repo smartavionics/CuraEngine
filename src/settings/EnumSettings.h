@@ -39,6 +39,15 @@ enum class EFillResolution
     HIGH_RESOLUTION
 };
 
+enum class EGradientInfillType
+{
+    NONE,
+    LINEAR_1D,
+    LINEAR_2D,
+    LINEAR_2D_PLUS,
+    LINEAR_3D
+};
+
 /*!
  * Type of platform adhesion.
  */
