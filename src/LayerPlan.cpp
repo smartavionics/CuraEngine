@@ -1283,6 +1283,7 @@ void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const fl
                 {
                     if (!mesh->layers[layer_nr + ln].getOutlines().inside(mid))
                     {
+                        // found air above
                         break;
                     }
                     top_dist += mesh->layers[layer_nr + ln].thickness;
@@ -1290,9 +1291,15 @@ void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const fl
                     {
                         if (!mesh->layers[layer_nr - ln].getOutlines().inside(mid))
                         {
+                            // found air below
                             break;
                         }
                         bot_dist += mesh->layers[layer_nr - ln].thickness;
+                    }
+                    if (top_dist >= dist && bot_dist >= dist)
+                    {
+                        // no point in checking any more layers
+                        break;
                     }
                 }
                 if (top_dist < dist)
