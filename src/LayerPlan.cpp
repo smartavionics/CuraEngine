@@ -1261,11 +1261,8 @@ void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const fl
         coord_t dist = 0;
         if (gradient_infill_type == EGradientInfillType::LINEAR_2D || gradient_infill_type == EGradientInfillType::LINEAR_2D_PLUS || gradient_infill_type == EGradientInfillType::LINEAR_3D)
         {
-            ClosestPolygonPoint cpp = PolygonUtils::findClosest(mid, outline);
-            if (cpp.isValid())
-            {
-                dist = vSize(cpp.location - mid);
-            }
+            dist = vSize(PolygonUtils::findClosest(mid, outline).location - mid);
+
             if (gradient_infill_type == EGradientInfillType::LINEAR_2D_PLUS)
             {
                 if (z < dist)
