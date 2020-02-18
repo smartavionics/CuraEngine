@@ -1251,6 +1251,8 @@ void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const fl
     const float gradient_infill_max_flow = mesh->settings.get<Ratio>("gradient_infill_max_flow");
     const float gradient_infill_speed_factor = mesh->settings.get<Ratio>("gradient_infill_speed_factor");
     const EGradientInfillType gradient_infill_type = mesh->settings.get<EGradientInfillType>("gradient_infill_type");
+    const EGradientInfillSpeedScheme gradient_infill_speed_scheme = mesh->settings.get<EGradientInfillSpeedScheme>("gradient_infill_speed_scheme");
+    const Velocity min_speed = fan_speed_layer_time_settings_per_extruder[getExtruder()].cool_min_speed;
     const coord_t line_len = vSize(p1 - p0);
 
     const Polygons outline = mesh->layers[layer_nr].getOutlines();
@@ -1318,17 +1320,25 @@ void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const fl
         }
         const float fl = std::max(gradient_infill_max_flow - (gradient_infill_max_flow - gradient_infill_min_flow) * dist / gradient_infill_dist, gradient_infill_min_flow);
         float sf = 1;
-        const float last_fl = gradient_infill_last_flow;
-        if (fl != last_fl)
+        if (gradient_infill_speed_scheme == EGradientInfillSpeedScheme::FLOW_CHANGE)
         {
-            if (gradient_infill_speed_factor > 1)
+            const float last_fl = gradient_infill_last_flow;
+            if (fl != last_fl)
             {
-                sf = gradient_infill_speed_factor * ((fl > last_fl) ? (fl / last_fl) : last_fl / fl);
+                sf = ((fl < last_fl) ? (fl / last_fl) : last_fl / fl);
+                sf = 1.0f + (gradient_infill_speed_factor * (sf - 1.0f));
             }
-            else if (gradient_infill_speed_factor < 1)
-            {
-                sf = std::max(1 - ((1 - gradient_infill_speed_factor) * ((fl > last_fl) ? fl / last_fl : last_fl / fl)), 0.1f);
-            }
+        }
+        else if(gradient_infill_speed_scheme == EGradientInfillSpeedScheme::CONSTANT)
+        {
+            sf = 1.0f / fl;
+            sf = 1.0f + (gradient_infill_speed_factor * (sf - 1.0f));
+        }
+
+        if (sf < 1.0f)
+        {
+            // don't produce a speed less than the minimum speed allowed
+            sf = std::max(sf, (float)(min_speed / (config.getSpeed() * speed_factor)));
         }
         addExtrusionMove(to, config, space_fill_type, fl * flow, false, sf * speed_factor, fan_speed);
         gradient_infill_last_flow = fl;
@@ -1361,7 +1371,7 @@ void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const fl
             // the start and end sections are sub-divided into small segments and the middle section is subdivided into large segments
             const int max_small_segs = 4;
             const coord_t small_seg_len = gradient_infill_dist / max_small_segs;
-            const coord_t large_seg_len = std::max(small_seg_len * 2, infill_line_distance);
+            const coord_t large_seg_len = std::min(small_seg_len * 2, infill_line_distance);
             const int num_small_segs = std::min((int)(line_len / (small_seg_len * 2)), max_small_segs);
 
             Point last(p0);

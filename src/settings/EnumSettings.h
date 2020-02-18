@@ -48,6 +48,13 @@ enum class EGradientInfillType
     LINEAR_3D
 };
 
+enum class EGradientInfillSpeedScheme
+{
+    NONE,
+    FLOW_CHANGE,
+    CONSTANT
+};
+
 /*!
  * Type of platform adhesion.
  */

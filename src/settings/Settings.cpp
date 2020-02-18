@@ -372,6 +372,23 @@ template<> EGradientInfillType Settings::get<EGradientInfillType>(const std::str
     }
 }
 
+template<> EGradientInfillSpeedScheme Settings::get<EGradientInfillSpeedScheme>(const std::string& key) const
+{
+    const std::string& value = get<std::string>(key);
+    if (value == "constant")
+    {
+        return EGradientInfillSpeedScheme::CONSTANT;
+    }
+    else if (value == "flow_change")
+    {
+        return EGradientInfillSpeedScheme::FLOW_CHANGE;
+    }
+    else
+    {
+        return EGradientInfillSpeedScheme::NONE;
+    }
+}
+
 template<> EFillResolution Settings::get<EFillResolution>(const std::string& key) const
 {
     const std::string& value = get<std::string>(key);
