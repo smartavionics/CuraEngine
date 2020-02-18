@@ -1326,14 +1326,17 @@ void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const fl
             if (fl != last_fl)
             {
                 sf = ((fl < last_fl) ? (fl / last_fl) : last_fl / fl);
-                sf = 1.0f + (gradient_infill_speed_factor * (sf - 1.0f));
             }
         }
-        else if(gradient_infill_speed_scheme == EGradientInfillSpeedScheme::CONSTANT)
+        else if(gradient_infill_speed_scheme == EGradientInfillSpeedScheme::CONSTANT_FAST)
         {
             sf = 1.0f / fl;
-            sf = 1.0f + (gradient_infill_speed_factor * (sf - 1.0f));
         }
+        else if(gradient_infill_speed_scheme == EGradientInfillSpeedScheme::CONSTANT_SLOW)
+        {
+            sf = 1.0f / (fl + 1.0 - gradient_infill_min_flow);
+        }
+        sf = 1.0f + (gradient_infill_speed_factor * (sf - 1.0f));
 
         if (sf < 1.0f)
         {

@@ -375,9 +375,13 @@ template<> EGradientInfillType Settings::get<EGradientInfillType>(const std::str
 template<> EGradientInfillSpeedScheme Settings::get<EGradientInfillSpeedScheme>(const std::string& key) const
 {
     const std::string& value = get<std::string>(key);
-    if (value == "constant")
+    if (value == "constant_fast")
     {
-        return EGradientInfillSpeedScheme::CONSTANT;
+        return EGradientInfillSpeedScheme::CONSTANT_FAST;
+    }
+    if (value == "constant_slow")
+    {
+        return EGradientInfillSpeedScheme::CONSTANT_SLOW;
     }
     else if (value == "flow_change")
     {

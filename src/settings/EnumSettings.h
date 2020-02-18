@@ -52,7 +52,8 @@ enum class EGradientInfillSpeedScheme
 {
     NONE,
     FLOW_CHANGE,
-    CONSTANT
+    CONSTANT_SLOW,
+    CONSTANT_FAST
 };
 
 /*!
