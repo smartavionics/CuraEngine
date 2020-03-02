@@ -1097,6 +1097,18 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
 
     const coord_t max_spurious_fat_segment_length = std::max((coord_t)50, mesh.settings.get<coord_t>("meshfix_maximum_resolution"));
     const coord_t max_spurious_fat_segment_length2 = max_spurious_fat_segment_length * max_spurious_fat_segment_length;
+
+    const bool extend_floating_bridge_walls = !bridge_wall_mask.empty() && mesh.settings.get<bool>("bridge_extend_floating_walls");
+    Polygons line_extension_mask;
+    bool use_retraction = false;
+    const RetractionConfig& retraction_config = storage.retraction_config_per_extruder[getExtruder()];
+    if (extend_floating_bridge_walls)
+    {
+        const coord_t line_width = non_bridge_config.getLineWidth();
+        line_extension_mask = mesh.layers[layer_nr].getOutlines().offset(-line_width).intersection(bridge_wall_mask).offset(line_width);
+        use_retraction = getLastPlannedExtruderTrain()->settings.get<bool>("retraction_enable");
+    }
+
     for (unsigned int point_idx = 1; point_idx <= wall.size(); point_idx++)
     {
         const Point& p1 = wall[(start_idx + point_idx) % wall.size()];
@@ -1124,6 +1136,40 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             {
                 constexpr bool spiralize = false;
                 addExtrusionMove(p1, non_bridge_config, SpaceFillType::Polygons, flow, spiralize, small_feature_speed_factor);
+            }
+            else if (extend_floating_bridge_walls)
+            {
+                auto extendLineThatEndsOnAir = [&](const Point& start, const Point& end)
+                {
+                    // extend wall line to a maximum of twice its original length
+                    Point remote(end + normal(end - start, vSize(end - start)));
+                    Polygons lines;
+                    lines.addLine(remote, end);
+                    lines = line_extension_mask.intersectionPolyLines(lines);
+                    for (unsigned n = 0; n < lines.size(); ++n)
+                    {
+                        if (lines[n][0] == end)
+                        {
+                            return (lines[n][1] == remote) ? end : lines[n][1];
+                        }
+                        if (lines[n][1] == end)
+                        {
+                            return (lines[n][0] == remote) ? end : lines[n][0];
+                        }
+                    }
+                    return end;
+                };
+                const Point _p0(bridge_wall_mask.inside(p0) ? extendLineThatEndsOnAir(p1, p0) : p0);
+                const Point _p1(bridge_wall_mask.inside(p1) ? extendLineThatEndsOnAir(p0, p1) : p1);
+                if (_p0 != p0)
+                {
+                    addTravel_simple(_p0).retract = use_retraction && (vSize(p0 - _p0) >= retraction_config.retraction_min_travel_distance);
+                }
+                addWallLine(_p0, _p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, distance_to_bridge_start);
+                if (_p1 != p1)
+                {
+                    addTravel_simple(p1).retract = use_retraction && (vSize(p1 - _p1) >= retraction_config.retraction_min_travel_distance);
+                }
             }
             else
             {
