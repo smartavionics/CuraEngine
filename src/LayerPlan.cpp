@@ -1150,11 +1150,11 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                     {
                         if (lines[n][0] == end)
                         {
-                            return (lines[n][1] == remote) ? end : lines[n][1];
+                            return (lines[n][1] == remote || bridge_wall_mask.inside(lines[n][1])) ? end : lines[n][1];
                         }
                         if (lines[n][1] == end)
                         {
-                            return (lines[n][0] == remote) ? end : lines[n][0];
+                            return (lines[n][0] == remote || bridge_wall_mask.inside(lines[n][0])) ? end : lines[n][0];
                         }
                     }
                     return end;
