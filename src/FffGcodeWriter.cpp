@@ -2264,6 +2264,11 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
                     found_line_angle = true;
                 }
             }
+            if (found_line_angle && line_polys.size() == unsupported_line_polys.size())
+            {
+                // all edges are unsupported, orientate skin lines to be at 90 deg to the longest edge
+                line_angle += 90;
+            }
 
             if (!found_line_angle)
             {
