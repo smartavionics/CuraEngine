@@ -2237,6 +2237,11 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
             Polygons line_polys;
             for (ConstPolygonRef poly : bridge_skin_part)
             {
+                if (poly.area() < 0)
+                {
+                    // ignore holes
+                    continue;
+                }
                 Point p0 = poly.back();
                 for (const Point p1 : poly)
                 {
