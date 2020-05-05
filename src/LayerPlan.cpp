@@ -417,7 +417,7 @@ GCodePath& LayerPlan::addTravel(const Point p, const bool force_retract, const c
 
     const ExtruderTrain* extruder = getLastPlannedExtruderTrain();
 
-    const bool retraction_hop_enabled = extruder->settings.get<bool>("retraction_hop_enabled") || (layer_nr == 0 && extruder->settings.get<bool>("retraction_hop_only_on_initial_layer"));
+    const bool retraction_hop_enabled = extruder->settings.get<bool>("retraction_hop_enabled") || (layer_nr >= 0 && (size_t)layer_nr < extruder->settings.get<size_t>("retraction_hop_initial_layers"));
 
     const bool is_first_travel_of_extruder_after_switch = extruder_plans.back().paths.size() == 1 && (extruder_plans.size() > 1 || last_extruder_previous_layer != getExtruder());
     bool bypass_combing = is_first_travel_of_extruder_after_switch && extruder->settings.get<bool>("retraction_hop_after_extruder_switch");
@@ -558,7 +558,7 @@ GCodePath& LayerPlan::addTravel(const Point p, const bool force_retract, const c
             moveInsideCombBoundary(innermost_wall_line_width);
         }
         path->retract = retraction_enable;
-        path->perform_z_hop = retraction_enable && extruder->settings.get<bool>("retraction_hop_enabled");
+        path->perform_z_hop = retraction_enable && retraction_hop_enabled;
     }
 
     // must start new travel path as retraction can be enabled or not depending on path length, etc.
