@@ -439,6 +439,39 @@ void FffPolygonGenerator::processBasicWallsSkinInfill(SliceDataStorage& storage,
     ProgressEstimatorLinear* inset_estimator = new ProgressEstimatorLinear(mesh_layer_count);
     mesh_inset_skin_progress_estimator->nextStage(inset_estimator);
 
+    if (mesh.settings.get<bool>("meshfix_remove_holes_above_air"))
+    {
+        const coord_t half_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0") / 2;
+        for (size_t layer_number = 1; layer_number < mesh.layers.size(); layer_number++)
+        {
+            // determine the outline of the previous layer
+            Polygons prev_layer_outline;
+            for (const SliceMeshStorage& a_mesh : storage.meshes)
+            {
+                if (a_mesh.layers.size() >= layer_number)
+                {
+                    for (const SliceLayerPart& part : a_mesh.layers[layer_number - 1].parts)
+                    {
+                        prev_layer_outline.add(part.outline);
+                    }
+                }
+            }
+            // now remove any holes in this layer that are completely unsupported
+            for (SliceLayerPart& part : mesh.layers[layer_number].parts)
+            {
+                for (size_t i = 1; i < part.outline.size(); ++i)
+                {
+                    Polygons hole;
+                    hole.add(part.outline[i]);
+                    hole[0].reverse();
+                    if (hole.offset(half_line_width_0).intersection(prev_layer_outline).empty())
+                    {
+                        part.outline.remove(i);
+                    }
+                }
+            }
+        }
+    }
 
     // walls
     size_t processed_layer_count = 0;
