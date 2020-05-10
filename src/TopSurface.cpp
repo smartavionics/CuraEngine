@@ -24,6 +24,12 @@ void TopSurface::setAreasFromMeshAndLayerNumber(SliceMeshStorage& mesh, size_t l
     } //If this is the top-most layer, mesh_above stays empty.
 
     areas = mesh.layers[layer_number].getOutlines().difference(mesh_above);
+
+    if (layer_number > 0)
+    {
+        // don't iron areas that are immediately above air
+        areas = areas.intersection(mesh.layers[layer_number - 1].getOutlines());
+    }
 }
 
 bool TopSurface::ironing(const SliceMeshStorage& mesh, const GCodePathConfig& line_config, LayerPlan& layer) const
