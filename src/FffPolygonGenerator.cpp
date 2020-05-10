@@ -467,6 +467,8 @@ void FffPolygonGenerator::processBasicWallsSkinInfill(SliceDataStorage& storage,
                     if (hole.offset(half_line_width_0).intersection(prev_layer_outline).empty())
                     {
                         part.outline.remove(i);
+                        // decrement i so we don't skip the next element
+                        --i;
                     }
                 }
             }
