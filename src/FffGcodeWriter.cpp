@@ -2749,8 +2749,8 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
         gcode_layer.setIsInside(true); // going to print stuff inside print object
         if (!skin_polygons.empty())
         {
-            constexpr bool force_comb_retract = false;
-            gcode_layer.addTravel(skin_polygons[0][0], force_comb_retract);
+            //constexpr bool force_comb_retract = false;
+            //gcode_layer.addTravel(skin_polygons[0][0], force_comb_retract);
             gcode_layer.addPolygonsByOptimizer(skin_polygons, config);
         }
 
