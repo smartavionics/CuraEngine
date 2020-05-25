@@ -1293,7 +1293,18 @@ void FffGcodeWriter::addMeshOpenPolyLinesToGCode(const SliceMeshStorage& mesh, c
             lines.add(p);
         }
     }
-    gcode_layer.addLinesByOptimizer(lines, mesh_config.inset0_config, SpaceFillType::PolyLines);
+
+    if (mesh.settings.get<EZSeamType>("z_seam_type") == EZSeamType::USER_SPECIFIED)
+    {
+        constexpr bool enable_travel_optimization = false;
+        constexpr coord_t wipe_dist = 0;
+        constexpr float flow = 1.0;
+        gcode_layer.addLinesByOptimizer(lines, mesh_config.inset0_config, SpaceFillType::PolyLines, enable_travel_optimization, wipe_dist, flow, mesh.getZSeamHint());
+    }
+    else
+    {
+        gcode_layer.addLinesByOptimizer(lines, mesh_config.inset0_config, SpaceFillType::PolyLines);
+    }
 }
 
 void FffGcodeWriter::addMeshLayerToGCode(const SliceDataStorage& storage, const SliceMeshStorage& mesh, const size_t extruder_nr, const PathConfigStorage::MeshPathConfigs& mesh_config, LayerPlan& gcode_layer) const
