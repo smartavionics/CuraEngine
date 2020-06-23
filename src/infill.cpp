@@ -302,6 +302,14 @@ void Infill::generateConcentricInfill(Polygons& first_concentric_wall, Polygons&
         next_inset = new_inset;
         prev_inset = &next_inset;
     }
+    // reverse direction of insets that surround holes so that all are printed counter-clockwise
+    for (PolygonRef poly : result)
+    {
+        if (!poly.orientation())
+        {
+            poly.reverse();
+        }
+    }
     std::reverse(std::begin(result), std::end(result));
 }
 
