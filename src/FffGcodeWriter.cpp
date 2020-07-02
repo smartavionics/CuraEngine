@@ -2373,10 +2373,18 @@ void FffGcodeWriter::processSkinInsets(const SliceDataStorage& storage, LayerPla
     // add skin walls aka skin perimeters
     if (extruder_nr == skin_extruder_nr)
     {
-        for (const Polygons& skin_perimeter : skin_part.insets)
+        for (Polygons skin_perimeter : skin_part.insets)
         {
             if (skin_perimeter.size() > 0)
             {
+                // reverse direction of insets that surround holes so that all are printed counter-clockwise
+                for (PolygonRef poly : skin_perimeter)
+                {
+                    if (!poly.orientation())
+                    {
+                        poly.reverse();
+                    }
+                }
                 added_something = true;
                 setExtruder_addPrime(storage, gcode_layer, extruder_nr);
                 gcode_layer.setIsInside(true); // going to print stuff inside print object
