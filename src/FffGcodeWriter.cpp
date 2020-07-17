@@ -343,7 +343,7 @@ unsigned int FffGcodeWriter::getStartExtruder(const SliceDataStorage& storage)
     size_t start_extruder_nr = mesh_group_settings.get<ExtruderTrain&>("adhesion_extruder_nr").extruder_nr;
     if (mesh_group_settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::NONE)
     {
-        if ((mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable")) && mesh_group_settings.get<bool>("support_brim_enable"))
+        if (mesh_group_settings.get<bool>("support_enable") && mesh_group_settings.get<bool>("support_brim_enable"))
         {
             start_extruder_nr = mesh_group_settings.get<ExtruderTrain&>("support_infill_extruder_nr").extruder_nr;
         }
@@ -1974,7 +1974,7 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
         const Settings& mesh_group_settings = Application::getInstance().current_slice->scene.current_mesh_group->settings;
         const bool bridge_over_support = mesh.settings.get<bool>("bridge_over_support");
         const bool wall_overhang_over_support = mesh.settings.get<bool>("wall_overhang_over_support");
-        if ((!bridge_over_support || !wall_overhang_over_support) && (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable")))
+        if ((!bridge_over_support || !wall_overhang_over_support) && mesh_group_settings.get<bool>("support_enable"))
         {
             // add the support outlines so we don't generate bridges over support
             const coord_t z_distance_top = mesh.settings.get<coord_t>("support_top_distance");
@@ -2734,7 +2734,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     {
         // skin isn't a bridge but is it above support and we need to modify the fan speed?
 
-        if (mesh_group_settings.get<bool>("support_enable") || mesh_group_settings.get<bool>("support_tree_enable"))
+        if (mesh_group_settings.get<bool>("support_enable"))
         {
             const coord_t layer_height = mesh_config.inset0_config.getLayerThickness();
             const coord_t z_distance_top = mesh.settings.get<coord_t>("support_top_distance");
