@@ -160,7 +160,10 @@ void SkinInfillAreaComputation::generateSkinsAndInfill()
         SliceLayerPart& part = layer->parts[part_nr];
         generateSkinInsetsAndInnerSkinInfill(&part);
 
-        generateRoofing(part);
+        if (layer_nr > 0)
+        {
+            generateRoofing(part);
+        }
     }
 }
 
