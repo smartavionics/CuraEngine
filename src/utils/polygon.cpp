@@ -355,7 +355,7 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
             continue; //Remove the vertex.
         }
         else if (length2 >= smallest_line_segment_squared && new_path.size() > 2 &&
-                LinearAlg2D::getDist2FromLine(current, ref_line_start, ref_line_end) <= 25) //Almost exactly straight (barring rounding errors).
+                LinearAlg2D::getDist2FromLine(current, ref_line_start, ref_line_end) <= 4) //Almost exactly straight (barring rounding errors).
         {
             new_path.pop_back(); //Remove the previous vertex but still add the new one.
         }
@@ -383,16 +383,16 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
     //For the first two points we haven't checked yet if they are almost exactly straight.
     if (new_path.size() > 2)
     {
-        if (LinearAlg2D::getDist2FromLine(new_path[0], new_path.back(), new_path[1]) <= 25)
+        if (LinearAlg2D::getDist2FromLine(new_path[0], new_path.back(), new_path[1]) <= 4)
         {
             // first point is colinear, remove it and check the 2nd point
             new_path.erase(new_path.begin());
-            if (new_path.size() > 2 && LinearAlg2D::getDist2FromLine(new_path[0], new_path.back(), new_path[1]) <= 25)
+            if (new_path.size() > 2 && LinearAlg2D::getDist2FromLine(new_path[0], new_path.back(), new_path[1]) <= 4)
             {
                 new_path.erase(new_path.begin());
             }
         }
-        else if (LinearAlg2D::getDist2FromLine(new_path[1], new_path[0], new_path[2]) <= 25)
+        else if (LinearAlg2D::getDist2FromLine(new_path[1], new_path[0], new_path[2]) <= 4)
         {
             new_path.erase(new_path.begin() + 1);
         }
