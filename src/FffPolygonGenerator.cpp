@@ -440,7 +440,7 @@ void FffPolygonGenerator::processBasicWallsSkinInfill(SliceDataStorage& storage,
 
     if (mesh.settings.get<bool>("meshfix_remove_holes_above_air"))
     {
-        const coord_t half_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0") / 2;
+        const coord_t max_allowed_width_of_wall_above_air = mesh.settings.get<coord_t>("wall_line_width_0") * 3 / 4;
         for (size_t layer_number = 1; layer_number < mesh.layers.size(); layer_number++)
         {
             // determine the outline of the previous layer
@@ -463,7 +463,7 @@ void FffPolygonGenerator::processBasicWallsSkinInfill(SliceDataStorage& storage,
                     Polygons hole;
                     hole.add(part.outline[i]);
                     hole[0].reverse();
-                    if (hole.offset(half_line_width_0).intersection(prev_layer_outline).empty())
+                    if (hole.offset(max_allowed_width_of_wall_above_air).intersection(prev_layer_outline).empty())
                     {
                         part.outline.remove(i);
                         // decrement i so we don't skip the next element
