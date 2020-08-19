@@ -737,7 +737,7 @@ void GCodeExport::writeExtrusion(const int x, const int y, const int z, const Ve
     assert((Point3(x,y,z) - currentPosition).vSize() < MM2INT(1000)); // no crazy positions (this code should not be compiled for release)
     assert(extrusion_mm3_per_mm >= 0.0);
 #endif //ASSERT_INSANE_OUTPUT
-
+#ifdef DEBUG
     if (std::isinf(extrusion_mm3_per_mm))
     {
         logError("Extrusion rate is infinite!");
@@ -756,21 +756,23 @@ void GCodeExport::writeExtrusion(const int x, const int y, const int z, const Ve
     {
         logWarning("Warning! Negative extrusion move!\n");
     }
+#endif
 
-    double extrusion_per_mm = mm3ToE(extrusion_mm3_per_mm);
+    const double extrusion_per_mm = mm3ToE(extrusion_mm3_per_mm);
 
     if (is_z_hopped > 0)
     {
         writeZhopEnd();
     }
 
-    Point3 diff = Point3(x,y,z) - currentPosition;
+    const Point3 diff = Point3(x,y,z) - currentPosition;
+    const double diff_length = diff.vSizeMM();
 
     writeUnretractionAndPrime();
 
     //flow rate compensation
     double extrusion_offset = 0;
-    if (diff.vSizeMM())
+    if(diff_length)
     {
         extrusion_offset = speed * extrusion_mm3_per_mm * extrusion_offset_factor;
         if (extrusion_offset > max_extrusion_offset)
@@ -785,8 +787,8 @@ void GCodeExport::writeExtrusion(const int x, const int y, const int z, const Ve
         *output_stream << ";FLOW_RATE_COMPENSATED_OFFSET = " << current_e_offset << new_line;
     }
 
-    extruder_attr[current_extruder].last_e_value_after_wipe += extrusion_per_mm * diff.vSizeMM();
-    double new_e_value = current_e_value + extrusion_per_mm * diff.vSizeMM();
+    extruder_attr[current_extruder].last_e_value_after_wipe += extrusion_per_mm * diff_length;
+    const double new_e_value = current_e_value + extrusion_per_mm * diff_length;
 
     *output_stream << "G1";
     writeFXYZE(speed, x, y, z, new_e_value, feature);
