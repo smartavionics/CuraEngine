@@ -78,7 +78,7 @@ void InsetOrderOptimizer::processHoleInsets()
     const coord_t wall_0_wipe_dist = mesh.settings.get<coord_t>("wall_0_wipe_dist");
     const bool retract_before_outer_wall = mesh.settings.get<bool>("travel_retract_before_outer_wall");
     const bool outer_inset_first = mesh.settings.get<bool>("outer_inset_first")
-        || (layer_nr == 0 && mesh.settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM);
+        || (layer_nr == 0 && mesh.settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM && mesh.settings.get<coord_t>("brim_gap") <= 0);
     const unsigned int num_insets = part.insets.size();
     constexpr float flow = 1.0;
 
@@ -349,7 +349,7 @@ void InsetOrderOptimizer::processOuterWallInsets(const bool include_outer, const
     const coord_t wall_0_wipe_dist = mesh.settings.get<coord_t>("wall_0_wipe_dist");
     const bool retract_before_outer_wall = mesh.settings.get<bool>("travel_retract_before_outer_wall");
     const bool outer_inset_first = mesh.settings.get<bool>("outer_inset_first")
-                                    || (layer_nr == 0 && mesh.settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM);
+        || (layer_nr == 0 && mesh.settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM && mesh.settings.get<coord_t>("brim_gap") <= 0);
     const size_t num_insets = part.insets.size();
     constexpr Ratio flow = 1.0_r;
 
@@ -542,7 +542,8 @@ bool InsetOrderOptimizer::processInsetsWithOptimizedOrdering()
     // the outer wall if it is printed before the holes because the outer wall does not get flow reduced but the hole walls will get flow reduced where
     // they are close to the outer wall. However, we only want to do this if the level 0 insets are being printed before the higher level insets.
 
-    if (mesh.settings.get<bool>("outer_inset_first") || (layer_nr == 0 && mesh.settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM))
+    if (mesh.settings.get<bool>("outer_inset_first")
+        || (layer_nr == 0 && mesh.settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM && mesh.settings.get<coord_t>("brim_gap") <= 0))
     {
         // first process the outer wall only
         processOuterWallInsets(true, false);

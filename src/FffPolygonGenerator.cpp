@@ -1,4 +1,4 @@
-//Copyright (c) 2018 Ultimaker B.V.
+//Copyright (c) 2020 Ultimaker B.V.
 //CuraEngine is released under the terms of the AGPLv3 or higher.
 
 #include <algorithm>
@@ -225,7 +225,7 @@ bool FffPolygonGenerator::sliceModel(MeshGroup* meshgroup, TimeKeeper& timeKeepe
         // Do not add and process support _modifier_ meshes further, and ONLY skip support _modifiers_. They have been
         // processed in AreaSupport::handleSupportModifierMesh(), but other helper meshes such as infill meshes are
         // processed in a later stage, except for support mesh itself, so an exception is made for that.
-        if (is_support_modifier && ! mesh.settings.get<bool>("support_mesh"))
+        if(is_support_modifier && !mesh.settings.get<bool>("support_mesh"))
         {
             storage.meshes.pop_back();
             continue;
@@ -440,7 +440,7 @@ void FffPolygonGenerator::processBasicWallsSkinInfill(SliceDataStorage& storage,
 
     if (mesh.settings.get<bool>("meshfix_remove_holes_above_air"))
     {
-        const coord_t half_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0") / 2;
+        const coord_t max_allowed_width_of_wall_above_air = mesh.settings.get<coord_t>("wall_line_width_0") * 3 / 4;
         for (size_t layer_number = 1; layer_number < mesh.layers.size(); layer_number++)
         {
             // determine the outline of the previous layer
@@ -463,7 +463,7 @@ void FffPolygonGenerator::processBasicWallsSkinInfill(SliceDataStorage& storage,
                     Polygons hole;
                     hole.add(part.outline[i]);
                     hole[0].reverse();
-                    if (hole.offset(half_line_width_0).intersection(prev_layer_outline).empty())
+                    if (hole.offset(max_allowed_width_of_wall_above_air).intersection(prev_layer_outline).empty())
                     {
                         part.outline.remove(i);
                         // decrement i so we don't skip the next element
@@ -829,10 +829,10 @@ void FffPolygonGenerator::processDerivedWallsSkinInfill(SliceMeshStorage& mesh)
             }
             mesh.cross_fill_provider = new SierpinskiFillProvider(mesh.bounding_box, mesh.settings.get<coord_t>("infill_line_distance"), mesh.settings.get<coord_t>("infill_line_width"));
         }
-
-        // combine infill
-        SkinInfillAreaComputation::combineInfillLayers(mesh);
     }
+
+    // combine infill
+    SkinInfillAreaComputation::combineInfillLayers(mesh);
 
     // fuzzy skin
     if (mesh.settings.get<bool>("magic_fuzzy_skin_enabled"))
@@ -915,6 +915,14 @@ void FffPolygonGenerator::removeEmptyFirstLayers(SliceDataStorage& storage, size
     {
         log("Removing %d layers because they are empty\n", n_empty_first_layers);
         const coord_t layer_height = Application::getInstance().current_slice->scene.current_mesh_group->settings.get<coord_t>("layer_height");
+        const coord_t layer_height_0 = Application::getInstance().current_slice->scene.current_mesh_group->settings.get<coord_t>("layer_height_0");
+        if (layer_height_0 > layer_height)
+        {
+            // the first layer is thicker than the others so to maintain the correct overall height for the mesh we need to
+            // remove some more layers
+            n_empty_first_layers += std::round((double)layer_height_0 / layer_height) - 1;
+            n_empty_first_layers = std::min(n_empty_first_layers, total_layers);
+        }
         for (SliceMeshStorage& mesh : storage.meshes)
         {
             std::vector<SliceLayer>& layers = mesh.layers;
@@ -928,10 +936,10 @@ void FffPolygonGenerator::removeEmptyFirstLayers(SliceDataStorage& storage, size
             {
                 layer.printZ -= n_empty_first_layers * layer_height;
             }
-            mesh.layer_nr_max_filled_layer -= n_empty_first_layers;
+            mesh.layer_nr_max_filled_layer = std::max(0, (int)mesh.layer_nr_max_filled_layer - (int)n_empty_first_layers);
         }
         total_layers -= n_empty_first_layers;
-        storage.support.layer_nr_max_filled_layer -= n_empty_first_layers;
+        storage.support.layer_nr_max_filled_layer = std::max(0, (int)storage.support.layer_nr_max_filled_layer - (int)n_empty_first_layers);
         std::vector<SupportLayer>& support_layers = storage.support.supportLayers;
         support_layers.erase(support_layers.begin(), support_layers.begin() + n_empty_first_layers);
     }
@@ -1087,8 +1095,18 @@ void FffPolygonGenerator::processDraftShield(SliceDataStorage& storage)
         draft_shield = draft_shield.unionPolygons(storage.getLayerOutlines(layer_nr, around_support, around_prime_tower));
     }
 
-    const int draft_shield_dist = mesh_group_settings.get<coord_t>("draft_shield_dist");
+    const coord_t draft_shield_dist = mesh_group_settings.get<coord_t>("draft_shield_dist");
     storage.draft_protection_shield = draft_shield.approxConvexHull(draft_shield_dist);
+
+    //Extra offset has rounded joints, so simplify again.
+    coord_t maximum_resolution = 0; //Draft shield is printed with every extruder, so resolve with the max() or min() of them to meet the requirements of all extruders.
+    coord_t maximum_deviation = std::numeric_limits<coord_t>::max();
+    for(const ExtruderTrain& extruder : Application::getInstance().current_slice->scene.extruders)
+    {
+        maximum_resolution = std::max(maximum_resolution, extruder.settings.get<coord_t>("meshfix_maximum_resolution"));
+        maximum_deviation = std::min(maximum_deviation, extruder.settings.get<coord_t>("meshfix_maximum_deviation"));
+    }
+    storage.draft_protection_shield.simplify(maximum_resolution, maximum_deviation);
 }
 
 void FffPolygonGenerator::processPlatformAdhesion(SliceDataStorage& storage)

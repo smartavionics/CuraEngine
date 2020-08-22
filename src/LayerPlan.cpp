@@ -1547,6 +1547,13 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
 
     float gradient_infill_last_flow = 1;
 
+    float max_flow_boost = 1.0;
+
+    if(config.type == PrintFeatureType::Skin && mesh != nullptr && mesh->settings.get<bool>("skin_lines_boost_flow"))
+    {
+        max_flow_boost = mesh->settings.get<Ratio>((layer_nr == 0) ? "skin_lines_max_flow_boost_0" : "skin_lines_max_flow_boost");
+    }
+
     Point last_position;
     for (unsigned int order_idx = 0; order_idx < orderOptimizer.polyOrder.size(); order_idx++)
     {
@@ -1562,14 +1569,16 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
             continue;
         }
         coord_t travel_len = 0;
+        coord_t unretracted_travel_len = 0;
         if (order_idx == 0 || p0 != last_position)
         {
             // try to avoid using combing when printing lines skin pattern
             const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
-            addTravel(p0, false, min_comb_distance);
-            if (avoid_freq != 0)
+            const GCodePath& travel_path = addTravel(p0, false, min_comb_distance);
+            travel_len = vSize(p0 - last_position);
+            if (!travel_path.retract)
             {
-                travel_len = vSize(p0 - last_position);
+                unretracted_travel_len = travel_len;
             }
         }
         double speed_factor = 1.0;
@@ -1593,7 +1602,16 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
         }
         else
         {
-            addExtrusionMove(p1, config, space_fill_type, flow_ratio, false, speed_factor, fan_speed);
+            float flow_ratio_here = flow_ratio;
+
+            if (unretracted_travel_len > 0 && max_flow_boost > 1.0f)
+            {
+                const coord_t max_compensated_travel_len = config.getLineWidth() * 3;
+                const coord_t travel_len = std::min(unretracted_travel_len, max_compensated_travel_len);
+                const coord_t len = vSize(p1 - p0);
+                flow_ratio_here *= std::min(max_flow_boost, (float)(len + travel_len) / len);
+            }
+            addExtrusionMove(p1, config, space_fill_type, flow_ratio_here, false, speed_factor, fan_speed);
         }
         last_position = p1;
 
@@ -2614,7 +2632,7 @@ bool LayerPlan::writePathWithCoasting(GCodeExport& gcode, const size_t extruder_
         actual_coasting_dist = accumulated_dist * coasting_dist / coasting_min_dist;
         for (acc_dist_idx_gt_coast_dist = 0 ; acc_dist_idx_gt_coast_dist < accumulated_dist_per_point.size() ; acc_dist_idx_gt_coast_dist++)
         { // search for the correct coast_dist_idx
-            if (accumulated_dist_per_point[acc_dist_idx_gt_coast_dist] > actual_coasting_dist)
+            if (accumulated_dist_per_point[acc_dist_idx_gt_coast_dist] >= actual_coasting_dist)
             {
                 break;
             }
