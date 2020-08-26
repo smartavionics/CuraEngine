@@ -52,18 +52,7 @@ void createLayerWithParts(const Settings& settings, SliceLayer& storageLayer, Sl
     }
     else
     {
-        // split layer's polygons into parts that are a single outline with zero or more holes within
-
-        // need to shrink the polygons by just over half the outer wall line width before splitting and then expand again after by the same amount
-        // this ensures that parts that have narrow regions that are less than or equal to an outer line width wide will not be subsequently split
-
-        const coord_t shrinkage = 5 + settings.get<coord_t>("wall_line_width_0") / 2 + settings.get<coord_t>("wall_0_inset");
-
-        for(const PolygonsPart& part : layer->polygons.offset(-shrinkage).splitIntoParts(union_layers || union_all_remove_holes))
-        {
-            result.emplace_back();
-            result.back().add(part.offset(shrinkage));
-        }
+        result = layer->polygons.splitIntoParts(union_layers || union_all_remove_holes);
     }
     const coord_t hole_offset = settings.get<coord_t>("hole_xy_offset");
     for(unsigned int i=0; i<result.size(); i++)
