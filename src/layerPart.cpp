@@ -63,7 +63,6 @@ void createLayerWithParts(const Settings& settings, SliceLayer& storageLayer, Sl
         {
             result.emplace_back();
             result.back().add(part.offset(shrinkage));
-            result.back().simplify();
         }
     }
     const coord_t hole_offset = settings.get<coord_t>("hole_xy_offset");
