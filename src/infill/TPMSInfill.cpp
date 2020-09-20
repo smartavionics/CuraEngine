@@ -54,9 +54,9 @@ void TPMSInfill::generate(Polygons& result_lines, const Polygons& outline)
     }
     pitch = step * num_steps; // recalculate to avoid precision errors
 
-    x_min = infill_origin.X - std::ceil((float)(infill_origin.X - aabb.min.X) / pitch) * pitch;
+    x_min = infill_origin.X - std::ceil((float)(infill_origin.X - aabb.min.X) / pitch + 1) * pitch;
     y_min = infill_origin.Y - std::ceil((float)(infill_origin.Y - aabb.min.Y) / pitch + 0.25) * pitch;
-    x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / pitch) * pitch;
+    x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / pitch + 1) * pitch;
     y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / pitch + 0.25) * pitch;
 
     generateCoordinates(result_lines, outline, pitch, step);
