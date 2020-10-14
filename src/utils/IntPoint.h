@@ -82,7 +82,7 @@ INLINE coord_t vSize2(const Point& p0)
 }
 INLINE float vSize2f(const Point& p0)
 {
-    return float(p0.X)*float(p0.X)+float(p0.Y)*float(p0.Y);
+    return static_cast<float>(p0.X)*static_cast<float>(p0.X)+static_cast<float>(p0.Y)*static_cast<float>(p0.Y);
 }
 
 
@@ -144,7 +144,7 @@ INLINE double angle(const Point& p)
 }
 
 }//namespace cura
-    
+
 namespace std {
 template <>
 struct hash<cura::Point> {
@@ -154,7 +154,7 @@ struct hash<cura::Point> {
         int result = 89;
         result = result * prime + pp.X;
         result = result * prime + pp.Y;
-        return result; 
+        return result;
     }
 };
 }
