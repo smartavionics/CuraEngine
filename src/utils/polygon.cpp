@@ -89,7 +89,7 @@ Polygons Polygons::approxConvexHull(int extra_outset)
     //Perform the offset for each polygon one at a time.
     //This is necessary because the polygons may overlap, in which case the offset could end up in an infinite loop.
     //See http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Classes/ClipperOffset/_Body.htm
-    for (const ClipperLib::Path path : paths)
+    for (const ClipperLib::Path& path : paths)
     {
         Polygons offset_result;
         ClipperLib::ClipperOffset offsetter(1.2, 10.0);
@@ -332,6 +332,11 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
         Point next = path->at((point_idx + 1) % size());
 
         const coord_t length2 = vSize2(current - previous);
+        if (length2 < 25)
+        {
+            // We're allowed to always delete segments of less than 5 micron.
+            continue;
+        }
 
         //Check if the accumulated area doesn't exceed the maximum.
         accumulated_area_removed += current.X * next.Y - current.Y * next.X; //Shoelace formula for area of polygon per line segment.
@@ -343,19 +348,17 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
             continue; //Remove the vertex.
         }
         //We want to check if the height of the triangle formed by previous, current and next vertices is less than allowed_error_distance_squared.
-        //A = 1/2 * b * h     [triangle area formula]
-        //2A = b * h          [multiply by 2]
-        //h = 2A / b          [divide by b]
-        //h^2 = (2A / b)^2    [square it]
-        //h^2 = (2A)^2 / b^2  [factor the divisor]
-        //h^2 = 4A^2 / b^2    [remove brackets of (2A)^2]
-        const coord_t height_2 = (4 * area_removed_so_far * area_removed_so_far) / base_length_2;
+        //L = b * h           [apply above two and take out the 1/2]
+        //h = L / b           [divide by b]
+        //h^2 = (L / b)^2     [square it]
+        //h^2 = L^2 / b^2     [factor the divisor]
+        const coord_t height_2 = area_removed_so_far * area_removed_so_far / base_length_2;
         if (length2 < smallest_line_segment_squared && height_2 <= allowed_error_distance_squared) //Line is small and removing it doesn't introduce too much error.
         {
             continue; //Remove the vertex.
         }
         else if (length2 >= smallest_line_segment_squared && new_path.size() > 2 &&
-                LinearAlg2D::getDist2FromLine(current, ref_line_start, ref_line_end) <= 4) //Almost exactly straight (barring rounding errors).
+                LinearAlg2D::getDistFromLine(current, ref_line_start, ref_line_end) <= 2) //Almost exactly straight (barring rounding errors).
         {
             new_path.pop_back(); //Remove the previous vertex but still add the new one.
         }
@@ -383,16 +386,16 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
     //For the first two points we haven't checked yet if they are almost exactly straight.
     if (new_path.size() > 2)
     {
-        if (LinearAlg2D::getDist2FromLine(new_path[0], new_path.back(), new_path[1]) <= 4)
+        if (LinearAlg2D::getDistFromLine(new_path[0], new_path.back(), new_path[1]) <= 2)
         {
             // first point is colinear, remove it and check the 2nd point
             new_path.erase(new_path.begin());
-            if (new_path.size() > 2 && LinearAlg2D::getDist2FromLine(new_path[0], new_path.back(), new_path[1]) <= 4)
+            if (new_path.size() > 2 && LinearAlg2D::getDistFromLine(new_path[0], new_path.back(), new_path[1]) <= 2)
             {
                 new_path.erase(new_path.begin());
             }
         }
-        else if (LinearAlg2D::getDist2FromLine(new_path[1], new_path[0], new_path[2]) <= 4)
+        else if (LinearAlg2D::getDistFromLine(new_path[1], new_path[0], new_path[2]) <= 2)
         {
             new_path.erase(new_path.begin() + 1);
         }

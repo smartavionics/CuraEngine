@@ -447,7 +447,7 @@ void FffPolygonGenerator::processBasicWallsSkinInfill(SliceDataStorage& storage,
             Polygons prev_layer_outline;
             for (const SliceMeshStorage& a_mesh : storage.meshes)
             {
-                if (a_mesh.layers.size() >= layer_number)
+                if (a_mesh.isPrinted() && a_mesh.layers.size() >= layer_number)
                 {
                     for (const SliceLayerPart& part : a_mesh.layers[layer_number - 1].parts)
                     {

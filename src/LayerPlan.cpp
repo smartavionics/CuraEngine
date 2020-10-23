@@ -1402,6 +1402,7 @@ void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const fl
         case EFillMethod::GYROID:
         case EFillMethod::SCHWARZ_P:
         case EFillMethod::SCHWARZ_D:
+        case EFillMethod::HONEYCOMB:
             infill_is_short_lines = true;
             break;
         default:
