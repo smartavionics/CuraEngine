@@ -9,6 +9,7 @@
 #include "sliceDataStorage.h"
 #include "infill/ImageBasedDensityProvider.h"
 #include "infill/TPMSInfill.h"
+#include "infill/HoneycombInfill.h"
 #include "infill/NoZigZagConnectorProcessor.h"
 #include "infill/SierpinskiFill.h"
 #include "infill/SierpinskiFillProvider.h"
@@ -98,7 +99,7 @@ void Infill::_generate(Polygons& result_polygons, Polygons& result_lines, const 
     if (in_outline.empty()) return;
     if (line_distance == 0) return;
 
-    if (pattern == EFillMethod::ZIG_ZAG || (zig_zaggify && (pattern == EFillMethod::LINES || pattern == EFillMethod::TRIANGLES || pattern == EFillMethod::GRID || pattern == EFillMethod::CUBIC || pattern == EFillMethod::TETRAHEDRAL || pattern == EFillMethod::QUARTER_CUBIC || pattern == EFillMethod::TRIHEXAGON || pattern == EFillMethod::GYROID || pattern == EFillMethod::SCHWARZ_P || pattern == EFillMethod::SCHWARZ_D)))
+    if (pattern == EFillMethod::ZIG_ZAG || (zig_zaggify && (pattern == EFillMethod::LINES || pattern == EFillMethod::TRIANGLES || pattern == EFillMethod::GRID || pattern == EFillMethod::CUBIC || pattern == EFillMethod::TETRAHEDRAL || pattern == EFillMethod::QUARTER_CUBIC || pattern == EFillMethod::TRIHEXAGON || pattern == EFillMethod::GYROID || pattern == EFillMethod::SCHWARZ_P || pattern == EFillMethod::SCHWARZ_D || pattern == EFillMethod::HONEYCOMB)))
     {
         outline_offset -= infill_line_width / 2; // the infill line zig zag connections must lie next to the border, not on it
     }
@@ -164,6 +165,12 @@ void Infill::_generate(Polygons& result_polygons, Polygons& result_lines, const 
     case EFillMethod::SCHWARZ_D:
         {
             TPMSInfillSchwarzD infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle);
+            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
+        }
+        break;
+    case EFillMethod::HONEYCOMB:
+        {
+            HoneycombInfill infill(zig_zaggify, line_distance, infill_origin, fill_angle, infill_line_width);
             infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
         }
         break;

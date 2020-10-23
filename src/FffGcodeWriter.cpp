@@ -368,11 +368,11 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
 {
     if (mesh.infill_angles.size() == 0)
     {
+        const EFillMethod infill_pattern = mesh.settings.get<EFillMethod>("infill_pattern");
         mesh.infill_angles = mesh.settings.get<std::vector<AngleDegrees>>("infill_angles");
         if (mesh.infill_angles.size() == 0)
         {
             // user has not specified any infill angles so use defaults
-            const EFillMethod infill_pattern = mesh.settings.get<EFillMethod>("infill_pattern");
             if (infill_pattern == EFillMethod::CROSS || infill_pattern == EFillMethod::CROSS_3D)
             {
                 mesh.infill_angles.push_back(22); // put most infill lines in between 45 and 0 degrees
@@ -380,6 +380,12 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
             else if (infill_pattern == EFillMethod::GYROID || infill_pattern == EFillMethod::SCHWARZ_P || infill_pattern == EFillMethod::SCHWARZ_D)
             {
                 mesh.infill_angles.push_back(0);
+            }
+            else if (infill_pattern == EFillMethod::HONEYCOMB)
+            {
+                mesh.infill_angles.push_back(30);
+                mesh.infill_angles.push_back(150);
+                mesh.infill_angles.push_back(270);
             }
             else
             {
@@ -390,6 +396,14 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
                     mesh.infill_angles.push_back(135);
                 }
             }
+        }
+        else if (infill_pattern == EFillMethod::HONEYCOMB)
+        {
+            const AngleDegrees angle = mesh.infill_angles[0];
+            mesh.infill_angles.clear();
+            mesh.infill_angles.push_back(angle + 30);
+            mesh.infill_angles.push_back(angle + 150);
+            mesh.infill_angles.push_back(angle + 270);
         }
     }
 

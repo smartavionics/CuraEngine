@@ -192,6 +192,7 @@ set(engine_SRCS # Except main.cpp.
     src/infill/TPMSInfillGyroid.cpp
     src/infill/TPMSInfillSchwarzP.cpp
     src/infill/TPMSInfillSchwarzD.cpp
+    src/infill/HoneycombInfill.cpp
 
     src/pathPlanning/Comb.cpp
     src/pathPlanning/GCodePath.cpp

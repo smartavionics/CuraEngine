@@ -29,6 +29,7 @@ enum class EFillMethod
     GYROID,
     SCHWARZ_P,
     SCHWARZ_D,
+    HONEYCOMB,
     NONE  // NOTE: Should remain last! (May be used in testing to enumarate the enum.)
 };
 
