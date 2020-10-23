@@ -50,7 +50,7 @@ void HoneycombInfill::generateCoordinates(Polygons& result, const Polygons& outl
 {
     unsigned num_rows = 0;
     const coord_t line_width_adj_y = infill_line_width * 0.5;
-    const coord_t line_width_adj_x = infill_line_width * 0.66;
+    const coord_t line_width_adj_x = infill_line_width * 0.275;
 
     for (coord_t y = y_min; y < y_max; y += height)
     {
@@ -58,7 +58,7 @@ void HoneycombInfill::generateCoordinates(Polygons& result, const Polygons& outl
         {
             const int sign = sign_i * 2 - 1;
             bool is_first_point = true;
-            Point last(x_min, y);
+            Point last(x_min, y + sign * line_width_adj_y);
             bool last_inside = false;
             unsigned chain_end_index = 0;
             Point chain_end[2];
@@ -70,7 +70,7 @@ void HoneycombInfill::generateCoordinates(Polygons& result, const Polygons& outl
                     switch (segment)
                     {
                         case 0:
-                            current = Point(x + pitch/3, y + sign * line_width_adj_y);
+                            current = Point(x + pitch/3+line_width_adj_x, y + sign * line_width_adj_y);
                             break;
                         case 1:
                             current = Point(x + pitch/2-line_width_adj_x, y + sign * (height/2 - line_width_adj_y));
@@ -79,7 +79,7 @@ void HoneycombInfill::generateCoordinates(Polygons& result, const Polygons& outl
                             current = Point(x + pitch*5/6+line_width_adj_x, y + sign * (height/2 - line_width_adj_y));
                             break;
                         case 3:
-                            current = Point(x + pitch, y + sign * line_width_adj_y);
+                            current = Point(x + pitch-line_width_adj_x, y + sign * line_width_adj_y);
                             break;
                     }
                     current = rotate_around_origin(current, fill_angle_rads);
