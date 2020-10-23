@@ -332,6 +332,11 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
         Point next = path->at((point_idx + 1) % size());
 
         const coord_t length2 = vSize2(current - previous);
+        if (length2 < 25)
+        {
+            // We're allowed to always delete segments of less than 5 micron.
+            continue;
+        }
 
         //Check if the accumulated area doesn't exceed the maximum.
         accumulated_area_removed += current.X * next.Y - current.Y * next.X; //Shoelace formula for area of polygon per line segment.
