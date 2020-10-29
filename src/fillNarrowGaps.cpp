@@ -20,7 +20,7 @@ void FffGcodeWriter::fillNarrowGaps(const SliceDataStorage& storage, LayerPlan& 
 
     const Ratio min_flow = std::max(Ratio(0.2), mesh.settings.get<Ratio>("wall_min_flow"));
 
-    const double min_gap_area = mesh.settings.get<double>("min_gap_area") * 1000 * 1000; // mm^2 -> microns^2
+    const double min_gap_area = mesh.settings.get<bool>("filter_out_tiny_gaps") ? mesh.settings.get<double>("min_gap_area") * 1000 * 1000 : 1; // mm^2 -> microns^2
 
     Polygons simplified_gaps(gaps);
 
