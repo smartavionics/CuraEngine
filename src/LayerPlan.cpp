@@ -524,7 +524,7 @@ GCodePath& LayerPlan::addTravel(const Point p, const bool force_retract, const c
                         // the combed travel distance is too long, use a direct line travel move instead
                         path->points.clear();
                         // retract and z-hop as per a normal non-combed travel move
-                        path->retract = (direct_distance >= retraction_config.retraction_min_travel_distance);
+                        path->retract = retraction_enable && (direct_distance >= retraction_config.retraction_min_travel_distance);
                         if (path->retract)
                         {
                             path->perform_z_hop = retraction_hop_enabled;
