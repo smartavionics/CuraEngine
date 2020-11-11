@@ -51,6 +51,9 @@ void HoneycombInfill::generateCoordinates(Polygons& result, const Polygons& outl
     unsigned num_rows = 0;
     const coord_t line_width_adj_y = infill_line_width * 0.5;
     const coord_t line_width_adj_x = infill_line_width * 0.275;
+    // when testing to see if a line's ends are both inside the outline, use an outline that has been shrunk to ensure we
+    // catch the situation where both ends are inside the area but between the ends the line hits/crosses the boundary
+    const Polygons shrunk_outline = outline.offset(-pitch / 3);
 
     for (coord_t y = y_min; y < y_max; y += height)
     {
@@ -83,7 +86,7 @@ void HoneycombInfill::generateCoordinates(Polygons& result, const Polygons& outl
                             break;
                     }
                     current = rotate_around_origin(current, fill_angle_rads);
-                    bool current_inside = outline.inside(current, true);
+                    const bool current_inside = shrunk_outline.inside(current, false);
                     if (!is_first_point)
                     {
                         if (last_inside && current_inside)
@@ -91,45 +94,32 @@ void HoneycombInfill::generateCoordinates(Polygons& result, const Polygons& outl
                             // line doesn't hit the boundary, add the whole line
                             result.addLine(last, current);
                         }
-                        else if (last_inside != current_inside)
+                        else
                         {
-                            // line hits the boundary, add the part that's inside the boundary
+                            // add the parts of the line that are inside the boundary
                             Polygons line;
                             line.addLine(last, current);
-                            line = outline.intersectionPolyLines(line);
-                            if (line.size() > 0)
+                            for (ConstPolygonRef line_seg : outline.intersectionPolyLines(line))
                             {
-                                // some of the line is inside the boundary
-                                result.addLine(line[0][0], line[0][1]);
+                                result.addLine(line_seg[0], line_seg[1]);
+
                                 if (zig_zaggify)
                                 {
-                                    chain_end[chain_end_index] = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
-                                    if (++chain_end_index == 2)
+                                    for (const Point& pt : line_seg)
                                     {
-                                        chains[0].push_back(chain_end[0]);
-                                        chains[1].push_back(chain_end[1]);
-                                        chain_end_index = 0;
-                                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                        line_numbers.push_back(num_rows);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // none of the line is inside the boundary so the point that's actually on the boundary
-                                // is the chain end
-                                if (zig_zaggify)
-                                {
-                                    chain_end[chain_end_index] = (last_inside) ? last : current;
-                                    if (++chain_end_index == 2)
-                                    {
-                                        chains[0].push_back(chain_end[0]);
-                                        chains[1].push_back(chain_end[1]);
-                                        chain_end_index = 0;
-                                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                        line_numbers.push_back(num_rows);
+                                        if ((pt != last && pt != current) || !outline.inside(pt, false))
+                                        {
+                                            chain_end[chain_end_index] = pt;
+                                            if (++chain_end_index == 2)
+                                            {
+                                                chains[0].push_back(chain_end[0]);
+                                                chains[1].push_back(chain_end[1]);
+                                                chain_end_index = 0;
+                                                connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                                                connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                                                line_numbers.push_back(num_rows);
+                                            }
+                                        }
                                     }
                                 }
                             }

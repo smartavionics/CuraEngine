@@ -631,6 +631,7 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
             coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
             coord_t wall_line_width_x = mesh.settings.get<coord_t>("wall_line_width_x");
             coord_t skin_line_width = mesh.settings.get<coord_t>("skin_line_width");
+            coord_t infill_line_width = mesh.settings.get<coord_t>("infill_line_width");
             if (layer_nr == 0)
             {
                 const ExtruderTrain& train_wall_0 = mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr");
@@ -679,9 +680,14 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
                         // we print them as a perimeter gap
                         inner = inner.offset(-skin_line_width / 2).offset(skin_line_width / 2);
                     }
-                    inner.add(part.infill_area);
+                    // add infill area to inner ensuring that the skin and infill overlap very slightly to avoid gaps
+                    inner.add(part.infill_area.offset(perimeter_gaps_extra_offset));
                     inner = inner.unionPolygons();
                     part.perimeter_gaps.add(outer.difference(inner));
+
+                    if (filter_out_tiny_gaps) {
+                        part.perimeter_gaps.removeSmallAreas(2 * INT2MM(infill_line_width) * INT2MM(infill_line_width));
+                    }
                 }
 
                 if (filter_out_tiny_gaps) {
