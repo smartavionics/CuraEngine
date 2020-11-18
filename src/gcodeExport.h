@@ -530,6 +530,13 @@ public:
     void setInitialTemp(int extruder_nr, double temp);
 
     /*!
+     * Sets the currentTemperature value for all extruders.
+     *
+     * \param temp The temperature that all extruders are assumed to be at.
+     */
+    void setCurrentTemperatureOfAllExtruders(const Temperature temperature);
+
+    /*!
      * Finish the gcode: turn fans off, write end gcode and flush all gcode left in the buffer.
      * 
      * \param endCode The end gcode to be appended at the very end.

@@ -565,6 +565,15 @@ void FffGcodeWriter::processInitialLayerTemperature(const SliceDataStorage& stor
                 }
             }
         }
+        else if (scene.current_mesh_group->settings.get<bool>("machine_extruders_share_heater"))
+        {
+            // assume that the start g-code has included the appropriate M10[49] commands to set the temperature and wait for it to be achieved
+            // here we need to update the extruders' current temperature values so that at the first extruder switch no M10[49] commands are output
+            const ExtruderTrain& train = scene.extruders[start_extruder_nr];
+            const Temperature print_temp_0 = train.settings.get<Temperature>("material_print_temperature_layer_0");
+            const Temperature extruder_temp = (print_temp_0 != 0) ? print_temp_0 : train.settings.get<Temperature>("material_print_temperature");
+            gcode.setCurrentTemperatureOfAllExtruders(extruder_temp);
+        }
     }
 }
 
@@ -1747,6 +1756,22 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
                             , mesh.settings.get<coord_t>("cross_infill_pocket_size")
                             , pattern_resolution);
                         infill_comp.generate(infill_polygons, infill_lines, mesh.cross_fill_provider, &mesh);
+
+                        // when both lines and polygons are created, convert the polygons to chains of lines so that they all get printed together
+                        if (!infill_lines.empty() && !infill_polygons.empty())
+                        {
+                            for (ConstPolygonRef poly : infill_polygons)
+                            {
+                                for (unsigned n = 1; n < poly.size(); ++n)
+                                {
+                                    infill_lines.addLine(poly[n-1], poly[n]);
+                                }
+                                // stop the last line before it gets to the first point so that a chain is created rather than a loop
+                                const Point& last_point = poly[poly.size() - 1];
+                                infill_lines.addLine(last_point, last_point + normal(poly[0] - last_point, vSize(poly[0] - last_point) - 15));
+                            }
+                            infill_polygons.clear();
+                        }
 
                         // normal processing for the infill that isn't below skin
                         in_outline = infill_not_below_skin;
