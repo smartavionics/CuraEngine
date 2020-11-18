@@ -137,6 +137,17 @@ void GCodeExport::setInitialTemp(int extruder_nr, double temp)
     }
 }
 
+void GCodeExport::setCurrentTemperatureOfAllExtruders(const Temperature temperature)
+{
+    const size_t extruder_count = Application::getInstance().current_slice->scene.extruders.size();
+    for (size_t extruder_nr = 0; extruder_nr < extruder_count; extruder_nr++)
+    {
+        // this assumes that some custom g-code has set the temperature and waited for it to be achieved
+        extruder_attr[extruder_nr].currentTemperature = temperature;
+        extruder_attr[extruder_nr].waited_for_temperature = true;
+    }
+}
+
 const std::string GCodeExport::flavorToString(const EGCodeFlavor& flavor) const
 {
     switch (flavor)

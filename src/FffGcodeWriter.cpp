@@ -565,6 +565,15 @@ void FffGcodeWriter::processInitialLayerTemperature(const SliceDataStorage& stor
                 }
             }
         }
+        else if (scene.current_mesh_group->settings.get<bool>("machine_extruders_share_heater"))
+        {
+            // assume that the start g-code has included the appropriate M10[49] commands to set the temperature and wait for it to be achieved
+            // here we need to update the extruders' current temperature values so that at the first extruder switch no M10[49] commands are output
+            const ExtruderTrain& train = scene.extruders[start_extruder_nr];
+            const Temperature print_temp_0 = train.settings.get<Temperature>("material_print_temperature_layer_0");
+            const Temperature extruder_temp = (print_temp_0 != 0) ? print_temp_0 : train.settings.get<Temperature>("material_print_temperature");
+            gcode.setCurrentTemperatureOfAllExtruders(extruder_temp);
+        }
     }
 }
 
