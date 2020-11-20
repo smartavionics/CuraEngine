@@ -1571,7 +1571,8 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
         }
         coord_t travel_len = 0;
         coord_t unretracted_travel_len = 0;
-        if (order_idx == 0 || p0 != last_position)
+        // travel to start point if at least MINIMUM_LINE_LENGTH away from the current position
+        if (order_idx == 0 || vSize2(p0 - last_position) >= MINIMUM_SQUARED_LINE_LENGTH)
         {
             // try to avoid using combing when printing lines skin pattern
             const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
