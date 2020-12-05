@@ -4,6 +4,7 @@
 #include <cmath> // std::ceil
 
 #include "Application.h" //To get settings.
+#include "Slice.h"
 #include "ExtruderTrain.h"
 #include "skin.h"
 #include "sliceDataStorage.h"
@@ -375,9 +376,10 @@ void SkinInfillAreaComputation::generateSkinInsets(SkinPart& skin_part)
         }
 
         // optimize polygons: remove unnecessary verts
-        const ExtruderTrain& train_wall = mesh.settings.get<ExtruderTrain&>(inset_idx == 0 ? "wall_0_extruder_nr" : "wall_x_extruder_nr");
-        const coord_t maximum_resolution = train_wall.settings.get<coord_t>("meshfix_maximum_resolution");
-        const coord_t maximum_deviation = train_wall.settings.get<coord_t>("meshfix_maximum_deviation");
+        int wall_extruder_nr = mesh.settings.get<int>(inset_idx == 0 ? "wall_0_extruder_nr" : "wall_x_extruder_nr");
+        const Settings& resolution_settings = wall_extruder_nr < 0 ? mesh.settings : Application::getInstance().current_slice->scene.extruders[wall_extruder_nr].settings;
+        const coord_t maximum_resolution = resolution_settings.get<coord_t>("meshfix_maximum_resolution");
+        const coord_t maximum_deviation = resolution_settings.get<coord_t>("meshfix_maximum_deviation");
         skin_part.insets[inset_idx].simplify(maximum_resolution, maximum_deviation);
         if (skin_part.insets[inset_idx].size() < 1)
         {
@@ -622,11 +624,11 @@ void SkinInfillAreaComputation::generateGradualInfill(SliceMeshStorage& mesh)
 
         for (SliceLayerPart& part : layer.parts)
         {
-            assert(part.infill_area_per_combine_per_density.size() == 0 && "infill_area_per_combine_per_density is supposed to be uninitialized");
+            assert((part.infill_area_per_combine_per_density.empty() && "infill_area_per_combine_per_density is supposed to be uninitialized"));
 
             const Polygons& infill_area = part.getOwnInfillArea();
 
-            if (infill_area.size() == 0 || layer_idx < min_layer || layer_idx > max_layer)
+            if (infill_area.empty() || layer_idx < min_layer || layer_idx > max_layer)
             { // initialize infill_area_per_combine_per_density empty
                 part.infill_area_per_combine_per_density.emplace_back(); // create a new infill_area_per_combine
                 part.infill_area_per_combine_per_density.back().emplace_back(); // put empty infill area in the newly constructed infill_area_per_combine
@@ -658,7 +660,7 @@ void SkinInfillAreaComputation::generateGradualInfill(SliceMeshStorage& mesh)
                     }
                     less_dense_infill = less_dense_infill.intersection(relevent_upper_polygons);
                 }
-                if (less_dense_infill.size() == 0)
+                if (less_dense_infill.empty())
                 {
                     break;
                 }
@@ -672,7 +674,7 @@ void SkinInfillAreaComputation::generateGradualInfill(SliceMeshStorage& mesh)
             std::vector<Polygons>& infill_area_per_combine_current_density = part.infill_area_per_combine_per_density.back();
             infill_area_per_combine_current_density.push_back(infill_area);
             part.infill_area_own = nullptr; // clear infill_area_own, it's not needed any more.
-            assert(part.infill_area_per_combine_per_density.size() != 0 && "infill_area_per_combine_per_density is now initialized");
+            assert(!part.infill_area_per_combine_per_density.empty() && "infill_area_per_combine_per_density is now initialized");
         }
     }
 }

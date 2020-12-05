@@ -407,8 +407,6 @@ Polygons SliceDataStorage::getLayerOutlines(const LayerIndex layer_nr, const boo
     else 
     {
         Polygons total;
-        coord_t maximum_resolution = std::numeric_limits<coord_t>::max();
-        coord_t maximum_deviation = std::numeric_limits<coord_t>::max();
         if (layer_nr >= 0)
         {
             for (const SliceMeshStorage& mesh : meshes)
@@ -430,8 +428,6 @@ Polygons SliceDataStorage::getLayerOutlines(const LayerIndex layer_nr, const boo
                 {
                     total = total.unionPolygons(layer.openPolyLines.offsetPolyLine(100));
                 }
-                maximum_resolution = std::min(maximum_resolution, mesh.settings.get<coord_t>("meshfix_maximum_resolution"));
-                maximum_deviation = std::min(maximum_deviation, mesh.settings.get<coord_t>("meshfix_maximum_deviation"));
             }
         }
         if (include_support)
@@ -454,7 +450,6 @@ Polygons SliceDataStorage::getLayerOutlines(const LayerIndex layer_nr, const boo
                 total.add(layer_nr == 0 ? primeTower.outer_poly_first_layer : primeTower.outer_poly);
             }
         }
-        total.simplify(maximum_resolution, maximum_deviation);
         return total;
     }
 }
