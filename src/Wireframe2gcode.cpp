@@ -248,7 +248,7 @@ void Wireframe2gcode::strategy_retract(WeaveConnectionPart& part, unsigned int s
     Settings& scene_settings = Application::getInstance().current_slice->scene.settings;
     RetractionConfig retraction_config;
     // TODO: get these from the settings!
-    retraction_config.distance = INT2MM(0.5); //INT2MM(getSettingInt("retraction_amount"))
+    retraction_config.distance = MM2INT(0.5); //INT2MM(getSettingInt("retraction_amount"))
     retraction_config.prime_volume = 0;//INT2MM(getSettingInt("retractionPrime
     retraction_config.speed = 20; // 40;
     retraction_config.primeSpeed = 15; // 30;
@@ -636,7 +636,7 @@ void Wireframe2gcode::processSkirt()
     {
         return;
     }
-    Polygons skirt = wireFrame.bottom_outline.offset(MM2INT(100 + 5)).offset(MM2INT(-100));
+    Polygons skirt = wireFrame.bottom_outline.offset(MM2INT(100 + 5), ClipperLib::jtRound).offset(MM2INT(-100), ClipperLib::jtRound);
     PathOrderOptimizer order(Point(INT32_MIN, INT32_MIN));
     order.addPolygons(skirt);
     order.optimize();
