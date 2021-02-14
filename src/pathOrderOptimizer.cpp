@@ -235,7 +235,7 @@ static inline bool pointsAreCoincident(const Point& a, const Point& b)
     return vSize2(a - b) < SQUARED_COINCIDENT_POINT_DISTANCE; // points are closer than COINCIDENT_POINT_DISTANCE, consider them coincident
 }
 
-void LineOrderOptimizer::monotoniclyOrder(const coord_t line_spacing)
+void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
 {
     if (line_spacing > 0 && polygons.size() > 0)
     {

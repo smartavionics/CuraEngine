@@ -1548,7 +1548,7 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
     }
     if (monotonic_line_width)
     {
-        orderOptimizer.monotoniclyOrder(monotonic_line_width);
+        orderOptimizer.monotonicallyOrder(monotonic_line_width);
     }
     else
     {

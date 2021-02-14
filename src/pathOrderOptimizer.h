@@ -136,7 +136,7 @@ public:
      *
      * \param line_spacing The distance between adjacent skin lines
      */
-    void monotoniclyOrder(const coord_t line_spacing);
+    void monotonicallyOrder(const coord_t line_spacing);
 
 private:
     /*!
