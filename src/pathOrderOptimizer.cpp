@@ -239,8 +239,20 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
 {
     if (line_spacing > 0 && polygons.size() > 0)
     {
-        ConstPolygonRef poly0 = *polygons[0];
-        double angle = LinearAlg2D::getAngleLeft(Point(poly0[0].X - 1000, poly0[0].Y), poly0[0], poly0[1]) * 180 / M_PI;
+        ConstPolygonPointer angle_poly = polygons[0];
+        {
+            coord_t max_len2 = 0;
+            for (unsigned i = 0; i < polygons.size(); i += polygons.size() / 8)
+            {
+                coord_t len2 = vSize2((*polygons[i])[1] - (*polygons[i])[0]);
+                if (len2 > max_len2)
+                {
+                    angle_poly = polygons[i];
+                    max_len2 = len2;
+                }
+            }
+        }
+        const double angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].X - 1000, (*angle_poly)[0].Y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
         //std::cerr << "monotonic line width = " << line_spacing << ", angle = " << angle << "\n";
         const Point3Matrix rot_mat = LinearAlg2D::rotateAround(Point(0, 0), angle);
         struct line {
