@@ -131,6 +131,13 @@ public:
      */
     void optimize(bool find_chains = true); //!< sets #polyStart and #polyOrder
 
+    /*!
+     * Order the lines monotonically - used for pretty printing skins
+     *
+     * \param line_spacing The distance between adjacent skin lines
+     */
+    void monotoniclyOrder(const coord_t line_spacing);
+
 private:
     /*!
      * Update LineOrderOptimizer::polyStart if the current line is better than the current best.

@@ -235,6 +235,147 @@ static inline bool pointsAreCoincident(const Point& a, const Point& b)
     return vSize2(a - b) < SQUARED_COINCIDENT_POINT_DISTANCE; // points are closer than COINCIDENT_POINT_DISTANCE, consider them coincident
 }
 
+void LineOrderOptimizer::monotoniclyOrder(const coord_t line_spacing)
+{
+    if (line_spacing > 0 && polygons.size() > 0)
+    {
+        ConstPolygonRef poly0 = *polygons[0];
+        double angle = LinearAlg2D::getAngleLeft(Point(poly0[0].X - 1000, poly0[0].Y), poly0[0], poly0[1]) * 180 / M_PI;
+        //std::cerr << "monotonic line width = " << line_spacing << ", angle = " << angle << "\n";
+        const Point3Matrix rot_mat = LinearAlg2D::rotateAround(Point(0, 0), angle);
+        struct line {
+            int idx;
+            coord_t y;
+            coord_t x1;
+            coord_t x2;
+        };
+        std::vector<struct line> lines;
+        for (unsigned int poly_idx = 0; poly_idx < polygons.size(); poly_idx++)
+        {
+            ConstPolygonRef poly = *polygons[poly_idx];
+            Point p1 = rot_mat.apply(poly[0]);
+            Point p2 = rot_mat.apply(poly[1]);
+            lines.emplace_back();
+            lines.back().idx = poly_idx;
+            lines.back().y = ((p1 + p2)/2).Y;
+            lines.back().x1 = std::min(p1.X, p2.X);
+            lines.back().x2 = std::max(p1.X, p2.X);
+        }
+        sort(lines.begin(), lines.end(), [](const struct line& a, const struct line& b) -> bool { return a.y > b.y; });
+
+        Point last_point = startPoint;
+        polyStart.resize(polygons.size());
+        unsigned line_idx = 0;
+        unsigned earliest_line_idx = 0;
+        const coord_t tolerance = 20;
+
+        while (polyOrder.size() < polygons.size())
+        {
+            struct line& line = lines[line_idx];
+            if (line.idx < 0)
+            {
+                if (line_idx == earliest_line_idx)
+                {
+                    ++earliest_line_idx;
+                }
+                ++line_idx;
+                continue;
+            }
+
+            ConstPolygonRef poly = *polygons[line.idx];
+            unsigned point_idx = (vSize2(poly[0] - last_point) <= vSize2(poly[1] - last_point))? 0 : 1;
+            polyOrder.push_back(line.idx);
+            polyStart[line.idx] = point_idx;
+            last_point = poly[(point_idx == 0) ? 1 : 0];
+            line.idx = -1;
+            if (line_idx == earliest_line_idx)
+            {
+                ++earliest_line_idx;
+            }
+
+            std::vector<unsigned> siblings;
+            unsigned next_adjacent_line_idx = 0;
+            unsigned next_line_idx = line_idx;
+
+            // there could be sibling lines earlier than the current line so look backwards for them
+            while (next_line_idx > 0 && next_line_idx >= earliest_line_idx)
+            {
+                if (lines[next_line_idx].idx >= 0)
+                {
+                    coord_t gap = line.y - lines[next_line_idx].y;
+                    if (std::abs(gap) > tolerance)
+                    {
+                        // this line is not a sibling so there won't be any others earlier
+                        break;
+                    }
+                }
+                --next_line_idx;
+            }
+
+            while (next_line_idx < lines.size())
+            {
+                if (lines[next_line_idx].idx < 0)
+                {
+                    ++next_line_idx;
+                    continue;
+                }
+                coord_t gap = line.y - lines[next_line_idx].y;
+                //std::cerr << line_idx << ", " << next_line_idx << " gap = " << gap << "\n";
+                if (std::abs(gap) < tolerance)
+                {
+                    //std::cerr << line_idx << " sibling = " << next_line_idx << "\n";
+                    siblings.push_back(next_line_idx);
+                }
+                else if (line.x1 <= lines[next_line_idx].x2 && line.x2 >= lines[next_line_idx].x1)
+                {
+                    // this line is adjacent to the current line
+                    if (std::abs(gap - line_spacing) < tolerance)
+                    {
+                        next_adjacent_line_idx = next_line_idx;
+                        //std::cerr << line_idx << " next adjacent = " << next_adjacent_line_idx << "\n";
+                        break;
+                    }
+                    else if (gap > line_spacing)
+                    {
+                        // this line is not adjacent
+                        break;
+                    }
+                }
+                ++next_line_idx;
+            }
+            if (next_adjacent_line_idx)
+            {
+                next_line_idx = next_adjacent_line_idx;
+                // if any siblings overlap this line we can't print it but must go back and print some earlier lines
+                while (!siblings.empty())
+                {
+                    int sibling = siblings.back();
+                    siblings.pop_back();
+                    if (lines[sibling].x1 <= lines[next_adjacent_line_idx].x2 && lines[sibling].x2 >= lines[next_adjacent_line_idx].x1)
+                    {
+                        //std::cerr << "jump!" << "\n";
+                        next_line_idx = 0;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                //std::cerr << "jump!" << "\n";
+                next_line_idx = 0;
+            }
+
+            if (next_line_idx == 0)
+            {
+                // TODO - find the nearest line to jump to that preserves the monotonic ordering
+                next_line_idx = earliest_line_idx;
+            }
+
+            line_idx = next_line_idx;
+        }
+    }
+}
+
 /**
 *
 */

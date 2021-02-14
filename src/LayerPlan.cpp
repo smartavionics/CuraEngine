@@ -1534,7 +1534,26 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
     {
         orderOptimizer.addPolygon(polygons[line_idx]);
     }
-    orderOptimizer.optimize();
+    coord_t monotonic_line_width = 0;
+    if (config.type == PrintFeatureType::Skin && mesh != nullptr)
+    {
+        const EFillMethod pattern = (layer_nr == 0) ?
+            mesh->settings.get<EFillMethod>("top_bottom_pattern_0") :
+            mesh->settings.get<EFillMethod>("top_bottom_pattern");
+
+        if (pattern == EFillMethod::LINES && mesh->settings.get<bool>("monotonic_skin_lines"))
+        {
+            monotonic_line_width = config.getLineWidth();
+        }
+    }
+    if (monotonic_line_width)
+    {
+        orderOptimizer.monotoniclyOrder(monotonic_line_width);
+    }
+    else
+    {
+        orderOptimizer.optimize();
+    }
 
     coord_t min_avoid_len = 0;
     coord_t max_avoid_len = 0;
