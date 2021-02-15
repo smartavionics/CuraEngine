@@ -239,6 +239,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
 {
     if (line_spacing > 0 && polygons.size() > 0)
     {
+        // rotate all the lines so that they are orientated E-W
         ConstPolygonPointer angle_poly = polygons[0];
         {
             coord_t max_len2 = 0;
@@ -253,7 +254,6 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             }
         }
         const double angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].X - 1000, (*angle_poly)[0].Y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
-        //std::cerr << "monotonic line width = " << line_spacing << ", angle = " << angle << "\n";
         const Point3Matrix rot_mat = LinearAlg2D::rotateAround(Point(0, 0), angle);
         struct line {
             int idx;
@@ -272,13 +272,19 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             lines[poly_idx].x1 = std::min(p1.X, p2.X);
             lines[poly_idx].x2 = std::max(p1.X, p2.X);
         }
+
+        // sort the lines by increasing Y
+
         sort(lines.begin(), lines.end(), [](const struct line& a, const struct line& b) -> bool { return a.y > b.y; });
 
-        Point last_point = startPoint;
+        // lines whose Y values differ by no more than tolerance are considered 'siblings'
+        const coord_t tolerance = 20;
+
         polyStart.resize(polygons.size());
+
         unsigned line_idx = 0;
         unsigned earliest_line_idx = 0;
-        const coord_t tolerance = 20;
+        Point last_point = startPoint;
 
         while (polyOrder.size() < polygons.size())
         {
@@ -330,25 +336,25 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                     ++next_line_idx;
                     continue;
                 }
+                // test the following lines to see if (a) they are siblings of the current line or (b) they overlap with the current line
                 coord_t gap = line.y - lines[next_line_idx].y;
-                //std::cerr << line_idx << ", " << next_line_idx << " gap = " << gap << "\n";
                 if (std::abs(gap) < tolerance)
                 {
-                    //std::cerr << line_idx << " sibling = " << next_line_idx << "\n";
+                    // gap is tiny, this is a sibling
                     siblings.push_back(next_line_idx);
                 }
                 else if (line.x1 <= lines[next_line_idx].x2 && line.x2 >= lines[next_line_idx].x1)
                 {
-                    // this line is adjacent to the current line
+                    // the line overlaps the current line
                     if (std::abs(gap - line_spacing) < tolerance)
                     {
+                        // the gap is close to the line spacing so this line is adjacent to the current line
                         next_adjacent_line_idx = next_line_idx;
-                        //std::cerr << line_idx << " next adjacent = " << next_adjacent_line_idx << "\n";
                         break;
                     }
                     else if (gap > line_spacing)
                     {
-                        // this line is not adjacent
+                        // the gap is more than the line spacing so this line is not adjacent
                         break;
                     }
                 }
@@ -362,7 +368,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 {
                     if (lines[sibling].x1 <= lines[next_adjacent_line_idx].x2 && lines[sibling].x2 >= lines[next_adjacent_line_idx].x1)
                     {
-                        //std::cerr << "jump!" << "\n";
+                        // a sibling line overlaps so go back and find an earlier line
                         next_line_idx = 0;
                         break;
                     }
@@ -370,7 +376,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             }
             else
             {
-                //std::cerr << "jump!" << "\n";
+                // with no adjacent line we have come to a dead end so go back and find an earlier line
                 next_line_idx = 0;
             }
 
