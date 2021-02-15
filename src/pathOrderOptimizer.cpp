@@ -358,10 +358,8 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             {
                 next_line_idx = next_adjacent_line_idx;
                 // if any siblings overlap this line we can't print it but must go back and print some earlier lines
-                while (!siblings.empty())
+                for (unsigned sibling : siblings)
                 {
-                    int sibling = siblings.back();
-                    siblings.pop_back();
                     if (lines[sibling].x1 <= lines[next_adjacent_line_idx].x2 && lines[sibling].x2 >= lines[next_adjacent_line_idx].x1)
                     {
                         //std::cerr << "jump!" << "\n";
