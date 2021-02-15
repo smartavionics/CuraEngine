@@ -261,17 +261,16 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             coord_t x1;
             coord_t x2;
         };
-        std::vector<struct line> lines;
+        std::vector<struct line> lines(polygons.size());
         for (unsigned int poly_idx = 0; poly_idx < polygons.size(); poly_idx++)
         {
             ConstPolygonRef poly = *polygons[poly_idx];
             Point p1 = rot_mat.apply(poly[0]);
             Point p2 = rot_mat.apply(poly[1]);
-            lines.emplace_back();
-            lines.back().idx = poly_idx;
-            lines.back().y = ((p1 + p2)/2).Y;
-            lines.back().x1 = std::min(p1.X, p2.X);
-            lines.back().x2 = std::max(p1.X, p2.X);
+            lines[poly_idx].idx = poly_idx;
+            lines[poly_idx].y = ((p1 + p2)/2).Y;
+            lines[poly_idx].x1 = std::min(p1.X, p2.X);
+            lines[poly_idx].x2 = std::max(p1.X, p2.X);
         }
         sort(lines.begin(), lines.end(), [](const struct line& a, const struct line& b) -> bool { return a.y > b.y; });
 
