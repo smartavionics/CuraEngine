@@ -2924,9 +2924,6 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
         }
 
         std::optional<Point> near_start_location;
-        const EFillMethod pattern = (gcode_layer.getLayerNr() == 0) ?
-            mesh.settings.get<EFillMethod>("top_bottom_pattern_0") :
-            mesh.settings.get<EFillMethod>("top_bottom_pattern");
         if (pattern == EFillMethod::LINES || pattern == EFillMethod::ZIG_ZAG)
         { // update near_start_location to a location which tries to avoid seams in skin
             near_start_location = getSeamAvoidingLocation(area, skin_angle, gcode_layer.getLastPlannedPositionOrStartingPosition());
