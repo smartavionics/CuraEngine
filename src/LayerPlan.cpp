@@ -1505,7 +1505,7 @@ void LayerPlan::addGradientInfillLine(const Point& p0, const Point& p1, const fl
     }
 }
 
-void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, SpaceFillType space_fill_type, bool enable_travel_optimization, int wipe_dist, float flow_ratio, std::optional<Point> near_start_location, double fan_speed, const float avoid_freq, const SliceMeshStorage* mesh)
+void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, SpaceFillType space_fill_type, bool enable_travel_optimization, int wipe_dist, float flow_ratio, std::optional<Point> near_start_location, double fan_speed, const float avoid_freq, const SliceMeshStorage* mesh, const EFillMethod pattern)
 {
     Polygons boundary;
     if (enable_travel_optimization && comb_boundary_inside2.size() > 0)
@@ -1534,21 +1534,10 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
     {
         orderOptimizer.addPolygon(polygons[line_idx]);
     }
-    coord_t monotonic_line_width = 0;
-    if (config.type == PrintFeatureType::Skin && mesh != nullptr)
-    {
-        const EFillMethod pattern = (layer_nr == 0) ?
-            mesh->settings.get<EFillMethod>("top_bottom_pattern_0") :
-            mesh->settings.get<EFillMethod>("top_bottom_pattern");
 
-        if (pattern == EFillMethod::LINES && mesh->settings.get<bool>("monotonic_skin_lines"))
-        {
-            monotonic_line_width = config.getLineWidth();
-        }
-    }
-    if (monotonic_line_width)
+    if (config.type == PrintFeatureType::Skin && pattern == EFillMethod::LINES && mesh != nullptr && mesh->settings.get<bool>("monotonic_skin_lines"))
     {
-        orderOptimizer.monotonicallyOrder(monotonic_line_width);
+        orderOptimizer.monotonicallyOrder(config.getLineWidth());
     }
     else
     {
