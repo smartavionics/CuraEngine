@@ -256,21 +256,21 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
         const double angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].X - 1000, (*angle_poly)[0].Y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
         const Point3Matrix rot_mat = LinearAlg2D::rotateAround(Point(0, 0), angle);
         struct line {
-            int idx;
+            int poly_idx;
             coord_t y;
             coord_t x1;
             coord_t x2;
         };
         std::vector<struct line> lines(polygons.size());
-        for (unsigned int poly_idx = 0; poly_idx < polygons.size(); poly_idx++)
+        for (unsigned int i = 0; i < polygons.size(); i++)
         {
-            ConstPolygonRef poly = *polygons[poly_idx];
+            ConstPolygonRef poly = *polygons[i];
             Point p1 = rot_mat.apply(poly[0]);
             Point p2 = rot_mat.apply(poly[1]);
-            lines[poly_idx].idx = poly_idx;
-            lines[poly_idx].y = ((p1 + p2)/2).Y;
-            lines[poly_idx].x1 = std::min(p1.X, p2.X);
-            lines[poly_idx].x2 = std::max(p1.X, p2.X);
+            lines[i].poly_idx = i;
+            lines[i].y = ((p1 + p2)/2).Y;
+            lines[i].x1 = std::min(p1.X, p2.X);
+            lines[i].x2 = std::max(p1.X, p2.X);
         }
 
         // sort the lines by increasing Y
@@ -289,7 +289,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
         while (polyOrder.size() < polygons.size())
         {
             struct line& line = lines[line_idx];
-            if (line.idx < 0)
+            if (line.poly_idx < 0)
             {
                 if (line_idx == earliest_line_idx)
                 {
@@ -299,12 +299,12 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 continue;
             }
 
-            ConstPolygonRef poly = *polygons[line.idx];
+            ConstPolygonRef poly = *polygons[line.poly_idx];
             unsigned point_idx = (vSize2(poly[0] - last_point) <= vSize2(poly[1] - last_point))? 0 : 1;
-            polyOrder.push_back(line.idx);
-            polyStart[line.idx] = point_idx;
+            polyOrder.push_back(line.poly_idx);
+            polyStart[line.poly_idx] = point_idx;
             last_point = poly[(point_idx == 0) ? 1 : 0];
-            line.idx = -1;
+            line.poly_idx = -1;
             if (line_idx == earliest_line_idx)
             {
                 ++earliest_line_idx;
@@ -317,7 +317,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             // there could be sibling lines earlier than the current line so look backwards for them
             while (next_line_idx > 0 && next_line_idx >= earliest_line_idx)
             {
-                if (lines[next_line_idx].idx >= 0)
+                if (lines[next_line_idx].poly_idx >= 0)
                 {
                     coord_t gap = line.y - lines[next_line_idx].y;
                     if (std::abs(gap) > tolerance)
@@ -331,7 +331,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
 
             while (next_line_idx < lines.size())
             {
-                if (lines[next_line_idx].idx < 0)
+                if (lines[next_line_idx].poly_idx < 0)
                 {
                     ++next_line_idx;
                     continue;
@@ -362,8 +362,8 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             }
             if (next_adjacent_line_idx)
             {
-                next_line_idx = next_adjacent_line_idx;
                 // if any siblings overlap this line we can't print it but must go back and print some earlier lines
+                next_line_idx = next_adjacent_line_idx;
                 for (unsigned sibling : siblings)
                 {
                     if (lines[sibling].x1 <= lines[next_adjacent_line_idx].x2 && lines[sibling].x2 >= lines[next_adjacent_line_idx].x1)
