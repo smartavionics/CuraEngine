@@ -242,7 +242,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
         ConstPolygonPointer angle_poly = polygons[0];
         {
             coord_t max_len2 = 0;
-            for (unsigned i = 0; i < polygons.size(); i += polygons.size() / 8)
+            for (unsigned i = 0; i < polygons.size(); i += polygons.size() / 8 + 1)
             {
                 coord_t len2 = vSize2((*polygons[i])[1] - (*polygons[i])[0]);
                 if (len2 > max_len2)
