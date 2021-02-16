@@ -398,10 +398,37 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 next_line_idx = 0;
             }
 
-            if (next_line_idx == 0)
+            if (next_line_idx == 0 && line_idx > 1)
             {
                 // TODO - find the nearest line to jump to that preserves the monotonic ordering
-                next_line_idx = earliest_line_idx;
+
+                unsigned best_line_idx = earliest_line_idx;
+
+#if 1
+                // this finds the nearest line that doesn't overlap an earlier line that hasn't been printed
+                coord_t best_dist2 = std::numeric_limits<coord_t>::max();
+                for (unsigned i = line_idx - 1; i >= earliest_line_idx; --i)
+                {
+                    if (is_monotonic(i))
+                    {
+                        // is this the nearest valid line?
+                        ConstPolygonRef poly = *polygons[lines[i].poly_idx];
+                        coord_t dist2 = vSize2(last_point - poly[0]);
+                        if (dist2 < best_dist2)
+                        {
+                            best_line_idx = i;
+                            best_dist2 = dist2;
+                        }
+                        dist2 = vSize2(last_point - poly[1]);
+                        if (dist2 < best_dist2)
+                        {
+                            best_line_idx = i;
+                            best_dist2 = dist2;
+                        }
+                    }
+                }
+#endif
+                next_line_idx = best_line_idx;
             }
 
             line_idx = next_line_idx;
