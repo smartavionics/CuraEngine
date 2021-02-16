@@ -237,7 +237,7 @@ static inline bool pointsAreCoincident(const Point& a, const Point& b)
 
 void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
 {
-    if (line_spacing > 0 && polygons.size() > 0)
+    if (polygons.size() > 0)
     {
         // rotate all the lines so that they are orientated E-W
         ConstPolygonPointer angle_poly = polygons[0];
