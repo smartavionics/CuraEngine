@@ -388,35 +388,23 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 }
             }
 
-            unsigned next_line_idx = earliest_line_idx;
-
-            if (!nexts.empty())
-            {
-                next_line_idx = closest_line_to_point(nexts, last_point);
-            }
-            else if (line_idx > 1)
+            if (nexts.empty() && line_idx > 1)
             {
                 // this finds the nearest line that doesn't overlap an earlier line that hasn't been printed
-                std::vector<unsigned> starts;
                 for (unsigned i = line_idx - 1; i >= earliest_line_idx; --i)
                 {
                     if (is_monotonic(i))
                     {
-                        starts.push_back(i);
+                        nexts.push_back(i);
                     }
                     if (i == 0)
                     {
                         break;
                     }
                 }
-
-                if (!starts.empty())
-                {
-                    next_line_idx = closest_line_to_point(starts, last_point);
-                }
             }
 
-            line_idx = next_line_idx;
+            line_idx = (nexts.empty()) ? earliest_line_idx : closest_line_to_point(nexts, last_point);
         }
     }
 }
