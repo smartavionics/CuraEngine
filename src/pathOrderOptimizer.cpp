@@ -342,6 +342,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
         while (polyOrder.size() < polygons.size())
         {
             struct line& line = lines[line_idx];
+            // skip lines that have already been printed
             if (line.poly_idx < 0)
             {
                 if (line_idx == earliest_line_idx)
@@ -352,6 +353,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 continue;
             }
 
+            // print the current line
             ConstPolygonRef poly = *polygons[line.poly_idx];
             unsigned point_idx = (vSize2(poly[0] - last_point) <= vSize2(poly[1] - last_point))? 0 : 1;
             polyOrder.push_back(line.poly_idx);
@@ -363,8 +365,10 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 ++earliest_line_idx;
             }
 
+            // now determine the next line to print
             std::vector<unsigned> nexts;
 
+            // first look to see if there are any lines adjacent to the current line that are possible to print
             for (unsigned i = line_idx + 1; i < lines.size(); ++i)
             {
                 if (lines[i].poly_idx < 0)
