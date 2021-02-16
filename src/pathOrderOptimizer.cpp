@@ -286,6 +286,28 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
         unsigned earliest_line_idx = 0;
         Point last_point = startPoint;
 
+        auto lines_overlap = [&lines](const unsigned i, const unsigned j) {
+            // do lines i and j overlap in the X dimension?
+            return lines[j].x1 <= lines[i].x2 && lines[j].x2 >= lines[i].x1;
+        };
+
+        auto is_monotonic = [&](const unsigned i) {
+            // can line i be printed without violating the monotonic ordering?
+            if (lines[i].poly_idx < 0)
+            {
+                return false;
+            }
+            for (unsigned j = i - 1; j >= earliest_line_idx && lines[j].y > lines[i].y - (line_spacing + tolerance); --j)
+            {
+                if (lines[j].poly_idx >= 0 && lines_overlap(i, j))
+                {
+                    // line i overlaps an earlier line that hasn't yet been printed
+                    return false;
+                }
+            }
+            return true;
+        };
+
         while (polyOrder.size() < polygons.size())
         {
             struct line& line = lines[line_idx];
@@ -343,20 +365,16 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                     // gap is tiny, this is a sibling
                     siblings.push_back(next_line_idx);
                 }
-                else if (line.x1 <= lines[next_line_idx].x2 && line.x2 >= lines[next_line_idx].x1)
+                else if (gap > (line_spacing + tolerance))
                 {
-                    // the line overlaps the current line
-                    if (std::abs(gap - line_spacing) < tolerance)
-                    {
-                        // the gap is close to the line spacing so this line is adjacent to the current line
-                        next_adjacent_line_idx = next_line_idx;
-                        break;
-                    }
-                    else if (gap > line_spacing)
-                    {
-                        // the gap is more than the line spacing so this line is not adjacent
-                        break;
-                    }
+                    // the gap is more than the line spacing so no lines can be adjacent
+                    break;
+                }
+                else if (std::abs(gap - line_spacing) < tolerance && lines_overlap(line_idx, next_line_idx))
+                {
+                    // the gap is close to the line spacing and the lines overlap so this line is adjacent to the current line
+                    next_adjacent_line_idx = next_line_idx;
+                    break;
                 }
                 ++next_line_idx;
             }
@@ -366,7 +384,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 next_line_idx = next_adjacent_line_idx;
                 for (unsigned sibling : siblings)
                 {
-                    if (lines[sibling].x1 <= lines[next_adjacent_line_idx].x2 && lines[sibling].x2 >= lines[next_adjacent_line_idx].x1)
+                    if (lines_overlap(sibling, next_adjacent_line_idx))
                     {
                         // a sibling line overlaps so go back and find an earlier line
                         next_line_idx = 0;
