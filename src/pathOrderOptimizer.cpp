@@ -295,6 +295,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             // can line i be printed without violating the monotonic ordering?
             if (lines[i].poly_idx < 0)
             {
+                // the line has already been printed
                 return false;
             }
             // look for earlier lines that haven't been printed yet that overlap line i
@@ -305,7 +306,13 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                     // line i overlaps an earlier line that hasn't yet been printed
                     return false;
                 }
+                if (j == 0)
+                {
+                    // no more lines to look at
+                    return true;
+                }
             }
+            // all earlier lines have been printed
             return true;
         };
 
@@ -392,6 +399,10 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                     if (is_monotonic(i))
                     {
                         starts.push_back(i);
+                    }
+                    if (i == 0)
+                    {
+                        break;
                     }
                 }
 
