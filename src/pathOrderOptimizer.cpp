@@ -297,6 +297,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             {
                 return false;
             }
+            // look for earlier lines that haven't been printed yet that overlap line i
             for (unsigned j = i - 1; j >= earliest_line_idx && lines[j].y > lines[i].y - (line_spacing + tolerance); --j)
             {
                 if (lines[j].poly_idx >= 0 && lines_overlap(i, j))
@@ -306,6 +307,29 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 }
             }
             return true;
+        };
+
+        auto closest_line_to_point = [&lines,this](std::vector<unsigned> candidates, const Point& p) {
+            coord_t best_dist2 = std::numeric_limits<coord_t>::max();
+            unsigned result = 0;
+
+            for (unsigned candidate : candidates)
+            {
+                ConstPolygonRef poly = *polygons[lines[candidate].poly_idx];
+                coord_t dist2 = vSize2(p - poly[0]);
+                if (dist2 < best_dist2)
+                {
+                    result = candidate;
+                    best_dist2 = dist2;
+                }
+                dist2 = vSize2(p - poly[1]);
+                if (dist2 < best_dist2)
+                {
+                    result = candidate;
+                    best_dist2 = dist2;
+                }
+            }
+            return result;
         };
 
         while (polyOrder.size() < polygons.size())
@@ -332,103 +356,49 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 ++earliest_line_idx;
             }
 
-            std::vector<unsigned> siblings;
-            unsigned next_adjacent_line_idx = 0;
-            unsigned next_line_idx = line_idx;
+            std::vector<unsigned> nexts;
 
-            // there could be sibling lines earlier than the current line so look backwards for them
-            while (next_line_idx > 0 && next_line_idx >= earliest_line_idx)
+            for (unsigned i = line_idx + 1; i < lines.size(); ++i)
             {
-                if (lines[next_line_idx].poly_idx >= 0)
+                if (lines[i].poly_idx < 0)
                 {
-                    coord_t gap = line.y - lines[next_line_idx].y;
-                    if (std::abs(gap) > tolerance)
-                    {
-                        // this line is not a sibling so there won't be any others earlier
-                        break;
-                    }
-                }
-                --next_line_idx;
-            }
-
-            while (next_line_idx < lines.size())
-            {
-                if (lines[next_line_idx].poly_idx < 0)
-                {
-                    ++next_line_idx;
                     continue;
                 }
-                // test the following lines to see if (a) they are siblings of the current line or (b) they overlap with the current line
-                coord_t gap = line.y - lines[next_line_idx].y;
-                if (std::abs(gap) < tolerance)
+                coord_t gap = line.y - lines[i].y;
+                if (gap > (line_spacing + tolerance))
                 {
-                    // gap is tiny, this is a sibling
-                    siblings.push_back(next_line_idx);
-                }
-                else if (gap > (line_spacing + tolerance))
-                {
-                    // the gap is more than the line spacing so no lines can be adjacent
+                    // the gap is more than the line spacing so no more lines can be adjacent
                     break;
                 }
-                else if (std::abs(gap - line_spacing) < tolerance && lines_overlap(line_idx, next_line_idx))
+                else if (std::abs(gap - line_spacing) < tolerance && lines_overlap(line_idx, i) && is_monotonic(i))
                 {
-                    // the gap is close to the line spacing and the lines overlap so this line is adjacent to the current line
-                    next_adjacent_line_idx = next_line_idx;
-                    break;
-                }
-                ++next_line_idx;
-            }
-            if (next_adjacent_line_idx)
-            {
-                // if any siblings overlap this line we can't print it but must go back and print some earlier lines
-                next_line_idx = next_adjacent_line_idx;
-                for (unsigned sibling : siblings)
-                {
-                    if (lines_overlap(sibling, next_adjacent_line_idx))
-                    {
-                        // a sibling line overlaps so go back and find an earlier line
-                        next_line_idx = 0;
-                        break;
-                    }
+                    // the gap is close to the line spacing and the lines overlap so this line could be the next to print
+                    nexts.push_back(i);
                 }
             }
-            else
+
+            unsigned next_line_idx = earliest_line_idx;
+
+            if (!nexts.empty())
             {
-                // with no adjacent line we have come to a dead end so go back and find an earlier line
-                next_line_idx = 0;
+                next_line_idx = closest_line_to_point(nexts, last_point);
             }
-
-            if (next_line_idx == 0 && line_idx > 1)
+            else if (line_idx > 1)
             {
-                // TODO - find the nearest line to jump to that preserves the monotonic ordering
-
-                unsigned best_line_idx = earliest_line_idx;
-
-#if 1
                 // this finds the nearest line that doesn't overlap an earlier line that hasn't been printed
-                coord_t best_dist2 = std::numeric_limits<coord_t>::max();
+                std::vector<unsigned> starts;
                 for (unsigned i = line_idx - 1; i >= earliest_line_idx; --i)
                 {
                     if (is_monotonic(i))
                     {
-                        // is this the nearest valid line?
-                        ConstPolygonRef poly = *polygons[lines[i].poly_idx];
-                        coord_t dist2 = vSize2(last_point - poly[0]);
-                        if (dist2 < best_dist2)
-                        {
-                            best_line_idx = i;
-                            best_dist2 = dist2;
-                        }
-                        dist2 = vSize2(last_point - poly[1]);
-                        if (dist2 < best_dist2)
-                        {
-                            best_line_idx = i;
-                            best_dist2 = dist2;
-                        }
+                        starts.push_back(i);
                     }
                 }
-#endif
-                next_line_idx = best_line_idx;
+
+                if (!starts.empty())
+                {
+                    next_line_idx = closest_line_to_point(starts, last_point);
+                }
             }
 
             line_idx = next_line_idx;
