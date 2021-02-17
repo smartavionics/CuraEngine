@@ -392,6 +392,16 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             if (nexts.empty() && current_line_idx > 1)
             {
                 // this looks backwards to find lines that haven't been printed but could be as the lines before them have been printed
+
+                // include siblings of the current line in the search
+                for (unsigned i = current_line_idx + 1; i < lines.size() && lines[i].y < (current_line.y + tolerance); ++i)
+                {
+                    if (is_monotonic(i))
+                    {
+                        nexts.push_back(i);
+                    }
+                }
+
                 for (unsigned i = current_line_idx - 1; i >= earliest_line_idx; --i)
                 {
                     if (is_monotonic(i))
