@@ -257,7 +257,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 }
             }
         }
-        const double angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].X - 1000, (*angle_poly)[0].Y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
+        const double angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].X - 10000, (*angle_poly)[0].Y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
         const Point3Matrix rot_mat = LinearAlg2D::rotateAround(Point(0, 0), angle);
         struct line {
             int poly_idx; // line's index in polygons vector, set to -1 when line has been printed
