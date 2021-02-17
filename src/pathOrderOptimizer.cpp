@@ -237,6 +237,10 @@ static inline bool pointsAreCoincident(const Point& a, const Point& b)
 
 void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
 {
+    // tolerance is used when checking if lines are "siblings", i.e. they have similar Y values or
+    // if a line is adjacent to another, i.e. their Y values differ by line_spacing
+    const coord_t tolerance = 20;
+
     if (polygons.size() > 0)
     {
         // rotate all the lines so that they are orientated E-W
@@ -276,8 +280,6 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
         // sort the lines by increasing Y
 
         sort(lines.begin(), lines.end(), [](const struct line& a, const struct line& b) -> bool { return a.y > b.y; });
-
-        const coord_t tolerance = 20;
 
         polyStart.resize(polygons.size());
 
