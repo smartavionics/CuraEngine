@@ -279,7 +279,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
 
         // sort the lines by increasing Y
 
-        sort(lines.begin(), lines.end(), [](const struct line& a, const struct line& b) -> bool { return a.y > b.y; });
+        sort(lines.begin(), lines.end(), [](const struct line& a, const struct line& b) -> bool { return a.y < b.y; });
 
         polyStart.resize(polygons.size());
 
@@ -378,7 +378,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 {
                     continue;
                 }
-                coord_t gap = current_line.y - lines[i].y;
+                coord_t gap = lines[i].y - current_line.y;
                 if (gap > (line_spacing + tolerance))
                 {
                     // the gap is more than the line spacing so no more lines can be adjacent
