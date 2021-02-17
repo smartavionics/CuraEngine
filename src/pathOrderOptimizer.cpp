@@ -256,7 +256,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
         const double angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].X - 1000, (*angle_poly)[0].Y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
         const Point3Matrix rot_mat = LinearAlg2D::rotateAround(Point(0, 0), angle);
         struct line {
-            int poly_idx;
+            int poly_idx; // line's index in polygons vector, set to -1 when line has been printed
             coord_t y;
             coord_t x1;
             coord_t x2;
@@ -277,14 +277,11 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
 
         sort(lines.begin(), lines.end(), [](const struct line& a, const struct line& b) -> bool { return a.y > b.y; });
 
-        // lines whose Y values differ by no more than tolerance are considered 'siblings'
         const coord_t tolerance = 20;
 
         polyStart.resize(polygons.size());
 
-        unsigned line_idx = 0;
         unsigned earliest_line_idx = 0;
-        Point last_point = startPoint;
 
         auto lines_overlap = [&lines](const unsigned i, const unsigned j) {
             // do lines i and j overlap in the X dimension?
@@ -339,28 +336,31 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             return result;
         };
 
+        unsigned current_line_idx = 0;
+        Point last_point = startPoint;
+
         while (polyOrder.size() < polygons.size())
         {
-            struct line& line = lines[line_idx];
+            struct line& current_line = lines[current_line_idx];
             // skip lines that have already been printed
-            if (line.poly_idx < 0)
+            if (current_line.poly_idx < 0)
             {
-                if (line_idx == earliest_line_idx)
+                if (current_line_idx == earliest_line_idx)
                 {
                     ++earliest_line_idx;
                 }
-                ++line_idx;
+                ++current_line_idx;
                 continue;
             }
 
             // print the current line
-            ConstPolygonRef poly = *polygons[line.poly_idx];
+            ConstPolygonRef poly = *polygons[current_line.poly_idx];
             unsigned point_idx = (vSize2(poly[0] - last_point) <= vSize2(poly[1] - last_point))? 0 : 1;
-            polyOrder.push_back(line.poly_idx);
-            polyStart[line.poly_idx] = point_idx;
+            polyOrder.push_back(current_line.poly_idx);
+            polyStart[current_line.poly_idx] = point_idx;
             last_point = poly[(point_idx == 0) ? 1 : 0];
-            line.poly_idx = -1;
-            if (line_idx == earliest_line_idx)
+            current_line.poly_idx = -1;
+            if (current_line_idx == earliest_line_idx)
             {
                 ++earliest_line_idx;
             }
@@ -368,30 +368,31 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             // now determine the next line to print
             std::vector<unsigned> nexts;
 
-            // first look to see if there are any lines adjacent to the current line that are possible to print
-            for (unsigned i = line_idx + 1; i < lines.size(); ++i)
+            // this looks forwards to find lines that are adjacent to the current line that are possible to print
+            for (unsigned i = current_line_idx + 1; i < lines.size(); ++i)
             {
+                // as there can be multiple lines with the same Y, ignore lines that have already been printed
                 if (lines[i].poly_idx < 0)
                 {
                     continue;
                 }
-                coord_t gap = line.y - lines[i].y;
+                coord_t gap = current_line.y - lines[i].y;
                 if (gap > (line_spacing + tolerance))
                 {
                     // the gap is more than the line spacing so no more lines can be adjacent
                     break;
                 }
-                else if (std::abs(gap - line_spacing) < tolerance && lines_overlap(line_idx, i) && is_monotonic(i))
+                else if (std::abs(gap - line_spacing) < tolerance && lines_overlap(current_line_idx, i) && is_monotonic(i))
                 {
                     // the gap is close to the line spacing and the lines overlap so this line could be the next to print
                     nexts.push_back(i);
                 }
             }
 
-            if (nexts.empty() && line_idx > 1)
+            if (nexts.empty() && current_line_idx > 1)
             {
-                // this finds the nearest line that doesn't overlap an earlier line that hasn't been printed
-                for (unsigned i = line_idx - 1; i >= earliest_line_idx; --i)
+                // this looks backwards to find lines that haven't been printed but could be as the lines before them have been printed
+                for (unsigned i = current_line_idx - 1; i >= earliest_line_idx; --i)
                 {
                     if (is_monotonic(i))
                     {
@@ -404,7 +405,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 }
             }
 
-            line_idx = (nexts.empty()) ? earliest_line_idx : closest_line_to_point(nexts, last_point);
+            current_line_idx = (nexts.empty()) ? earliest_line_idx : closest_line_to_point(nexts, last_point);
         }
     }
 }
