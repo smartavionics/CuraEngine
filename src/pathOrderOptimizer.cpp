@@ -391,12 +391,11 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 }
             }
 
-            if (nexts.empty() && current_line_idx > 1)
+            if (nexts.empty())
             {
-                // this looks backwards to find lines that haven't been printed but could be as the lines before them have been printed
-
-                // include siblings of the current line in the search
-                for (unsigned i = current_line_idx + 1; i < lines.size() && lines[i].y < (current_line.y + tolerance); ++i)
+                // look forwards a few lines to find lines that haven't been printed but could be as there is a gap between them and any earlier lines
+                // these can occur when filling narrow curved regions
+                for (unsigned i = current_line_idx + 1; i < lines.size() && lines[i].y < (current_line.y + line_spacing * 2 + tolerance); ++i)
                 {
                     if (is_monotonic(i))
                     {
@@ -404,15 +403,19 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                     }
                 }
 
-                for (unsigned i = current_line_idx - 1; i >= earliest_line_idx; --i)
+                if (current_line_idx > 1)
                 {
-                    if (is_monotonic(i))
+                    // looks backwards to find lines that haven't been printed but could be as the lines before them have been printed
+                    for (unsigned i = current_line_idx - 1; i >= earliest_line_idx; --i)
                     {
-                        nexts.push_back(i);
-                    }
-                    if (i == 0)
-                    {
-                        break;
+                        if (is_monotonic(i))
+                        {
+                            nexts.push_back(i);
+                        }
+                        if (i == 0)
+                        {
+                            break;
+                        }
                     }
                 }
             }
