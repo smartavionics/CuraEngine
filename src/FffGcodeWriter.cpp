@@ -1691,11 +1691,11 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
                                infill_angle, gcode_layer.z / mesh.settings.get<Ratio>("infill_scaling_z"), infill_shift, max_resolution, max_deviation, skin_below_wall_count, infill_origin,
                                perimeter_gaps, connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count,
                                pocket_size, pattern_resolution);
-            infill_comp.generate(infill_polygons, infill_lines_here, mesh.cross_fill_provider, &mesh);
+            infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, &mesh);
             // when both lines and polygons are created, convert the polygons to chains of lines so that they all get printed together
-            if (!infill_lines_here.empty() && !infill_polygons.empty())
+            if (!infill_lines_here.empty() && !infill_polygons_here.empty())
             {
-                for (ConstPolygonRef poly : infill_polygons)
+                for (ConstPolygonRef poly : infill_polygons_here)
                 {
                     for (unsigned n = 1; n < poly.size(); ++n)
                     {
@@ -1705,7 +1705,7 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
                     const Point& last_point = poly[poly.size() - 1];
                     infill_lines_here.addLine(last_point, last_point + normal(poly[0] - last_point, vSize(poly[0] - last_point) - 15));
                 }
-                infill_polygons.clear();
+                infill_polygons_here.clear();
             }
             if (density_idx < last_idx)
             {
@@ -1715,7 +1715,9 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
                 infill_lines_here.cut(tool);
             }
             infill_lines.add(infill_lines_here);
+            infill_polygons.add(infill_polygons_here);
             infill_lines_here.clear();
+            infill_polygons_here.clear();
             // normal processing for the infill that isn't below skin
             in_outline = infill_not_below_skin;
             if (density_idx == last_idx)
