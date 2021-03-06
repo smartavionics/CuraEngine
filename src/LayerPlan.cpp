@@ -983,12 +983,46 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     }
 
     // make sure wall start point is not above air!
-    int supported_start_idx = locateFirstSupportedVertex(wall, start_idx);
+    bool none_supported = false;
+    int supported_start_idx = locateFirstSupportedVertex(wall, start_idx, &none_supported);
 
     if (supported_start_idx != start_idx)
     {
-        start_idx = supported_start_idx;
-        z_seam_point = wall[supported_start_idx];
+        // the wall start point is above air
+        if (z_seam_point != wall[start_idx])
+        {
+            // see if the "exact" z-seam location is also above air
+            if (air_below.inside(z_seam_point, true))
+            {
+                // move the start point to the location that is not above air
+                start_idx = supported_start_idx;
+                z_seam_point = wall[supported_start_idx];
+            }
+        }
+        else
+        {
+            // move the start point to the location that is not above air
+            start_idx = supported_start_idx;
+            z_seam_point = wall[supported_start_idx];
+        }
+    }
+    else if (none_supported)
+    {
+        // all the wall's vertices are above air so check if any
+        // wall line mid points are not above air and if so use the first found
+
+        for (unsigned i = 0; i < wall.size(); ++i)
+        {
+            const unsigned i0 = (start_idx + i) % wall.size();
+            const unsigned i1 = (i0 + 1) % wall.size();
+            const Point p = (wall[i0] + wall[i1]) / 2;
+            if (!air_below.inside(p, true))
+            {
+                start_idx = i0;
+                z_seam_point = p;
+                break;
+            }
+        }
     }
 
     float non_bridge_line_volume = max_non_bridge_line_volume; // assume extruder is fully pressurised before first non-bridge line is output
