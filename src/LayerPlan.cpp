@@ -1252,12 +1252,10 @@ void LayerPlan::addWalls(const Polygons& walls, const SliceMeshStorage& mesh, co
 
 unsigned LayerPlan::locateFirstSupportedVertex(ConstPolygonRef wall, const unsigned start_idx) const
 {
-    if (bridge_wall_mask.empty() && overhang_mask.empty())
+    if (air_below.empty())
     {
         return start_idx;
     }
-
-    Polygons air_below(bridge_wall_mask.unionPolygons(overhang_mask));
 
     unsigned curr_idx = start_idx;
 

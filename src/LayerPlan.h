@@ -284,6 +284,7 @@ private:
     coord_t comb_move_inside_distance;  //!< Whenever using the minimum boundary for combing it tries to move the coordinates inside by this distance after calculating the combing.
     Polygons bridge_wall_mask; //!< The regions of a layer part that are not supported, used for bridging
     Polygons overhang_mask; //!< The regions of a layer part where the walls overhang
+    Polygons air_below; //!< The regions of a layer part that are over air, union of bridge_wall_mask and overhang_mask
 
     const std::vector<FanSpeedLayerTimeSettings> fan_speed_layer_time_settings_per_extruder;
 
@@ -455,6 +456,7 @@ public:
     void setBridgeWallMask(const Polygons& polys)
     {
         bridge_wall_mask = polys;
+        air_below = bridge_wall_mask.unionPolygons(overhang_mask);
     }
 
     /*!
@@ -475,6 +477,7 @@ public:
     void setOverhangMask(const Polygons& polys)
     {
         overhang_mask = polys;
+        air_below = bridge_wall_mask.unionPolygons(overhang_mask);
     }
 
     /*!
