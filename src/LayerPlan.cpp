@@ -1250,8 +1250,13 @@ void LayerPlan::addWalls(const Polygons& walls, const SliceMeshStorage& mesh, co
     }
 }
 
-unsigned LayerPlan::locateFirstSupportedVertex(ConstPolygonRef wall, const unsigned start_idx) const
+unsigned LayerPlan::locateFirstSupportedVertex(ConstPolygonRef wall, const unsigned start_idx, bool* none_supported) const
 {
+    if (none_supported != nullptr)
+    {
+        *none_supported = false;
+    }
+
     if (air_below.empty())
     {
         return start_idx;
@@ -1276,6 +1281,10 @@ unsigned LayerPlan::locateFirstSupportedVertex(ConstPolygonRef wall, const unsig
         if (curr_idx == start_idx)
         {
             // no vertices are supported so just return the original index
+            if (none_supported != nullptr)
+            {
+                *none_supported = true;
+            }
             return start_idx;
         }
     }

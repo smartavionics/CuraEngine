@@ -680,9 +680,10 @@ public:
      *
      * \param wall The wall polygon
      * \param start_idx The index of the starting vertex of \p wall
+     * \param none_supported Optional pointer used to return true value if no vertices were supported
      * \return The index of the first supported vertex - if no vertices are supported, start_idx is returned
      */
-    unsigned locateFirstSupportedVertex(ConstPolygonRef wall, const unsigned start_idx) const;
+    unsigned locateFirstSupportedVertex(ConstPolygonRef wall, const unsigned start_idx, bool* none_supported = nullptr) const;
 
     /*!
      * Write the planned paths to gcode
