@@ -1006,7 +1006,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             z_seam_point = wall[supported_start_idx];
         }
     }
-    else if (none_supported)
+    else if (none_supported && air_below.inside(z_seam_point, true))
     {
         // all the wall's vertices are above air so check if any
         // wall line mid points are not above air and if so use the first found
