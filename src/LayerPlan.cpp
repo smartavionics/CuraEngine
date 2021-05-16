@@ -1572,6 +1572,17 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
     if (config.type == PrintFeatureType::Skin && pattern == EFillMethod::LINES && !config.isBridgePath() && mesh != nullptr && mesh->settings.get<bool>("monotonic_skin_lines"))
     {
         orderOptimizer.monotonicallyOrder(config.getLineWidth());
+
+        if (mesh->settings.get<bool>("monotonic_skin_lines_reversed"))
+        {
+            // reverse the order the lines are printed
+            std::reverse(orderOptimizer.polyOrder.begin(), orderOptimizer.polyOrder.end());
+            // reverse the direction each line is printed
+            for (auto& r : orderOptimizer.polyStart)
+            {
+                r = !r;
+            }
+        }
     }
     else
     {
