@@ -128,7 +128,13 @@ bool TopSurface::ironing(const SliceMeshStorage& mesh, const GCodePathConfig& li
             }
         }
 
-        layer.addLinesByOptimizer(ironing_lines, line_config, SpaceFillType::PolyLines);
+        constexpr bool enable_travel_optimization = false;
+        constexpr coord_t wipe_dist = 0;
+        constexpr float flow = 1.0;
+        std::optional<Point> start_location;
+        constexpr double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
+        const float avoid_freq = (pattern == EFillMethod::LINES || pattern == EFillMethod::ZIG_ZAG) ? mesh.settings.get<double>("avoid_frequency") : 0.0;
+        layer.addLinesByOptimizer(ironing_lines, line_config, SpaceFillType::PolyLines, enable_travel_optimization, wipe_dist, flow, start_location, fan_speed, avoid_freq, &mesh, pattern);
         added = true;
     }
 
