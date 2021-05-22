@@ -2949,6 +2949,7 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
     constexpr bool skip_some_zags = false;
     constexpr int zag_skip_count = 0;
     constexpr coord_t pocket_size = 0;
+    constexpr SierpinskiFillProvider* cross_fill_provider = nullptr;
 
     Infill infill_comp(
         pattern, zig_zaggify_infill, connect_polygons, area, offset_from_inner_skin_infill, config.getLineWidth(), config.getLineWidth() / skin_density, skin_overlap, infill_multiplier, skin_angle, gcode_layer.z, extra_infill_shift
@@ -2956,7 +2957,7 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
         , wall_line_count, infill_origin, perimeter_gaps_output,
         connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count, pocket_size
         );
-    infill_comp.generate(skin_polygons, skin_lines);
+    infill_comp.generate(skin_polygons, skin_lines, cross_fill_provider, &mesh);
 
     // add paths
     if (skin_polygons.size() > 0 || skin_lines.size() > 0)
