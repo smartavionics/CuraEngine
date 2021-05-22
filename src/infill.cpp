@@ -9,6 +9,7 @@
 #include "sliceDataStorage.h"
 #include "infill/ImageBasedDensityProvider.h"
 #include "infill/TPMSInfill.h"
+#include "infill/HilbertInfill.h"
 #include "infill/HoneycombInfill.h"
 #include "infill/NoZigZagConnectorProcessor.h"
 #include "infill/SierpinskiFill.h"
@@ -99,7 +100,7 @@ void Infill::_generate(Polygons& result_polygons, Polygons& result_lines, const 
     if (in_outline.empty()) return;
     if (line_distance == 0) return;
 
-    if (pattern == EFillMethod::ZIG_ZAG || (zig_zaggify && (pattern == EFillMethod::LINES || pattern == EFillMethod::TRIANGLES || pattern == EFillMethod::GRID || pattern == EFillMethod::CUBIC || pattern == EFillMethod::TETRAHEDRAL || pattern == EFillMethod::QUARTER_CUBIC || pattern == EFillMethod::TRIHEXAGON || pattern == EFillMethod::GYROID || pattern == EFillMethod::SCHWARZ_P || pattern == EFillMethod::SCHWARZ_D || pattern == EFillMethod::HONEYCOMB)))
+    if (pattern == EFillMethod::ZIG_ZAG || (zig_zaggify && (pattern == EFillMethod::LINES || pattern == EFillMethod::TRIANGLES || pattern == EFillMethod::GRID || pattern == EFillMethod::CUBIC || pattern == EFillMethod::TETRAHEDRAL || pattern == EFillMethod::QUARTER_CUBIC || pattern == EFillMethod::TRIHEXAGON || pattern == EFillMethod::GYROID || pattern == EFillMethod::SCHWARZ_P || pattern == EFillMethod::SCHWARZ_D || pattern == EFillMethod::HONEYCOMB || pattern == EFillMethod::HILBERT)))
     {
         outline_offset -= infill_line_width / 2; // the infill line zig zag connections must lie next to the border, not on it
     }
@@ -172,6 +173,18 @@ void Infill::_generate(Polygons& result_polygons, Polygons& result_lines, const 
         {
             HoneycombInfill infill(zig_zaggify, line_distance, infill_origin, fill_angle, infill_line_width);
             infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
+        }
+        break;
+    case EFillMethod::HILBERT:
+        {
+            HilbertInfill infill(zig_zaggify, line_distance, infill_origin, fill_angle);
+            AABB bb = (mesh) ? mesh->bounding_box.flatten() : AABB(in_outline); // if no mesh, just use size of infill area
+            coord_t mesh_max_size = std::max(bb.max.X - bb.min.X, bb.max.Y - bb.min.Y);
+            if ((int)fill_angle % 90 != 0)
+            {
+                mesh_max_size *= 1.414;
+            }
+            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap), mesh_max_size);
         }
         break;
     default:

@@ -30,6 +30,7 @@ enum class EFillMethod
     SCHWARZ_P,
     SCHWARZ_D,
     HONEYCOMB,
+    HILBERT,
     NONE  // NOTE: Should remain last! (May be used in testing to enumarate the enum.)
 };
 

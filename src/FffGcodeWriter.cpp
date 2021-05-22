@@ -378,7 +378,7 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
             {
                 mesh.infill_angles.push_back(22); // put most infill lines in between 45 and 0 degrees
             }
-            else if (infill_pattern == EFillMethod::GYROID || infill_pattern == EFillMethod::SCHWARZ_P || infill_pattern == EFillMethod::SCHWARZ_D)
+            else if (infill_pattern == EFillMethod::GYROID || infill_pattern == EFillMethod::SCHWARZ_P || infill_pattern == EFillMethod::SCHWARZ_D || infill_pattern == EFillMethod::HILBERT)
             {
                 mesh.infill_angles.push_back(0);
             }
@@ -414,8 +414,15 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
         if (mesh.roofing_angles.size() == 0)
         {
             // user has not specified any infill angles so use defaults
-            mesh.roofing_angles.push_back(45);
-            mesh.roofing_angles.push_back(135);
+            if (mesh.settings.get<EFillMethod>("roofing_pattern") == EFillMethod::HILBERT)
+            {
+                mesh.roofing_angles.push_back(0);
+            }
+            else
+            {
+                mesh.roofing_angles.push_back(45);
+                mesh.roofing_angles.push_back(135);
+            }
         }
     }
 
@@ -425,8 +432,15 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
         if (mesh.skin_angles.size() == 0)
         {
             // user has not specified any infill angles so use defaults
-            mesh.skin_angles.push_back(45);
-            mesh.skin_angles.push_back(135);
+            if (mesh.settings.get<EFillMethod>("top_bottom_pattern") == EFillMethod::HILBERT)
+            {
+                mesh.skin_angles.push_back(0);
+            }
+            else
+            {
+                mesh.skin_angles.push_back(45);
+                mesh.skin_angles.push_back(135);
+            }
         }
     }
 }
@@ -2749,6 +2763,12 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
         skin_angle = mesh.skin_angles.at(layer_nr % mesh.skin_angles.size());
     }
 
+    // if only the first layer is hilbert curve, force it to have angle 0 if the user didn't specify any skin angles
+    if (layer_nr == 0 && pattern == EFillMethod::HILBERT && mesh.settings.get<EFillMethod>("top_bottom_pattern") != EFillMethod::HILBERT && mesh.settings.get<std::vector<AngleDegrees>>("skin_angles").empty())
+    {
+        skin_angle = 0;
+    }
+
     // generate skin_polygons and skin_lines (and concentric_perimeter_gaps if needed)
     const GCodePathConfig* skin_config = &mesh_config.skin_config;
     Ratio skin_density = 1.0;
@@ -2923,7 +2943,7 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
     const bool connect_polygons = mesh.settings.get<bool>("connect_skin_polygons");
     coord_t max_resolution = mesh.settings.get<coord_t>("meshfix_maximum_resolution");
     coord_t max_deviation = mesh.settings.get<coord_t>("meshfix_maximum_deviation");
-    const Point infill_origin;
+    const Point infill_origin = mesh.bounding_box.flatten().getMiddle();
     constexpr bool connected_zigzags = false;
     constexpr bool use_endpieces = true;
     constexpr bool skip_some_zags = false;

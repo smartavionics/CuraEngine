@@ -346,6 +346,10 @@ template<> EFillMethod Settings::get<EFillMethod>(const std::string& key) const
     {
         return EFillMethod::SCHWARZ_D;
     }
+    else if (value == "hilbert")
+    {
+        return EFillMethod::HILBERT;
+    }
     else if (value == "honeycomb")
     {
         return EFillMethod::HONEYCOMB;
