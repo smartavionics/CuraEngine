@@ -45,8 +45,6 @@ void HilbertInfill::generate(Polygons& result_lines, const Polygons& outline, co
 
     //std::cerr << "max_size = " << max_size << ", size = " << size << ", depth = " << depth << ", line_distance = " << line_distance << "\n";
 
-    const coord_t seg_len = size / (2 * depth);
-
     x_min = aabb.min.X;
     y_min = aabb.min.Y;
     x_max = aabb.max.X;
@@ -54,7 +52,7 @@ void HilbertInfill::generate(Polygons& result_lines, const Polygons& outline, co
 
     // when testing to see if a line's ends are both inside the outline, use an outline that has been shrunk to ensure we
     // catch the situation where both ends are inside the area but between the ends the line hits/crosses the boundary
-    generateCoordinates(result_lines, outline, outline.offset(-seg_len/3), size, depth);
+    generateCoordinates(result_lines, outline, outline.offset(-line_distance / 2), size, depth);
 
     if (zig_zaggify)
     {
