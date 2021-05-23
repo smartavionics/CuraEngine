@@ -15,18 +15,7 @@ Point HilbertInfill::rotate_around_origin(const Point& point, const double rads)
 
 void HilbertInfill::generate(Polygons& result_lines, const Polygons& outline, const coord_t mesh_max_size)
 {
-    Polygons rotated_outline = outline;
-    if (fill_angle_rads != 0)
-    {
-        for (PolygonRef poly : rotated_outline)
-        {
-            for (Point& point : poly)
-            {
-                point = rotate_around_origin(point, -fill_angle_rads);
-            }
-        }
-    }
-    const AABB aabb(rotated_outline);
+    const AABB aabb(outline);
 
     const coord_t outline_max_size = std::max(aabb.max.X - aabb.min.X, aabb.max.Y - aabb.min.Y);
 
