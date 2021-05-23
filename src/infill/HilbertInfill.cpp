@@ -36,7 +36,10 @@ void HilbertInfill::generate(Polygons& result_lines, const Polygons& outline, co
         return;
     }
 
-    int depth = std::ceil(std::log2((double)mesh_max_size / line_distance));
+    // determine hilbert recursion depth and size of the square area to be filled with the curve
+
+    // the number of lines required to cover the mesh is rounded up to an integer power of 2
+    const int depth = std::ceil(std::log2((double)mesh_max_size / line_distance));
 
     const coord_t size = std::exp2(depth) * line_distance;
 
