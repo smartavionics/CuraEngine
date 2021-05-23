@@ -2939,7 +2939,7 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
     constexpr int extra_infill_shift = 0;
     constexpr int wall_line_count = 0;
     constexpr coord_t offset_from_inner_skin_infill = 0;
-    const bool zig_zaggify_infill = pattern == EFillMethod::ZIG_ZAG;
+    const bool zig_zaggify_infill = pattern == EFillMethod::ZIG_ZAG || pattern == EFillMethod::HILBERT;
     const bool connect_polygons = mesh.settings.get<bool>("connect_skin_polygons");
     coord_t max_resolution = mesh.settings.get<coord_t>("meshfix_maximum_resolution");
     coord_t max_deviation = mesh.settings.get<coord_t>("meshfix_maximum_deviation");
