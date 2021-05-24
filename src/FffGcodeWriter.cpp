@@ -3318,7 +3318,8 @@ bool FffGcodeWriter::addSupportRoofsToGCode(const SliceDataStorage& storage, Lay
                 Infill roof_computation(
                     pattern, zig_zaggify_infill, connect_polygons, top_roof_outline, outline_offset, gcode_layer.configs_storage.support_roof_config.getLineWidth(),
                     support_roof_top_layer_line_distance, support_roof_overlap, infill_multiplier, fill_angle, gcode_layer.z, extra_infill_shift,
-                    wall_line_count, max_resolution, max_deviation, infill_origin, perimeter_gaps, connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count, pocket_size
+                    max_resolution, max_deviation,
+                    wall_line_count, infill_origin, perimeter_gaps, connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count, pocket_size
                     );
                 Polygons roof_polygons;
                 Polygons roof_lines;
