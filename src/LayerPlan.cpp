@@ -1623,7 +1623,7 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
             continue;
         }
         coord_t travel_len = 0;
-        coord_t unretracted_travel_len = 0;
+        coord_t compensated_travel_len = 0;
         // travel to start point if at least MINIMUM_LINE_LENGTH away from the current position
         if (order_idx == 0 || vSize2(p0 - last_position) >= MINIMUM_SQUARED_LINE_LENGTH)
         {
@@ -1633,7 +1633,7 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
             travel_len = vSize(p0 - last_position);
             if (!travel_path.retract)
             {
-                unretracted_travel_len = travel_len;
+                compensated_travel_len = travel_len;
             }
         }
         double speed_factor = 1.0;
@@ -1659,10 +1659,10 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
         {
             float flow_ratio_here = flow_ratio;
 
-            if (unretracted_travel_len > 0 && max_flow_boost > 1.0f)
+            if (compensated_travel_len > 0 && max_flow_boost > 1.0f)
             {
                 const coord_t max_compensated_travel_len = config.getLineWidth() * 3;
-                const coord_t travel_len = std::min(unretracted_travel_len, max_compensated_travel_len);
+                const coord_t travel_len = std::min(compensated_travel_len, max_compensated_travel_len);
                 const coord_t len = vSize(p1 - p0);
                 flow_ratio_here *= std::min(max_flow_boost, (float)(len + travel_len) / len);
             }
