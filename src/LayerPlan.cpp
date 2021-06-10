@@ -1631,8 +1631,9 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
             const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
             const GCodePath& travel_path = addTravel(p0, false, min_comb_distance);
             travel_len = vSize(p0 - last_position);
-            if (!travel_path.retract)
+            if (!travel_path.retract || storage.retraction_config_per_extruder[getExtruder()].prime_volume == 0)
             {
+                // compensate for nozzle pressure drop during un-retracted travels or retracted travels with no extra-prime
                 compensated_travel_len = travel_len;
             }
         }
