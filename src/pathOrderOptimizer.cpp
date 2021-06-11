@@ -311,7 +311,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
 
         auto lines_overlap = [&lines](const unsigned i, const unsigned j) {
             // do lines i and j overlap in the X dimension?
-            return lines[j].x1 <= lines[i].x2 && lines[j].x2 >= lines[i].x1;
+            return lines[j].x1 < lines[i].x2 && lines[j].x2 > lines[i].x1;
         };
 
         auto is_monotonic = [&](const unsigned i) {
