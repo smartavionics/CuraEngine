@@ -296,7 +296,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             Point p1 = rot_mat.apply(poly[0]);
             Point p2 = rot_mat.apply(poly[1]);
             lines[i].poly_idx = i;
-            lines[i].y = ((p1 + p2)/2).Y;
+            lines[i].y = (p1.Y + p2.Y)/2;
             lines[i].x1 = std::min(p1.X, p2.X);
             lines[i].x2 = std::max(p1.X, p2.X);
         }
