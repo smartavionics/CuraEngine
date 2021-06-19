@@ -1698,7 +1698,8 @@ void LayerPlan::addLinesByOptimizer(const Polygons& polygons, const GCodePathCon
 
             if (wipe)
             {
-                addExtrusionMove(p1 + normal(p1-p0, wipe_dist), config, space_fill_type, 0.0, false, speed_factor, fan_speed);
+                last_position = p1 + normal(p1-p0, wipe_dist);
+                addTravel_simple(last_position);
             }
         }
     }
