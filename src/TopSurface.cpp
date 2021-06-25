@@ -42,6 +42,10 @@ void TopSurface::setAreasFromMeshAndLayerNumber(SliceMeshStorage& mesh, size_t l
         // don't iron areas that are immediately above air
         areas = areas.intersection(mesh.layers[layer_number - 1].getOutlines());
     }
+
+    // remove skin areas smaller than (2 * line width)^2
+    const coord_t skin_line_width = mesh.settings.get<coord_t>("skin_line_width");
+    areas.removeSmallAreas(4 * INT2MM(skin_line_width) * INT2MM(skin_line_width), true);
 }
 
 bool TopSurface::ironing(const SliceMeshStorage& mesh, const GCodePathConfig& line_config, LayerPlan& layer) const
