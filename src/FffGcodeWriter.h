@@ -12,11 +12,6 @@
 #include "settings/types/AngleDegrees.h"
 #include "utils/NoCopy.h"
 
-namespace std
-{
-template<typename T> class optional;
-}
-
 namespace cura 
 {
 
