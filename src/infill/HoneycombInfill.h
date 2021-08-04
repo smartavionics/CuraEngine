@@ -3,7 +3,7 @@
 
 #include "../utils/Coord_t.h"
 #include "../settings/EnumSettings.h" //For infill types.
-#include "../settings/types/AngleDegrees.h"
+#include "../settings/types/Angle.h"
 #include "../settings/types/Ratio.h"
 #include "../utils/IntPoint.h"
 

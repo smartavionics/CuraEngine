@@ -161,6 +161,7 @@ set(engine_SRCS # Except main.cpp.
     src/MeshGroup.cpp
     src/Mold.cpp
     src/multiVolumes.cpp
+    src/PathOrder.cpp
     src/pathOrderOptimizer.cpp
     src/Preheat.cpp
     src/PrimeTower.cpp
@@ -212,6 +213,7 @@ set(engine_SRCS # Except main.cpp.
     src/settings/FlowTempGraph.cpp
     src/settings/PathConfigStorage.cpp
     src/settings/Settings.cpp
+    src/settings/ZSeamConfig.cpp
 
     src/utils/AABB.cpp
     src/utils/AABB3D.cpp
@@ -240,9 +242,8 @@ set(engine_TEST
     InfillTest
     LayerPlanTest
     MergeInfillLinesTest
+    PathOrderMonotonicTest
     TimeEstimateCalculatorTest
-)
-set(engine_TEST_INFILL
 )
 set(engine_TEST_INTEGRATION
     SlicePhaseTest
