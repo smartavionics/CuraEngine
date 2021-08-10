@@ -53,9 +53,10 @@ public:
     {
         return std::fmod(std::fmod(value + other.value, 360) + 360, 360);
     }
-    AngleDegrees operator +(const int& other) const
+    template<class T>
+    AngleDegrees operator +(const T& other) const
     {
-        return operator+(AngleDegrees(other));
+        return operator+(AngleDegrees(static_cast<double>(other)));
     }
     AngleDegrees& operator +=(const AngleDegrees& other)
     {
@@ -65,6 +66,11 @@ public:
     AngleDegrees operator -(const AngleDegrees& other) const
     {
         return std::fmod(std::fmod(value - other.value, 360) + 360, 360);
+    }
+    template<class T>
+    AngleDegrees operator -(const T& other) const
+    {
+        return operator-(AngleDegrees(static_cast<double>(other)));
     }
     AngleDegrees& operator -=(const AngleDegrees& other)
     {
@@ -86,8 +92,9 @@ public:
  * This is a facade. It behaves like a double, but this is using clock
  * arithmetic which guarantees that the value is always between 0 and 2 * pi.
  */
-struct AngleRadians
+class AngleRadians
 {
+public:
     /*
      * \brief Default constructor setting the angle to 0.
      */
