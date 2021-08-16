@@ -2460,7 +2460,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 {
                     gcode.writeTravel(path.points[point_idx], speed);
                 }
-                if (path.unretract_before_last_travel_move)
+                if (false && path.unretract_before_last_travel_move) // mb disabled for now as possibly a bad idea
                 {
                     // We need to unretract before the last travel move of the path if the next path is an outer wall.
                     gcode.writeUnretractionAndPrime();
