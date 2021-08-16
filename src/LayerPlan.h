@@ -505,7 +505,7 @@ public:
      * no combing and no retraction. This travel move needs to be fixed
      * afterwards.
      * \param p The point to travel to.
-     * \param force_comb_retract Whether to force a retraction to occur.
+     * \param force_retract Whether to force a retraction to occur.
      * \param min_comb_distance Minimum travel distance required to enable the use of combing rather than a direct travel move.
      */
     GCodePath& addTravel(const Point p, const bool force_retract = false, const coord_t min_comb_distance = 0);
@@ -717,7 +717,7 @@ public:
      * 
      * \param extruder_plan_idx The index of the current extruder plan
      * \param path_idx The index of the current retracted path 
-     * \return Whether the path should be an extgruder switch retracted path
+     * \return Whether the path should be an extruder switch retracted path
      */
     bool makeRetractSwitchRetract(unsigned int extruder_plan_idx, unsigned int path_idx);
     
