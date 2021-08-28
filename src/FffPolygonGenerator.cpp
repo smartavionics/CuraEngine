@@ -268,11 +268,22 @@ bool FffPolygonGenerator::sliceModel(MeshGroup* meshgroup, TimeKeeper& timeKeepe
                 const coord_t min_bottom_thickness = bottom_layers_setting * layer_thickness;
                 size_t bottom_layers = 0;
                 coord_t bottom_thickness = 0;
-                while (bottom_thickness < min_bottom_thickness && (layer_nr > bottom_layers))
+                while (bottom_thickness < min_bottom_thickness && (layer_nr >= bottom_layers))
                 {
-                    bottom_thickness += adaptive_layer_heights->getLayers()->at(layer_nr - ++bottom_layers).layer_height;
+                    bottom_thickness += adaptive_layer_heights->getLayers()->at(layer_nr - bottom_layers++).layer_height;
                 }
                 meshStorage.layers[layer_nr].bottom_layers = std::max(bottom_layers, bottom_layers_setting);
+
+                // compute the number of initial bottom layers required
+                const size_t initial_bottom_layers_setting = meshStorage.settings.get<size_t>("initial_bottom_layers");
+                const coord_t min_initial_bottom_thickness = initial_bottom_layers_setting * layer_thickness;
+                size_t initial_bottom_layers = 0;
+                coord_t initial_bottom_thickness = 0;
+                while (initial_bottom_thickness < min_initial_bottom_thickness && (layer_nr >= initial_bottom_layers))
+                {
+                    initial_bottom_thickness += adaptive_layer_heights->getLayers()->at(layer_nr - initial_bottom_layers++).layer_height;
+                }
+                meshStorage.layers[layer_nr].initial_bottom_layers = std::max(initial_bottom_layers, initial_bottom_layers_setting);
             }
             else
             {
@@ -289,6 +300,7 @@ bool FffPolygonGenerator::sliceModel(MeshGroup* meshgroup, TimeKeeper& timeKeepe
 
                 meshStorage.layers[layer_nr].top_layers = meshStorage.settings.get<size_t>("top_layers");
                 meshStorage.layers[layer_nr].bottom_layers = meshStorage.settings.get<size_t>("bottom_layers");
+                meshStorage.layers[layer_nr].initial_bottom_layers = meshStorage.settings.get<size_t>("initial_bottom_layers");
             }
 
             // add the raft offset to each layer

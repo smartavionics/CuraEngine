@@ -149,6 +149,7 @@ public:
     coord_t thickness;  //!< The thickness of this layer. Can be different when using variable layer heights.
     size_t  top_layers; //!< The number of top skin layers that could be above this layer. Can be different when using variable layer heights.
     size_t  bottom_layers; //!< The number of bottom skin layers that could be below this layer. Can be different when using variable layer heights.
+    size_t  initial_bottom_layers; //!< The number of initial bottom skin layers that could be below this layer. Can be different when using variable layer heights.
     std::vector<SliceLayerPart> parts;  //!< An array of LayerParts which contain the actual data. The parts are printed one at a time to minimize travel outside of the 3D model.
     Polygons openPolyLines; //!< A list of lines which were never hooked up into a 2D polygon. (Currently unused in normal operation)
 
