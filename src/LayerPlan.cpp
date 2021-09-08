@@ -708,7 +708,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
     const Ratio bridge_wall_end_boost = mesh.settings.get<Ratio>("bridge_wall_end_boost");
     Ratio overhang_speed_factor = mesh.settings.get<Ratio>("wall_overhang_speed_factor");
     const Point mid(p0 + (p1 - p0)/2);
-    const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(p0, true) && overhang_mask.inside(p1, true) && overhang_mask.inside(mid, true));
+    const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(mid, true) && (overhang_mask.inside(p0, true) || overhang_mask.inside(p1, true)));
     double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
 
     if (is_overhang)
