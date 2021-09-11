@@ -132,7 +132,7 @@ bool FffPolygonGenerator::sliceModel(MeshGroup* meshgroup, TimeKeeper& timeKeepe
     else
     {
         const coord_t height_without_first_layer = storage.model_max.z - initial_layer_thickness;
-        if(height_without_first_layer <= 0)
+        if(height_without_first_layer < 0)
         {
             slice_layer_count = 0;
         }
