@@ -27,6 +27,7 @@ enum class EFillMethod
     CROSS,
     CROSS_3D,
     GYROID,
+    LIGHTNING,
     SCHWARZ_P,
     SCHWARZ_D,
     HONEYCOMB,

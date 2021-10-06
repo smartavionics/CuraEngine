@@ -203,6 +203,7 @@ namespace cura
             EFillMethod::CROSS_3D,
             EFillMethod::CUBICSUBDIV,
             EFillMethod::GYROID,
+            EFillMethod::LIGHTNING,
             EFillMethod::SCHWARZ_P,
             EFillMethod::SCHWARZ_D
         };
