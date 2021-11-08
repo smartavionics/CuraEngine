@@ -1280,7 +1280,7 @@ void GCodeExport::writeBedTemperatureCommand(const Temperature& temperature, con
     { // The UM2 family doesn't support temperature commands (they are fixed in the firmware)
         return;
     }
-
+    bool wrote_command = false;
     if (wait)
     {
         if(bed_temperature != temperature) //Not already at the desired temperature.
@@ -1293,12 +1293,17 @@ void GCodeExport::writeBedTemperatureCommand(const Temperature& temperature, con
             }
         }
         *output_stream << "M190 S";
+        wrote_command = true;
     }
     else if(bed_temperature != temperature)
     {
         *output_stream << "M140 S";
+        wrote_command = true;
     }
-    *output_stream << PrecisionedDouble{1, temperature} << new_line;
+    if(wrote_command)
+    {
+        *output_stream << PrecisionedDouble{1, temperature} << new_line;
+    }
     bed_temperature = temperature;
 }
 
