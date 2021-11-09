@@ -321,6 +321,9 @@ endif(WIN32)
 
 if (UNIX)
     target_link_libraries(_CuraEngine pthread)
+    if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
+        target_link_libraries(_CuraEngine atomic)
+    endif()
 endif()
 
 if( APPLE AND OPENMP_FOUND )
