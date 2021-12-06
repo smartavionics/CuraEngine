@@ -653,7 +653,7 @@ public:
      * \param mesh (optional) the current mesh being added to the layer plan
      * \param pattern (optional) the fill pattern used
      */
-    void addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, SpaceFillType space_fill_type, bool enable_travel_optimization = false, int wipe_dist = 0, float flow_ratio = 1.0, std::optional<Point> near_start_location = std::optional<Point>(), double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT, const float avoid_freq = 0, const SliceMeshStorage* mesh = nullptr, const EFillMethod pattern = EFillMethod::LINES);
+    void addLinesByOptimizer(const Polygons& polygons, const GCodePathConfig& config, const SpaceFillType space_fill_type, const bool enable_travel_optimization = false, const coord_t wipe_dist = 0, const Ratio flow_ratio = 1.0, const std::optional<Point> near_start_location = std::optional<Point>(), const double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT, const float avoid_freq = 0, const SliceMeshStorage* mesh = nullptr, const EFillMethod pattern = EFillMethod::LINES);
 
     /*!
      * Add polygons to the g-code with monotonic order.
