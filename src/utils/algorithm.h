@@ -86,6 +86,17 @@ void parallel_for(T from, T to, T increment, const std::function<void(const T)>&
     for (size_t index = from; index != to; index += increment)
     {
         scope_guard.push_back(std::async(std::launch::async, func, index));
+#if __arm__
+        // hack to avoid crash on 32 bit ARM
+        if (scope_guard.size() == 25)
+        {
+            while (!scope_guard.empty())
+            {
+                // removing item will invoke destructor and cause task to be executed
+                scope_guard.pop_back();
+            }
+        }
+#endif
     }
 
     // Wait for the end-result before return.
