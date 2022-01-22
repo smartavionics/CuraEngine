@@ -16,6 +16,12 @@ TopSurface::TopSurface()
 
 void TopSurface::setAreasFromMeshAndLayerNumber(SliceMeshStorage& mesh, size_t layer_number)
 {
+    if (mesh.settings.get<size_t>("top_layers") == 0)
+    {
+        // there's no top layer skin at all so don't try and iron the infill and walls alone
+        return;
+    }
+
     //The top surface is all parts of the mesh where there's no mesh above it, so find the layer above it first.
     Polygons mesh_above;
     if (layer_number < mesh.layers.size() - 1)
