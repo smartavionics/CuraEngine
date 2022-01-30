@@ -3227,6 +3227,22 @@ bool FffGcodeWriter::processSupportInfill(const SliceDataStorage& storage, Layer
 
             if (all_insets.size() > 0)
             {
+                if (infill_extruder.settings.get<bool>("magic_spiralize"))
+                {
+                    size_t layer_nr = gcode_layer.getLayerNr();
+                    if(layer_nr > infill_extruder.settings.get<size_t>("bottom_layers"))
+                    {
+                        // bit of subtlety here... support is being used on a spiralized model and to ensure the travel move from the end of the last spiral
+                        // to the start of the support does not go through the model we have to tell the slicer what the current location of the nozzle is
+                        // by adding a travel move to the end vertex of the last spiral. Of course, if the slicer could track the final location on the previous
+                        // layer then this wouldn't be necessary but that's not done due to the multi-threading.
+                        const Polygons* last_wall_outline = storage.spiralize_wall_outlines[layer_nr - 1];
+                        if (last_wall_outline != nullptr)
+                        {
+                            gcode_layer.addTravel((*last_wall_outline)[0][storage.spiralize_seam_vertex_indices[layer_nr - 1]]);
+                        }
+                    }
+                }
                 setExtruder_addPrime(storage, gcode_layer, extruder_nr); // only switch extruder if we're sure we're going to switch
                 gcode_layer.setIsInside(false); // going to print stuff outside print object, i.e. support
                 gcode_layer.addPolygonsByOptimizer(all_insets, gcode_layer.configs_storage.support_infill_config[0]);
