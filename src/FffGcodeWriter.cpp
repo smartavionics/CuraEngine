@@ -2584,7 +2584,35 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
             {
                 const coord_t infill_line_distance = m.settings.get<coord_t>("infill_line_distance");
                 const coord_t infill_line_width = m.settings.get<coord_t>("infill_line_width");
-                const bool part_has_sparse_infill = (infill_line_distance == 0) || ((float)infill_line_width / infill_line_distance) <= sparse_infill_max_density;
+                bool part_has_sparse_infill = true;
+
+                if (infill_line_distance > 0)
+                {
+                    float infill_density = (float)infill_line_width / infill_line_distance;
+                    switch(m.settings.get<EFillMethod>("infill_pattern"))
+                    {
+                        case EFillMethod::LIGHTNING:
+                            infill_density *= 1.6f;
+                            break;
+
+                        case EFillMethod::GRID:
+                        case EFillMethod::TETRAHEDRAL:
+                        case EFillMethod::QUARTER_CUBIC:
+                            infill_density *= 2.0f;
+                            break;
+
+                        case EFillMethod::TRIANGLES:
+                        case EFillMethod::TRIHEXAGON:
+                        case EFillMethod::CUBIC:
+                        case EFillMethod::CUBICSUBDIV:
+                            infill_density *= 3.0f;
+                            break;
+
+                        default:
+                            break;
+                    }
+                    part_has_sparse_infill = infill_density <= sparse_infill_max_density;
+                }
 
                 if (part_has_sparse_infill)
                 {
