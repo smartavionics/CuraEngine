@@ -2525,7 +2525,8 @@ void FffGcodeWriter::processSkinInsets(const SliceDataStorage& storage, LayerPla
                 added_something = true;
                 setExtruder_addPrime(storage, gcode_layer, extruder_nr);
                 gcode_layer.setIsInside(true); // going to print stuff inside print object
-                gcode_layer.addWalls(skin_perimeter, mesh, mesh_config.skin_config, mesh_config.bridge_skin_config, nullptr); // add polygons to gcode in inward order
+                const GCodePathConfig& skin_config = (skin_part.roofing_fill.empty()) ? mesh_config.skin_config : mesh_config.roofing_config;
+                gcode_layer.addWalls(skin_perimeter, mesh, skin_config, mesh_config.bridge_skin_config, nullptr); // add polygons to gcode in inward order
             }
         }
     }
