@@ -1664,7 +1664,7 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
     constexpr coord_t outline_offset = 0;
     constexpr Polygons* perimeter_gaps = nullptr;
     constexpr bool connected_zigzags = false;
-    constexpr bool use_endpieces = false;
+    constexpr bool use_endpieces = true;
     constexpr bool skip_some_zags = false;
     constexpr int zag_skip_count = 0;
 
