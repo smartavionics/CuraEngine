@@ -355,8 +355,8 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
         //Check if the accumulated area doesn't exceed the maximum.
         accumulated_area_removed += current.X * next.Y - current.Y * next.X; //Shoelace formula for area of polygon per line segment.
 
-        const coord_t area_removed_so_far = accumulated_area_removed + next.X * previous.Y - next.Y * previous.X; //Close the polygon.
-        const coord_t base_length_2 = vSize2(next - previous);
+        const double area_removed_so_far = accumulated_area_removed + next.X * previous.Y - next.Y * previous.X; //Close the polygon.
+        const double base_length_2 = vSize2(next - previous);
         if (base_length_2 == 0) //Two line segments form a line back and forth with no area.
         {
             continue; //Remove the vertex.
@@ -366,7 +366,7 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
         //h = L / b           [divide by b]
         //h^2 = (L / b)^2     [square it]
         //h^2 = L^2 / b^2     [factor the divisor]
-        const coord_t height_2 = area_removed_so_far * area_removed_so_far / base_length_2;
+        const double height_2 = area_removed_so_far * area_removed_so_far / base_length_2;
         if (length2 < smallest_line_segment_squared && height_2 <= allowed_error_distance_squared) //Line is small and removing it doesn't introduce too much error.
         {
             continue; //Remove the vertex.
