@@ -2129,9 +2129,9 @@ void ExtruderPlan::processFanSpeedAndMinimalLayerTime(bool force_minimal_layer_t
 
     */
     // interpolate fan speed (for cool_fan_full_layer and for cool_min_layer_time_fan_speed_max)
-    if (layer_nr < fan_speed_layer_time_settings.cool_fan_min_layer)
+    if (layer_nr >= 0 && layer_nr < fan_speed_layer_time_settings.cool_fan_min_layer)
     {
-        // fan is normally off for layers below cool_fan_min_layer
+        // fan is normally off for (non-raft) layers below cool_fan_min_layer
         fan_speed = 0;
     }
     else
