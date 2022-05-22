@@ -2572,8 +2572,11 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
     std::vector<Polygons> bridge_regions; // one element for each bridge layer
 
     // the bridge wall mask for this layer tells us where the bridge regions are
+    // but we need to shrink it by 1/2 of the outer wall line width to get regions that match
+    // the part outline
+    const coord_t bridge_region_shrink = -mesh_config.inset0_config.getLineWidth() / 2;
 
-    bridge_regions.emplace_back(gcode_layer.getBridgeWallMask());
+    bridge_regions.emplace_back(gcode_layer.getBridgeWallMask().offset(bridge_region_shrink));
 
     // if infill regions in the layer below are "sparse" consider the skin in that region to be unsupported
     for (const SliceMeshStorage& m : storage.meshes)
@@ -2649,7 +2652,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         {
             bridge_regions.emplace_back();
             getBridgeAndOverhangRegions(storage, layer_nr - 1, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions.back());
-            bridge_regions.back() = bridge_regions.back().unionPolygons().difference(bridge_regions[0]);
+            bridge_regions.back() = bridge_regions.back().offset(bridge_region_shrink).unionPolygons().difference(bridge_regions[0]);
             bridge_regions.back().removeSmallAreas(bridge_skin_min_area, remove_bridge_skin_holes);
         }
 
@@ -2657,12 +2660,13 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         {
             bridge_regions.emplace_back();
             getBridgeAndOverhangRegions(storage, layer_nr - 2, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions.back());
-            bridge_regions.back() = bridge_regions.back().unionPolygons().difference(bridge_regions[0]).difference(bridge_regions[1]);
+            bridge_regions.back() = bridge_regions.back().offset(bridge_region_shrink).unionPolygons().difference(bridge_regions[0]).difference(bridge_regions[1]);
             bridge_regions.back().removeSmallAreas(bridge_skin_min_area, remove_bridge_skin_holes);
         }
     }
 
     Polygons all_bridge_regions;
+    const Polygons layer_outline = mesh.layers[layer_nr].getOutlines();
 
     for (unsigned n = 0; n < bridge_regions.size(); ++n)
     {
@@ -2671,7 +2675,10 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         // on the first bridge layer, expand bridge skin to cover at least the whole of the first wall line
         coord_t bridge_skin_expansion = (n == 0) ? mesh_config.inset0_config.getLineWidth() / 2 : 0;
 
-        Polygons bridge_skin = skin_part.outline.intersection(bridge_regions[n].offset(bridge_skin_expansion));
+        // and also apply bridge_skin_overlap_mm
+        bridge_skin_expansion += mesh.settings.get<coord_t>("bridge_skin_overlap_mm");
+
+        Polygons bridge_skin = layer_outline.intersection(bridge_regions[n].intersection(skin_part.outline).offset(bridge_skin_expansion));
 
         // useful diagnostic aid, please don't remove
         //gcode_layer.addPolygonsByOptimizer(bridge_skin, mesh_config.infill_config[0], nullptr, ZSeamConfig(), 0, false, 0.25);
@@ -2680,11 +2687,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         {
             SkinPart sp;
             sp.outline = bridge_skin_part;
-            sp.inner_infill = skin_part.inner_infill.intersection(sp.outline);
-
-            // slightly increase the size of the skin infill so that it connects well to the surrounding walls or infill
-            const GCodePathConfig* config = (n > 1) ? &mesh_config.bridge_skin_config3 : (n > 0) ? &mesh_config.bridge_skin_config2 : &mesh_config.bridge_skin_config;
-            sp.inner_infill = sp.inner_infill.offset(config->getLineWidth() / 4);
+            sp.inner_infill = sp.outline.intersection(layer_outline);
 
             // determine the best angle for the skin lines - the current heuristic is that the skin lines should be parallel to the
             // direction of the skin area's longest unsupported edge
@@ -2755,16 +2758,14 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
             Polygons ignored_perimeter_gaps;
             processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something, n + 1, (found_line_angle) ? &line_angle : nullptr);
         }
-        all_bridge_regions.add(bridge_skin);
+        // increase the size of the bridge region by the amount that non-bridge skins are expanded so that the bridge and non-bridge skins don't overlap
+        all_bridge_regions.add(bridge_skin.offset(mesh.settings.get<coord_t>("skin_overlap_mm")));
     }
 
     all_bridge_regions = all_bridge_regions.unionPolygons();
 
     if (all_bridge_regions.size())
     {
-        // increase the size of the bridge regions by twice the amount that all skins are expanded so that the bridge and non-bridge skins don't overlap
-        all_bridge_regions = all_bridge_regions.offset(mesh.settings.get<coord_t>("skin_overlap_mm") * 2);
-
         // print the non-bridge skin regions
         for (const PolygonsPart& non_bridge_skin_part : skin_part.outline.difference(all_bridge_regions).splitIntoParts())
         {
@@ -2814,7 +2815,8 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     // generate skin_polygons and skin_lines (and concentric_perimeter_gaps if needed)
     const GCodePathConfig* skin_config = &mesh_config.skin_config;
     Ratio skin_density = 1.0;
-    const coord_t skin_overlap = mesh.settings.get<coord_t>("skin_overlap_mm");
+    // for bridge skins, overlap has already been applied
+    const coord_t skin_overlap = (bridge_layer_nr == 0) ? mesh.settings.get<coord_t>("skin_overlap_mm") : 0;
 
     const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
 
