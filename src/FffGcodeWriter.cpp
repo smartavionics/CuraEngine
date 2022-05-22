@@ -2672,11 +2672,8 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
     {
         // print the bridge skin regions
 
-        // on the first bridge layer, expand bridge skin to cover at least the whole of the first wall line
-        coord_t bridge_skin_expansion = (n == 0) ? mesh_config.inset0_config.getLineWidth() / 2 : 0;
-
-        // and also apply bridge_skin_overlap_mm
-        bridge_skin_expansion += mesh.settings.get<coord_t>("bridge_skin_overlap_mm");
+        // apply bridge_skin_overlap_mm
+        const coord_t bridge_skin_expansion = mesh.settings.get<coord_t>("bridge_skin_overlap_mm");
 
         Polygons bridge_skin = layer_outline.intersection(bridge_regions[n].intersection(skin_part.outline).offset(bridge_skin_expansion));
 
