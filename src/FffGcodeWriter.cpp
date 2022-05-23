@@ -2684,7 +2684,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         {
             SkinPart sp;
             sp.outline = bridge_skin_part;
-            sp.inner_infill = sp.outline.intersection(layer_outline);
+            sp.inner_infill = sp.outline;
 
             // determine the best angle for the skin lines - the current heuristic is that the skin lines should be parallel to the
             // direction of the skin area's longest unsupported edge
