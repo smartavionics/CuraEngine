@@ -2666,7 +2666,11 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
     }
 
     Polygons all_bridge_regions;
-    const Polygons layer_outline = mesh.layers[layer_nr].getOutlines();
+
+    // limit the amount the bridge skin can overlap the walls to a single wall width
+    const size_t num_walls = mesh.settings.get<size_t>("wall_line_count");
+    const coord_t outline_shrink = (num_walls > 1) ? mesh.settings.get<coord_t>("wall_line_width_0") + mesh.settings.get<coord_t>("wall_line_width_x") * (num_walls - 2) : 0;
+    const Polygons shrunk_layer_outline = mesh.layers[layer_nr].getOutlines().offset(-outline_shrink);
 
     for (unsigned n = 0; n < bridge_regions.size(); ++n)
     {
@@ -2675,7 +2679,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         // apply bridge_skin_overlap_mm
         const coord_t bridge_skin_expansion = mesh.settings.get<coord_t>((n > 1) ? "bridge_skin_overlap_mm_3" : (n > 0) ? "bridge_skin_overlap_mm_2" : "bridge_skin_overlap_mm");
 
-        Polygons bridge_skin = layer_outline.intersection(bridge_regions[n].intersection(skin_part.outline).offset(bridge_skin_expansion));
+        Polygons bridge_skin = shrunk_layer_outline.intersection(bridge_regions[n].intersection(skin_part.outline).offset(bridge_skin_expansion));
 
         // useful diagnostic aid, please don't remove
         //gcode_layer.addPolygonsByOptimizer(bridge_skin, mesh_config.infill_config[0], nullptr, ZSeamConfig(), 0, false, 0.25);
