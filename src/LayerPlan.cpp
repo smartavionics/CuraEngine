@@ -2490,6 +2490,24 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     }
                 }
                 gcode.writeTypeComment(path.config->type);
+                if (layer_nr == 0)
+                {
+                    coord_t z_offset = extruder.settings.get<coord_t>("skirt_brim_z_offset");
+                    if (z_offset != 0)
+                    {
+                        Point3 current_position = gcode.getPosition();
+                        if(path.config->type == PrintFeatureType::SkirtBrim)
+                        {
+                            current_position.z = z + z_offset;
+                        }
+                        else
+                        {
+                            current_position.z = z;
+                        }
+                        gcode.writeTravel(current_position, extruder.settings.get<Velocity>("speed_z_hop"));
+                        gcode.setZ(current_position.z);
+                    }
+                }
                 if (path.config->isBridgePath())
                 {
                     gcode.writeComment("BRIDGE");
