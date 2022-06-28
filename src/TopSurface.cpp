@@ -51,6 +51,8 @@ void TopSurface::setAreasFromMeshAndLayerNumber(SliceMeshStorage& mesh, size_t l
 
     // remove skin areas smaller than (2 * line width)^2
     const coord_t skin_line_width = mesh.settings.get<coord_t>("skin_line_width");
+    // first shrink/expand areas by the skin line width to remove very narrow areas
+    areas = areas.offset(-skin_line_width).offset(skin_line_width);
     areas.removeSmallAreas(4 * INT2MM(skin_line_width) * INT2MM(skin_line_width), true);
 }
 
