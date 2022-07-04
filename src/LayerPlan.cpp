@@ -1647,7 +1647,7 @@ void LayerPlan::addLinesByOptimizer
         max_compensated_travel_len = mesh->settings.get<coord_t>("skin_lines_boost_max_travel_len");
     }
 
-    Point last_position;
+    Point last_position(getLastPlannedPositionOrStartingPosition());
     for (unsigned int order_idx = 0; order_idx < orderOptimizer.polyOrder.size(); order_idx++)
     {
         const unsigned int poly_idx = orderOptimizer.polyOrder[order_idx];
