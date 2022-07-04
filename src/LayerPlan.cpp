@@ -1637,10 +1637,14 @@ void LayerPlan::addLinesByOptimizer
     float gradient_infill_last_flow = 1;
 
     float max_flow_boost = 1.0;
+    float compensated_travel_scaling = 1.0;
+    coord_t max_compensated_travel_len = config.getLineWidth() * 3;
 
     if(config.type == PrintFeatureType::Skin && mesh != nullptr && mesh->settings.get<bool>("skin_lines_boost_flow"))
     {
         max_flow_boost = mesh->settings.get<Ratio>((layer_nr == 0) ? "skin_lines_max_flow_boost_0" : "skin_lines_max_flow_boost");
+        compensated_travel_scaling = mesh->settings.get<Ratio>("skin_lines_boost_flow_scaling");
+        max_compensated_travel_len = mesh->settings.get<coord_t>("skin_lines_boost_max_travel_len");
     }
 
     Point last_position;
@@ -1666,10 +1670,10 @@ void LayerPlan::addLinesByOptimizer
             const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
             const GCodePath& travel_path = addTravel(p0, false, min_comb_distance);
             travel_len = vSize(p0 - last_position);
-            if (!travel_path.retract || storage.retraction_config_per_extruder[getExtruder()].prime_volume == 0)
+            if (max_flow_boost > 1.0f && (!travel_path.retract || storage.retraction_config_per_extruder[getExtruder()].prime_volume == 0))
             {
                 // compensate for nozzle pressure drop during un-retracted travels or retracted travels with no extra-prime
-                compensated_travel_len = travel_len;
+                compensated_travel_len = std::min(travel_len, max_compensated_travel_len) * compensated_travel_scaling;
             }
         }
         double speed_factor = 1.0;
@@ -1695,12 +1699,10 @@ void LayerPlan::addLinesByOptimizer
         {
             float flow_ratio_here = flow_ratio;
 
-            if (compensated_travel_len > 0 && max_flow_boost > 1.0f)
+            if (compensated_travel_len > 0)
             {
-                const coord_t max_compensated_travel_len = config.getLineWidth() * 3;
-                const coord_t travel_len = std::min(compensated_travel_len, max_compensated_travel_len);
                 const coord_t len = vSize(p1 - p0);
-                flow_ratio_here *= std::min(max_flow_boost, (float)(len + travel_len) / len);
+                flow_ratio_here *= std::min(max_flow_boost, (float)(len + compensated_travel_len) / len);
             }
             addExtrusionMove(p1, config, space_fill_type, flow_ratio_here, false, speed_factor, fan_speed);
         }
