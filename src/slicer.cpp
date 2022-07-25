@@ -1039,7 +1039,17 @@ void Slicer::makePolygons(Mesh& mesh, SlicingTolerance slicing_tolerance, std::v
     // Use a signed type for the loop counter so MSVC compiles (because it uses OpenMP 2.0, an old version).
     for (int layer_nr = 0; layer_nr < static_cast<int>(layers_ref.size()); layer_nr++)
     {
-        const coord_t xy_offset = mesh.settings.get<coord_t>((layer_nr <= layer_apply_initial_xy_offset) ? "xy_offset_layer_0" : "xy_offset");
+        coord_t xy_offset = mesh.settings.get<coord_t>((layer_nr <= layer_apply_initial_xy_offset) ? "xy_offset_layer_0" : "xy_offset");
+        if (layer_nr > layer_apply_initial_xy_offset)
+        {
+            const size_t xy_offset_taper_layers = mesh.settings.get<size_t>("xy_offset_taper_layers");
+            if (xy_offset_taper_layers > 0 && layer_nr <= (layer_apply_initial_xy_offset + xy_offset_taper_layers))
+            {
+                // taper the offset from xy_offset_layer_0 to xy_offset across xy_offset_taper_layers
+                const coord_t xy_offset_layer_0 = mesh.settings.get<coord_t>("xy_offset_layer_0");
+                xy_offset = xy_offset_layer_0 + (xy_offset - xy_offset_layer_0) * (layer_nr - layer_apply_initial_xy_offset) / (xy_offset_taper_layers + 1);
+            }
+        }
 
         if (xy_offset != 0)
         {
