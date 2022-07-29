@@ -1,6 +1,8 @@
 //Copyright (c) 2018 Ultimaker B.V.
 //CuraEngine is released under the terms of the AGPLv3 or higher.
 
+#include "../sliceDataStorage.h"
+
 #include "../utils/Coord_t.h"
 #include "../settings/EnumSettings.h" //For infill types.
 #include "../settings/types/Angle.h"
@@ -15,7 +17,7 @@ class Polygons;
 class TPMSInfill
 {
 public:
-    TPMSInfill(const bool zig_zaggify, const coord_t line_distance, const coord_t z, const EFillResolution resolution, const Point& infill_origin, const AngleDegrees fill_angle);
+    TPMSInfill(const bool zig_zaggify, const coord_t line_distance, const coord_t z, const EFillResolution resolution, const Point& infill_origin, const AngleDegrees fill_angle, const SliceMeshStorage* mesh);
 
     ~TPMSInfill();
 
@@ -28,6 +30,7 @@ protected:
     const EFillResolution resolution;  //!< infill resolution to use
     const Point& infill_origin;        //!< point the infill is rotated around
     const double fill_angle_rads;      //!< infill rotation angle
+    const SliceMeshStorage* mesh;      //!< mesh being filled
 
     coord_t x_min; //!< min X coordinate of generated infill
     coord_t x_max; //!< max X coordinate of generated infill

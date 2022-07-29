@@ -214,19 +214,19 @@ void Infill::_generate( Polygons& result_polygons,
         break;
     case EFillMethod::GYROID:
         {
-            TPMSInfillGyroid infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle);
+            TPMSInfillGyroid infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle, mesh);
             infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
         }
         break;
     case EFillMethod::SCHWARZ_P:
         {
-            TPMSInfillSchwarzP infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle);
+            TPMSInfillSchwarzP infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle, mesh);
             infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
         }
         break;
     case EFillMethod::SCHWARZ_D:
         {
-            TPMSInfillSchwarzD infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle);
+            TPMSInfillSchwarzD infill(zig_zaggify, line_distance, z, resolution, infill_origin, fill_angle, mesh);
             infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
         }
         break;
