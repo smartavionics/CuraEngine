@@ -12,7 +12,7 @@ namespace cura {
 TPMSInfill::TPMSInfill(const bool zig_zaggify, const coord_t line_distance, const coord_t z, const EFillResolution resolution, const Point& infill_origin, const AngleDegrees fill_angle, const SliceMeshStorage* mesh)
     : zig_zaggify(zig_zaggify)
     , line_distance(line_distance)
-    , z(z)
+    , z((mesh)? z - mesh->settings.get<coord_t>("layer_height_0") : z)
     , resolution(resolution)
     , infill_origin(infill_origin)
     , fill_angle_rads(fill_angle / (180 / M_PI))
