@@ -546,6 +546,7 @@ void LineOrderOptimizer::optimize(bool find_chains)
         }
     }
 
+    Point prev_prev_point;
     Point prev_point = startPoint;
 
     for (unsigned int order_idx = 0; order_idx < polygons.size(); order_idx++) /// actual path order optimizer
@@ -568,7 +569,7 @@ void LineOrderOptimizer::optimize(bool find_chains)
                 {
                     continue;
                 }
-                updateBestLine(close_line_idx, best_line_idx, best_score, prev_point);
+                updateBestLine(close_line_idx, best_line_idx, best_score, prev_point, prev_prev_point);
             }
 
             if (best_line_idx == -1)
@@ -580,7 +581,7 @@ void LineOrderOptimizer::optimize(bool find_chains)
                     {
                         continue;
                     }
-                    updateBestLine(close_line_idx, best_line_idx, best_score, prev_point);
+                    updateBestLine(close_line_idx, best_line_idx, best_score, prev_point, prev_prev_point);
                 }
             }
         }
@@ -622,7 +623,7 @@ void LineOrderOptimizer::optimize(bool find_chains)
                 }
                 else
                 {
-                    updateBestLine(it->first, best_line_idx, best_score, prev_point, it->second);
+                    updateBestLine(it->first, best_line_idx, best_score, prev_point, prev_prev_point, it->second);
                 }
             }
 
@@ -636,7 +637,7 @@ void LineOrderOptimizer::optimize(bool find_chains)
             {
                 if (!picked[poly_idx])
                 {
-                    updateBestLine(poly_idx, best_line_idx, best_score, prev_point);
+                    updateBestLine(poly_idx, best_line_idx, best_score, prev_point, prev_prev_point);
                 }
             }
         }
@@ -651,7 +652,7 @@ void LineOrderOptimizer::optimize(bool find_chains)
                     continue;
                 }
 
-                updateBestLine(poly_idx, best_line_idx, best_score, prev_point);
+                updateBestLine(poly_idx, best_line_idx, best_score, prev_point, prev_prev_point);
 
             }
         }
@@ -663,6 +664,7 @@ void LineOrderOptimizer::optimize(bool find_chains)
             int line_start_point_idx = polyStart[best_line_idx];
             int line_end_point_idx = line_start_point_idx * -1 + 1; /// 1 -> 0 , 0 -> 1
             const Point& line_end = best_line[line_end_point_idx];
+            prev_prev_point = prev_point;
             prev_point = line_end;
 
             picked[best_line_idx] = true;
@@ -714,7 +716,7 @@ in:
 out:
  best, best_score
 */
-inline void LineOrderOptimizer::updateBestLine(unsigned int poly_idx, int& best, float& best_score, Point prev_point, int just_point)
+inline void LineOrderOptimizer::updateBestLine(unsigned int poly_idx, int& best, float& best_score, const Point& prev_point, const Point& prev_prev_point, int just_point)
 {
     // when looking at a chain end, just_point will be either 0 or 1 depending on which vertex we are currently interested in testing
     // if just_point is -1, it means that we are not looking at a chain end and we will test both vertices to see if either is best
@@ -732,6 +734,11 @@ inline void LineOrderOptimizer::updateBestLine(unsigned int poly_idx, int& best,
         {
             score = combingDistance2(p0, prev_point);
         }
+        if (pointsAreCoincident(p0, prev_point))
+        {
+            // penalise changes in direction by adding deviation in degrees to score
+            score += std::abs(LinearAlg2D::getAngleLeft(prev_prev_point, prev_point, p1) - M_PI) * 180 / M_PI;
+        }
         if (score < best_score)
         {
             best = poly_idx;
@@ -748,6 +755,11 @@ inline void LineOrderOptimizer::updateBestLine(unsigned int poly_idx, int& best,
             && PolygonUtils::polygonCollidesWithLineSegment(*combing_boundary, p1, prev_point))
         {
             score = combingDistance2(p1, prev_point);
+        }
+        if (pointsAreCoincident(p1, prev_point))
+        {
+            // penalise changes in direction by adding deviation in degrees to score
+            score += std::abs(LinearAlg2D::getAngleLeft(prev_prev_point, prev_point, p0) - M_PI) * 180 / M_PI;
         }
         if (score < best_score)
         {
