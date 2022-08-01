@@ -46,6 +46,10 @@ private:
     virtual void generateConnections(Polygons& result, const Polygons& outline) = 0;
 
     virtual double pitchScaling() = 0;
+
+    virtual coord_t constrainPitch(coord_t pitch) {
+        return pitch;
+    }
 };
 
 class TPMSInfillGyroid : public TPMSInfill
@@ -62,6 +66,15 @@ private:
     void generateConnections(Polygons& result, const Polygons& outline);
 
     double pitchScaling() { return 2.41; }
+
+    coord_t constrainPitch(coord_t pitch) {
+        if (mesh && mesh->settings.get<bool>("infill_constrain_gyroid_pitch") && !mesh->settings.get<bool>("adaptive_layer_height_enabled"))
+        {
+            const coord_t layer_height = mesh->settings.get<coord_t>("layer_height");
+            pitch = pitch / (4 * layer_height) * (4 * layer_height);
+        }
+        return pitch;
+    }
 };
 
 class TPMSInfillSchwarzP : public TPMSInfill
