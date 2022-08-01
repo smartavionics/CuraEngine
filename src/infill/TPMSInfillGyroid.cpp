@@ -12,7 +12,7 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
     // generate infill based on the gyroid equation: sin_x * cos_y + sin_y * cos_z + sin_z * cos_x = 0
     // kudos to the author of the Slic3r implementation equation code, the equation code here is based on that
 
-    const double z_rads = 2 * M_PI * (z + pitch / 8.0) / pitch;
+    const double z_rads = 2 * M_PI * (z + ((mesh && mesh->settings.get<bool>("infill_constrain_gyroid_pitch")) ? pitch / 8.0 : 0)) / pitch;
     const double cos_z = std::cos(z_rads);
     const double sin_z = std::sin(z_rads);
 
