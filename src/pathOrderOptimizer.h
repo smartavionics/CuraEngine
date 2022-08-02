@@ -123,10 +123,10 @@ private:
      * \param best[in, out] The index of current best line
      * \param best_score[in, out] The distance score for the current best line
      * \param prev_point[in] The previous point from which to find the next best line
-     * \param prev_prev_point[in] The point previous to prev_point
      * \param just_point[in] If not -1, only look at the line vertex with this index
+     * \param prev_prev_point[in] The point previous to prev_point
      */
-    void updateBestLine(unsigned int poly_idx, int& best, float& best_score, const Point& prev_point, const Point& prev_prev_point, int just_point = -1);
+    void updateBestLine(unsigned int poly_idx, int& best, float& best_score, const Point& prev_point, int just_point = -1, const Point* prev_prev_point = nullptr);
 
     /*!
      * Compute the squared distance from \p p0 to \p p1 using combing
