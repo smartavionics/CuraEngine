@@ -7,7 +7,7 @@
 
 namespace cura {
 
-void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step)
+void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const double step)
 {
     // generate infill based on the gyroid equation: sin_x * cos_y + sin_y * cos_z + sin_z * cos_x = 0
     // kudos to the author of the Slic3r implementation equation code, the equation code here is based on that
@@ -23,7 +23,7 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
     {
         // "vertical" lines
         const double phase_offset = ((cos_z < 0) ? M_PI : 0) + M_PI;
-        for (coord_t y = 0; y < pitch; y += step)
+        for (double y = 0; y < pitch; y += step)
         {
             const double y_rads = 2 * M_PI * y / pitch;
             const double a = cos_z;
@@ -115,7 +115,7 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
     {
         // "horizontal" lines
         const double phase_offset = (sin_z < 0) ? M_PI : 0;
-        for (coord_t x = 0; x < pitch; x += step)
+        for (double x = 0; x < pitch; x += step)
         {
             const double x_rads = 2 * M_PI * x / pitch;
             const double a = sin_z;

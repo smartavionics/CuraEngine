@@ -46,14 +46,13 @@ void TPMSInfill::generate(Polygons& result_lines, const Polygons& outline)
     // scale pitch so that total amount of filament used matches the amount used by the "line" infill pattern
     int pitch = constrainPitch(line_distance * pitchScaling());
     int num_steps = 4;
-    int step = pitch / num_steps;
+    double step = (double)pitch / num_steps;
     const int max_steps = (resolution == EFillResolution::LOW_RESOLUTION) ? 4 : (resolution == EFillResolution::MEDIUM_RESOLUTION) ? 8 : 16;
     while (step > 500 && num_steps < max_steps)
     {
         num_steps *= 2;
-        step = pitch / num_steps;
+        step = (double)pitch / num_steps;
     }
-    pitch = step * num_steps; // recalculate to avoid precision errors
 
     x_min = infill_origin.X - std::ceil((float)(infill_origin.X - aabb.min.X) / pitch + 1) * pitch;
     y_min = infill_origin.Y - std::ceil((float)(infill_origin.Y - aabb.min.Y) / pitch + 0.25) * pitch;

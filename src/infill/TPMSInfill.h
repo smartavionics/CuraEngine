@@ -41,7 +41,7 @@ protected:
 
 private:
 
-    virtual void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step) = 0;
+    virtual void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const double step) = 0;
 
     virtual void generateConnections(Polygons& result, const Polygons& outline) = 0;
 
@@ -61,7 +61,7 @@ private:
     std::vector<unsigned> connected_to[2]; // [chain_indices[], chain_indices[]]
     std::vector<int> line_numbers; // which row/column line a chain is part of
 
-    void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
+    void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const double step);
 
     void generateConnections(Polygons& result, const Polygons& outline);
 
@@ -85,7 +85,7 @@ private:
     std::vector<Point> connection_points;
     std::vector<unsigned> connection_ids;
 
-    void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
+    void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const double step);
 
     void generateConnections(Polygons& result, const Polygons& outline);
 
@@ -102,7 +102,7 @@ private:
     std::vector<Point> connection_points;
     std::vector<ConnectionId> connection_ids;
 
-    void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step);
+    void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const double step);
 
     void generateConnections(Polygons& result, const Polygons& outline);
 

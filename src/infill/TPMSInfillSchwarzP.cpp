@@ -7,7 +7,7 @@
 
 namespace cura {
 
-void TPMSInfillSchwarzP::generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const int step)
+void TPMSInfillSchwarzP::generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const double step)
 {
     // generate Schwarz P "Primitive" surface defined by equation: cos(x) + cos(y) + cos(z) = 0
     // see https://en.wikipedia.org/wiki/Schwarz_minimal_surface
