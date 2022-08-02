@@ -549,6 +549,8 @@ void LineOrderOptimizer::optimize(bool find_chains)
     Point prev_prev_point;
     Point prev_point = startPoint;
 
+    std::set<unsigned int> joined_lines;
+
     for (unsigned int order_idx = 0; order_idx < polygons.size(); order_idx++) /// actual path order optimizer
     {
         int best_line_idx = -1;
@@ -562,7 +564,6 @@ void LineOrderOptimizer::optimize(bool find_chains)
         {
             // first check if a line segment starts (really) close to last point
             // this will find the next line segment in a chain
-            std::set<unsigned int> joined_lines;
             for(unsigned int close_line_idx : line_bucket_grid.getNearbyVals(prev_point, 10))
             {
                 if (picked[close_line_idx]
@@ -576,6 +577,7 @@ void LineOrderOptimizer::optimize(bool find_chains)
             {
                 updateBestLine(close_line_idx, best_line_idx, best_score, prev_point, -1, (joined_lines.size() > 1) ? &prev_prev_point : 0);
             }
+            joined_lines.clear();
 
             if (best_line_idx == -1)
             {
