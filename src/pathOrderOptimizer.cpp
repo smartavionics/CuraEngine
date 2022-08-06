@@ -566,16 +566,19 @@ void LineOrderOptimizer::optimize(bool find_chains)
             // this will find the next line segment in a chain
             for(unsigned int close_line_idx : line_bucket_grid.getNearbyVals(prev_point, 10))
             {
-                if (picked[close_line_idx]
-                    || !(pointsAreCoincident(prev_point,(*polygons[close_line_idx])[0]) || pointsAreCoincident(prev_point, (*polygons[close_line_idx])[1])))
+                if (!picked[close_line_idx] &&
+                    (pointsAreCoincident(prev_point,(*polygons[close_line_idx])[0]) || pointsAreCoincident(prev_point, (*polygons[close_line_idx])[1])))
                 {
-                    continue;
+                    joined_lines.insert(close_line_idx);
                 }
-                joined_lines.insert(close_line_idx);
             }
+            // if more than one line starts from the current point, pass a pointer to prev_prev_point so
+            // the directions of the candidate lines can be calculated and hence it can be determined
+            // which line will minimise the change in direction of the nozzle
+            const Point* pppp = (joined_lines.size() > 1) ? &prev_prev_point : nullptr;
             for(unsigned int close_line_idx : joined_lines)
             {
-                updateBestLine(close_line_idx, best_line_idx, best_score, prev_point, -1, (joined_lines.size() > 1) ? &prev_prev_point : 0);
+                updateBestLine(close_line_idx, best_line_idx, best_score, prev_point, -1, pppp);
             }
             joined_lines.clear();
 
