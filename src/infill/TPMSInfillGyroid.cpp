@@ -15,6 +15,7 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
     const double z_rads = 2 * M_PI * (z + ((mesh && mesh->settings.get<bool>("infill_constrain_gyroid_pitch")) ? pitch / 8.0 : 0)) / pitch;
     const double cos_z = std::cos(z_rads);
     const double sin_z = std::sin(z_rads);
+    const coord_t min_line_len2 = 100; // don't generate gyroid line segments shorter than 10um
 
     std::vector<coord_t> odd_line_coords;
     std::vector<coord_t> even_line_coords;
@@ -67,8 +68,11 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
                             line = outline.intersectionPolyLines(line);
                             if (line.size() > 0)
                             {
-                                // some of the line is inside the boundary
-                                result.addLine(line[0][0], line[0][1]);
+                                // some of the line is inside the boundary, add it if it's not too small
+                                if (vSize2(line[0][0] - line[0][1]) >= min_line_len2)
+                                {
+                                    result.addLine(line[0][0], line[0][1]);
+                                }
                                 if (zig_zaggify)
                                 {
                                     chain_end[chain_end_index] = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
@@ -159,8 +163,11 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
                             line = outline.intersectionPolyLines(line);
                             if (line.size() > 0)
                             {
-                                // some of the line is inside the boundary
-                                result.addLine(line[0][0], line[0][1]);
+                                // some of the line is inside the boundary, add it if it's not too small
+                                if (vSize2(line[0][0] - line[0][1]) >= min_line_len2)
+                                {
+                                    result.addLine(line[0][0], line[0][1]);
+                                }
                                 if (zig_zaggify)
                                 {
                                     chain_end[chain_end_index] = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
