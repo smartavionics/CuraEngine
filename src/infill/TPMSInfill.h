@@ -69,6 +69,8 @@ private:
     double pitchScaling() { return 2.41; }
 
     coord_t constrainPitch(coord_t pitch) {
+        // to ensure that the gyroid pattern "crosses" twice per cycle, the pitch must be an integer multiple of 4 times the layer height
+        // we round down as required, a side-effect of this is that the density is increased by the factor pitch/constrained_pitch
         if (mesh && mesh->settings.get<bool>("infill_constrain_gyroid_pitch") && !mesh->settings.get<bool>("adaptive_layer_height_enabled"))
         {
             const coord_t layer_height = mesh->settings.get<coord_t>("layer_height");
