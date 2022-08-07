@@ -15,7 +15,6 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
     const double z_rads = 2 * M_PI * (z + ((mesh && mesh->settings.get<bool>("infill_constrain_gyroid_pitch")) ? pitch / 8.0 : 0)) / pitch;
     const double cos_z = std::cos(z_rads);
     const double sin_z = std::sin(z_rads);
-    const coord_t min_line_len2 = 100; // don't generate gyroid line segments shorter than 10um
 
     std::vector<coord_t> odd_line_coords;
     std::vector<coord_t> even_line_coords;

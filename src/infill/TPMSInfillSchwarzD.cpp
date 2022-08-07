@@ -75,8 +75,11 @@ void TPMSInfillSchwarzD::generateCoordinates(Polygons& result, const Polygons& o
                         line = outline.intersectionPolyLines(line);
                         if (line.size() > 0)
                         {
-                            // some of the line is inside the boundary
-                            result.addLine(line[0][0], line[0][1]);
+                            // some of the line is inside the boundary, add it if it's not too small
+                            if (vSize2(line[0][0] - line[0][1]) >= min_line_len2)
+                            {
+                                result.addLine(line[0][0], line[0][1]);
+                            }
                             if (zig_zaggify)
                             {
                                 Point connection_point = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];

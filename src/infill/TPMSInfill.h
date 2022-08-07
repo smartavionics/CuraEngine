@@ -31,6 +31,7 @@ protected:
     const Point& infill_origin;        //!< point the infill is rotated around
     const double fill_angle_rads;      //!< infill rotation angle
     const SliceMeshStorage* mesh;      //!< mesh being filled
+    const coord_t min_line_len2 = 100; //!< minimum squared length of generated lines, don't output any shorter than 10um
 
     coord_t x_min; //!< min X coordinate of generated infill
     coord_t x_max; //!< max X coordinate of generated infill
