@@ -2681,6 +2681,12 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
 
         Polygons bridge_skin = shrunk_layer_outline.intersection(bridge_regions[n].intersection(skin_part.outline).offset(bridge_skin_expansion));
 
+        if (!bridge_skin.empty() && !skin_part.insets.empty())
+        {
+            // don't let the bridge skin areas overlap the skin insets by more than bridge_skin_expansion
+            bridge_skin = bridge_skin.intersection(skin_part.inner_infill.offset(bridge_skin_expansion));
+        }
+
         // useful diagnostic aid, please don't remove
         //gcode_layer.addPolygonsByOptimizer(bridge_skin, mesh_config.infill_config[0], nullptr, ZSeamConfig(), 0, false, 0.25);
 
