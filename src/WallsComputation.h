@@ -25,7 +25,7 @@ public:
      * \param settings The per-mesh settings object to get setting values from.
      * \param layer_nr The layer index that these walls are generated for.
      */
-    WallsComputation(const Settings& settings, const LayerIndex layer_nr);
+    WallsComputation(const SliceMeshStorage& mesh, const LayerIndex layer_nr);
 
     /*!
      * Generates the insets / perimeters for all parts in a layer.
@@ -38,6 +38,11 @@ public:
     void generateInsets(SliceLayer* layer);
 
 private:
+    /*!
+     * \brief The mesh that these walls are generated for.
+     */
+    const SliceMeshStorage& mesh;
+
     /*!
      * \brief Settings container to get my settings from.
      *

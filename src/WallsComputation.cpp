@@ -12,8 +12,9 @@
 
 namespace cura {
 
-WallsComputation::WallsComputation(const Settings& settings, const LayerIndex layer_nr)
-: settings(settings)
+WallsComputation::WallsComputation(const SliceMeshStorage& mesh, const LayerIndex layer_nr)
+: mesh(mesh)
+, settings(mesh.settings)
 , layer_nr(layer_nr)
 {
 }

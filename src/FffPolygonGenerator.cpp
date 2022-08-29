@@ -922,7 +922,7 @@ void FffPolygonGenerator::processInsets(SliceMeshStorage& mesh, size_t layer_nr)
     SliceLayer* layer = &mesh.layers[layer_nr];
     if (mesh.settings.get<ESurfaceMode>("magic_mesh_surface_mode") != ESurfaceMode::SURFACE)
     {
-        WallsComputation walls_computation(mesh.settings, layer_nr);
+        WallsComputation walls_computation(mesh, layer_nr);
         walls_computation.generateInsets(layer);
     }
     else
