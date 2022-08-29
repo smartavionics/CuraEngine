@@ -57,7 +57,7 @@ SkinInfillAreaComputation::SkinInfillAreaComputation(const LayerIndex& layer_nr,
 , bottom_layer_count(mesh.layers[layer_nr].bottom_layers)
 , initial_bottom_layer_count(mesh.layers[layer_nr].initial_bottom_layers)
 , top_layer_count(mesh.layers[layer_nr].top_layers)
-, wall_line_count(mesh.settings.get<size_t>("wall_line_count"))
+, wall_line_count((mesh.settings.get<bool>("only_one_wall_bottom") && layer_nr == 0) || (mesh.settings.get<bool>("only_one_wall_top") && (unsigned)(layer_nr + 1) >= mesh.layers.size()) ? 1 :mesh.settings.get<size_t>("wall_line_count"))
 , skin_line_width(getSkinLineWidth(mesh, layer_nr))
 , wall_line_width_0(getWallLineWidth0(mesh, layer_nr))
 , wall_line_width_x(getWallLineWidthX(mesh, layer_nr))
@@ -194,6 +194,11 @@ void SkinInfillAreaComputation::generateSkinAndInfillAreas(SliceLayerPart& part)
         return;
     }
     Polygons original_outline = part.insets.back().offset(-innermost_wall_line_width / 2);
+
+    if (part.insets.size() > 1 && (mesh.settings.get<bool>("only_one_wall_bottom") || mesh.settings.get<bool>("only_one_wall_top")))
+    {
+        original_outline.add(part.insets[0].offset(-wall_line_width_0/2).difference(part.insets[1].offset(wall_line_width_x/2)));
+    }
 
     // make a copy of the outline which we later intersect and union with the resized skins to ensure the resized skin isn't too large or removed completely.
     Polygons upskin;
