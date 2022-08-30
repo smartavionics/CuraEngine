@@ -27,6 +27,7 @@ WallsComputation::WallsComputation(const SliceMeshStorage& mesh, const LayerInde
  */
 void WallsComputation::generateInsets(SliceLayerPart* part)
 {
+    const AABB& part_bb = part->boundaryBox;
     const bool single_inset_top = mesh.settings.get<bool>("only_one_wall_top");
     const bool single_inset_bottom = mesh.settings.get<bool>("only_one_wall_bottom");
     size_t inset_count = ((single_inset_bottom && layer_nr == 0) || (single_inset_top && ((unsigned)(layer_nr + 1) >= mesh.layers.size() || mesh.layers[layer_nr + 1].parts.empty()))) ? 1 : settings.get<size_t>("wall_line_count");
@@ -84,7 +85,10 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
                 Polygons parts_below;
                 for (const SliceLayerPart& part : mesh.layers[layer_nr - 1].parts)
                 {
-                    parts_below.add(part.outline);
+                    if (part_bb.hit(part.boundaryBox))
+                    {
+                        parts_below.add(part.outline);
+                    }
                 }
                 //parts_below = parts_below.offset(mesh.settings.get<coord_t>("bottom_skin_preshrink")/2);
                 part->insets[1] = part->insets[1].intersection(parts_below.offset(-line_width_0/2 - 10));
@@ -94,7 +98,10 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
                 Polygons parts_above;
                 for (const SliceLayerPart& part : mesh.layers[layer_nr + 1].parts)
                 {
-                    parts_above.add(part.outline);
+                    if (part_bb.hit(part.boundaryBox))
+                    {
+                        parts_above.add(part.outline);
+                    }
                 }
                 //parts_above = parts_above.offset(mesh.settings.get<coord_t>("top_skin_preshrink")/2);
                 part->insets[1] = part->insets[1].intersection(parts_above.offset(-line_width_0/2 - 10));
