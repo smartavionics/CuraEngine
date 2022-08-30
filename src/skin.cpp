@@ -197,8 +197,7 @@ void SkinInfillAreaComputation::generateSkinAndInfillAreas(SliceLayerPart& part)
 
     if (part.insets.size() > 1 && (mesh.settings.get<bool>("only_one_wall_top") || (false && mesh.settings.get<bool>("only_one_wall_bottom"))))
     {
-        original_outline.add(part.insets[0].offset(-wall_line_width_0/2).difference(part.insets[1].offset(wall_line_width_x/2 + 10)));
-        //original_outline = original_outline.unionPolygons();
+        original_outline.add(part.insets[0].offset(-wall_line_width_0/2 - 10).difference(part.insets[1].offset(wall_line_width_x/2 + 10)));
     }
 
     // make a copy of the outline which we later intersect and union with the resized skins to ensure the resized skin isn't too large or removed completely.
