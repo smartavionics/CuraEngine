@@ -103,8 +103,13 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
                         parts_above.add(part.outline);
                     }
                 }
-                //parts_above = parts_above.offset(mesh.settings.get<coord_t>("top_skin_preshrink")/2);
-                part->insets[1] = part->insets[1].intersection(parts_above.offset(-line_width_0/2 - 10));
+                // the new inset runs along the edge of the area of the parts above
+                Polygons new_inset = part->insets[1].intersection(parts_above.offset(-line_width_0/2 - 10));
+                // if the skin between the outer wall and the new 2nd wall would be very thin, remove it by moving the 2nd wall back to hug the outer wall
+                coord_t preshrink = mesh.settings.get<coord_t>("top_skin_preshrink")/2;
+                Polygons skin = part->insets[0].offset(-line_width_0/2).difference(new_inset.offset(line_width_x/2)).offset(-preshrink).offset(preshrink);
+                // the second wall is now recreated by subtracting the skin from the inside of the outer wall
+                part->insets[1] = part->insets[0].offset(-line_width_0/2 - 10).difference(skin).offset(-line_width_x/2);
             }
         }
         else
