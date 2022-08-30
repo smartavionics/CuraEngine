@@ -79,28 +79,25 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
         else if (i == 1)
         {
             part->insets[1] = part->insets[0].offset(-line_width_0 / 2 + wall_0_inset - line_width_x / 2);
-            if (single_inset_top || single_inset_bottom)
+            if (false && single_inset_bottom)
             {
                 Polygons parts_below;
-                if (single_inset_bottom)
+                for (const SliceLayerPart& part : mesh.layers[layer_nr - 1].parts)
                 {
-                    for (const SliceLayerPart& part : mesh.layers[layer_nr - 1].parts)
-                    {
-                        parts_below.add(part.outline);
-                    }
-                    //parts_below = parts_below.offset(mesh.settings.get<coord_t>("bottom_skin_preshrink")/2);
-                    part->insets[1] = part->insets[1].intersection(parts_below.offset(-line_width_0/2));
+                    parts_below.add(part.outline);
                 }
+                //parts_below = parts_below.offset(mesh.settings.get<coord_t>("bottom_skin_preshrink")/2);
+                part->insets[1] = part->insets[1].intersection(parts_below.offset(-line_width_0/2 - 10));
+            }
+            if (single_inset_top)
+            {
                 Polygons parts_above;
-                if (single_inset_top)
+                for (const SliceLayerPart& part : mesh.layers[layer_nr + 1].parts)
                 {
-                    for (const SliceLayerPart& part : mesh.layers[layer_nr + 1].parts)
-                    {
-                        parts_above.add(part.outline);
-                    }
-                    //parts_above = parts_above.offset(mesh.settings.get<coord_t>("top_skin_preshrink")/2);
-                    part->insets[1] = part->insets[1].intersection(parts_above.offset(-line_width_0/2));
+                    parts_above.add(part.outline);
                 }
+                //parts_above = parts_above.offset(mesh.settings.get<coord_t>("top_skin_preshrink")/2);
+                part->insets[1] = part->insets[1].intersection(parts_above.offset(-line_width_0/2 - 10));
             }
         }
         else
