@@ -711,6 +711,13 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
                 int line_width = wall_line_width_0;
                 for (unsigned int inset_idx = 0; static_cast<int>(inset_idx) < static_cast<int>(part.insets.size()) - 1; inset_idx++)
                 {
+                    if (layer_nr > 0 && (layer_nr + 1) < static_cast<LayerIndex>(mesh.layers.size()))
+                    {
+                        if (mesh.settings.get<bool>("only_one_wall_top") || (false && mesh.settings.get<bool>("only_one_wall_bottom")))
+                        {
+                            continue;
+                        }
+                    }
                     const Polygons outer = part.insets[inset_idx].offset(-1 * line_width / 2 - perimeter_gaps_extra_offset);
                     line_width = wall_line_width_x;
 
