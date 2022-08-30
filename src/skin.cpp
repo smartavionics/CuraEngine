@@ -197,7 +197,12 @@ void SkinInfillAreaComputation::generateSkinAndInfillAreas(SliceLayerPart& part)
 
     if (part.insets.size() > 1 && (mesh.settings.get<bool>("only_one_wall_top") || (false && mesh.settings.get<bool>("only_one_wall_bottom"))))
     {
-        original_outline.add(part.insets[0].offset(-wall_line_width_0/2 - 10).difference(part.insets[1].offset(wall_line_width_x/2 + 10)));
+        Polygons skin_between_walls = part.insets[0].offset(-wall_line_width_0/2 - 10).difference(part.insets[1].offset(wall_line_width_x/2 + 10));
+        // remove from the original outline the area that corresponds to the expanded skin between the walls
+        // FIXME - can this remove skin that is needed if their is a hole above it?
+        original_outline = original_outline.difference(skin_between_walls.offset(top_skin_expand_distance));
+        // add the skin between the 1st and 2nd walls into the original outline
+        original_outline.add(skin_between_walls);
     }
 
     // make a copy of the outline which we later intersect and union with the resized skins to ensure the resized skin isn't too large or removed completely.
