@@ -57,7 +57,7 @@ SkinInfillAreaComputation::SkinInfillAreaComputation(const LayerIndex& layer_nr,
 , bottom_layer_count(mesh.layers[layer_nr].bottom_layers)
 , initial_bottom_layer_count(mesh.layers[layer_nr].initial_bottom_layers)
 , top_layer_count(mesh.layers[layer_nr].top_layers)
-, wall_line_count((mesh.settings.get<bool>("only_one_wall_bottom") && layer_nr == 0) || (mesh.settings.get<bool>("only_one_wall_top") && (unsigned)(layer_nr + 1) >= mesh.layers.size()) ? 1 :mesh.settings.get<size_t>("wall_line_count"))
+, wall_line_count((mesh.settings.get<bool>("only_one_wall_bottom") && layer_nr == 0) || (mesh.settings.get<bool>("only_one_wall_top") && ((unsigned)(layer_nr + 1) >= mesh.layers.size() || mesh.layers[layer_nr + 1].parts.empty())) ? 1 :mesh.settings.get<size_t>("wall_line_count"))
 , skin_line_width(getSkinLineWidth(mesh, layer_nr))
 , wall_line_width_0(getWallLineWidth0(mesh, layer_nr))
 , wall_line_width_x(getWallLineWidthX(mesh, layer_nr))
