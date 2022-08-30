@@ -95,6 +95,7 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
             }
             if (single_inset_top)
             {
+                // the modified 2nd wall runs along the edge of the area of the parts in the layer above that are above this part
                 Polygons parts_above;
                 for (const SliceLayerPart& part : mesh.layers[layer_nr + 1].parts)
                 {
@@ -103,7 +104,6 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
                         parts_above.add(part.outline);
                     }
                 }
-                // the new inset runs along the edge of the area of the parts above
                 Polygons new_inset = part->insets[1].intersection(parts_above.offset(-line_width_0/2 - 10));
                 // if the skin between the outer wall and the new 2nd wall would be very thin, remove it by moving the 2nd wall back to hug the outer wall
                 coord_t preshrink = mesh.settings.get<coord_t>("top_skin_preshrink")/2;
