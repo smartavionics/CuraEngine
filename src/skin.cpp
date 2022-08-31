@@ -195,7 +195,7 @@ void SkinInfillAreaComputation::generateSkinAndInfillAreas(SliceLayerPart& part)
     }
     Polygons original_outline = part.insets.back().offset(-innermost_wall_line_width / 2);
 
-    if (part.insets.size() > 1 && (mesh.settings.get<bool>("only_one_wall_top") || (false && mesh.settings.get<bool>("only_one_wall_bottom"))))
+    if (part.insets.size() > 1 && (mesh.settings.get<bool>("only_one_wall_top")))
     {
         Polygons skin_between_walls = part.insets[0].offset(-wall_line_width_0/2 - 10).difference(part.insets[1].offset(wall_line_width_x/2 + 10));
         // remove from the original outline the area that corresponds to the expanded skin between the walls
