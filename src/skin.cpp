@@ -173,7 +173,7 @@ void SkinInfillAreaComputation::generateSkinAndInfillAreas()
     {
         SliceLayerPart& part = layer.parts[part_nr];
 
-        if (part.insets.size() < wall_line_count)
+        if (part.insets.size() < wall_line_count && !mesh.partLayerIsTopmost(part, layer_nr))
         {
             continue; // the last wall is not present, the part should only get inter perimeter gaps, but no skin or infill.
         }
