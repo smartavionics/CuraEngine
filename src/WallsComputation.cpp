@@ -81,19 +81,7 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
         else if (i == 1)
         {
             part->insets[1] = part->insets[0].offset(-line_width_0 / 2 + wall_0_inset - line_width_x / 2);
-            if (false && single_inset_bottom)
-            {
-                Polygons parts_below;
-                for (const SliceLayerPart& part : mesh.layers[layer_nr - 1].parts)
-                {
-                    if (part_bb.hit(part.boundaryBox))
-                    {
-                        parts_below.add(part.outline);
-                    }
-                }
-                //parts_below = parts_below.offset(mesh.settings.get<coord_t>("bottom_skin_preshrink")/2);
-                part->insets[1] = part->insets[1].intersection(parts_below.offset(-line_width_0/2 - 10));
-            }
+
             if (single_inset_top)
             {
                 // the modified 2nd wall runs along the edge of the area of the parts in the layer above that are above this part
