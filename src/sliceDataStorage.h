@@ -294,6 +294,13 @@ public:
      * \return the mesh's user specified z seam hint
      */
     Point getZSeamHint() const;
+
+    /*!
+     * \param part the part for which to check
+     * \param layer_nr the layer for which to check
+     * \return whether the specified layer is the topmost layer of the specified part
+     */
+    bool partLayerIsTopmost(const SliceLayerPart& part, const LayerIndex layer_nr) const;
 };
 
 class SliceDataStorage : public NoCopy

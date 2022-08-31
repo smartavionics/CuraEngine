@@ -350,6 +350,22 @@ Point SliceMeshStorage::getZSeamHint() const
     return pos;
 }
 
+bool SliceMeshStorage::partLayerIsTopmost(const SliceLayerPart& part, const LayerIndex layer_nr) const
+{
+    if ((layer_nr + 1) >= static_cast<int>(layers.size()))
+    {
+        return true;
+    }
+    for (const SliceLayerPart& mesh_part : layers[layer_nr + 1].parts)
+    {
+        if (part.boundaryBox.hit(mesh_part.boundaryBox) && !part.outline.intersection(mesh_part.outline).empty())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::vector<RetractionConfig> SliceDataStorage::initializeRetractionConfigs()
 {
     std::vector<RetractionConfig> ret;
