@@ -743,6 +743,29 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
                     inner = inner.unionPolygons();
                     part.perimeter_gaps.add(outer.difference(inner));
 
+                    if (only_one_wall && part.insets.size() > 1)
+                    {
+                        // fill gaps between skin and the area bounded by the difference between walls 1 and 2
+                        const Polygons outer = part.insets[0].offset(-wall_line_width_0/2 - perimeter_gaps_extra_offset).difference(part.insets[1].offset(wall_line_width_x/2 + perimeter_gaps_extra_offset));
+
+                        // accumulate area of skin and infill that will be printed
+                        Polygons inner;
+                        for (const SkinPart& skin_part : part.skin_parts)
+                        {
+                            inner.add(skin_part.outline.intersection(outer));
+                        }
+                        // for some reason the zig-zag and lines patterns behave differently and a narrow region that isn't filled with zig-zag pattern can be filled with
+                        // lines pattern so we only add the narrow region to the perimeter gaps when the pattern is zig-zag.
+                        if (mesh.settings.get<EFillMethod>("top_bottom_pattern") == EFillMethod::ZIG_ZAG)
+                        {
+                            // remove skin areas that are narrower than skin_line_width as they won't get printed unless
+                            // we print them as a perimeter gap
+                            inner = inner.offset(-skin_line_width / 2).offset(skin_line_width / 2);
+                        }
+                        inner = inner.unionPolygons();
+                        part.perimeter_gaps.add(outer.difference(inner));
+                    }
+
                     if (filter_out_tiny_gaps) {
                         part.perimeter_gaps.removeSmallAreas(2 * INT2MM(infill_line_width) * INT2MM(infill_line_width));
                     }
