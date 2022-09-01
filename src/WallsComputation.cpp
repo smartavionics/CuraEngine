@@ -102,6 +102,8 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
                 Polygons skin = inside_of_outer_wall.difference(outside_of_new_inset).offset(skin_expansion).intersection(inside_of_outer_wall).offset(-preshrink).offset(preshrink);
                 // the second wall is now recreated by subtracting the skin from the inside of the outer wall
                 part->insets[1] = inside_of_outer_wall.difference(skin).offset(-line_width_x/2);
+                // avoid creating tiny regions of 2nd wall in tight corners
+                part->insets[1].removeSmallAreas(4 * INT2MM(line_width_x) * INT2MM(line_width_x));
             }
         }
         else
