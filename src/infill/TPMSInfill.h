@@ -61,6 +61,7 @@ private:
     std::vector<Point> chains[2]; // [start_points[], end_points[]]
     std::vector<unsigned> connected_to[2]; // [chain_indices[], chain_indices[]]
     std::vector<int> line_numbers; // which row/column line a chain is part of
+    bool constrain_pitch = false;
 
     void generateCoordinates(Polygons& result, const Polygons& outline, const int pitch, const double step);
 
@@ -69,10 +70,11 @@ private:
     double pitchScaling() { return 2.41; }
 
     coord_t constrainPitch(coord_t pitch) {
-        // to ensure that the gyroid pattern "crosses" twice per cycle, the pitch must be an integer multiple of 4 times the layer height
-        // we round down as required, a side-effect of this is that the density is increased by the factor pitch/constrained_pitch
-        if (mesh && mesh->settings.get<bool>("infill_constrain_gyroid_pitch") && !mesh->settings.get<bool>("adaptive_layer_height_enabled"))
+        constrain_pitch = mesh && mesh->settings.get<bool>("infill_constrain_gyroid_pitch") && !mesh->settings.get<bool>("adaptive_layer_height_enabled");
+        if (constrain_pitch)
         {
+            // to ensure that the gyroid pattern "crosses" twice per cycle, the pitch must be an integer multiple of 4 times the layer height
+            // we round down as required, a side-effect of this is that the density is increased by the factor pitch/constrained_pitch
             const coord_t layer_height = mesh->settings.get<coord_t>("layer_height");
             pitch = pitch / (4 * layer_height) * (4 * layer_height);
         }
