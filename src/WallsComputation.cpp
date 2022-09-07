@@ -93,10 +93,10 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
                         parts_above.add(part.outline);
                     }
                 }
-                const Polygons outside_of_new_inset = part->insets[1].intersection(parts_above.offset(-line_width_0/2 - 10)).offset(line_width_x/2 + 10);
+                const Polygons outside_of_new_inset = part->insets[1].intersection(parts_above.offset(-(line_width_0 + line_width_x/2))).offset(line_width_x/2);
                 const Polygons inside_of_outer_wall = part->insets[0].offset(-line_width_0/2);
                 // we grow the skin so that it extends under the wall lines on the next layer
-                const coord_t skin_expansion = line_width_x * 2;
+                const coord_t skin_expansion = line_width_x;
                 // if the skin between the outer wall and the new 2nd wall would be very thin, remove it by moving the 2nd wall back to hug the outer wall
                 const coord_t preshrink = mesh.settings.get<coord_t>("top_skin_preshrink") / 2;
                 Polygons skin = inside_of_outer_wall.difference(outside_of_new_inset).offset(skin_expansion).intersection(inside_of_outer_wall).offset(-preshrink).offset(preshrink);
