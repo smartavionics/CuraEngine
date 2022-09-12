@@ -90,7 +90,8 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
                 {
                     if (part_bb.hit(part.boundaryBox))
                     {
-                        parts_above.add(part.outline);
+                        // don't include the holes in the part above as they create spurious inner walls
+                        parts_above.add(part.outline.removeEmptyHoles());
                     }
                 }
                 const Polygons outside_of_new_inset = part->insets[1].intersection(parts_above.offset(-(line_width_0 + line_width_x/2))).offset(line_width_x/2);
