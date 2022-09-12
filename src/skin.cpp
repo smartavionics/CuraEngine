@@ -431,7 +431,7 @@ void SkinInfillAreaComputation::generateInfill(SliceLayerPart& part, const Polyg
     const EFillMethod fill_pattern = mesh.settings.get<EFillMethod>("infill_pattern");
     const coord_t infill_line_width = mesh.settings.get<coord_t>("infill_line_width");
 
-    coord_t inner_wall_offset = -innermost_wall_line_width / 2; //The innermost wall is a centerline, not the actual area covered by the wall.
+    coord_t inner_wall_offset = (wall_line_count == 0) ? 0 : -innermost_wall_line_width / 2; //The innermost wall is a centerline, not the actual area covered by the wall.
     const Polygons* offset_from_wall = &part.insets.back();
     if(fill_pattern == EFillMethod::CONCENTRIC)
     {
