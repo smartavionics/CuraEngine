@@ -16,9 +16,8 @@ namespace cura {
 
 static std::map<std::string, rapidjson::Document*> definitions;
 
-DiscreteLinesInfill::DiscreteLinesInfill(const bool zig_zaggify, const coord_t z, const Point& infill_origin, const coord_t infill_line_width, const SliceMeshStorage* mesh)
-    : zig_zaggify(zig_zaggify)
-    , z((mesh)? z - mesh->settings.get<coord_t>("layer_height_0") : z)
+DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_origin, const coord_t infill_line_width, const SliceMeshStorage* mesh)
+    : z((mesh)? z - mesh->settings.get<coord_t>("layer_height_0") : z)
     , infill_origin(infill_origin)
     , infill_line_width(infill_line_width)
     , mesh(mesh)
@@ -110,16 +109,18 @@ void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outli
         generateCoordinates(result_lines, outline, json_document);
     }
 
-    if (zig_zaggify)
-    {
-        generateConnections(result_lines, outline);
-    }
+    generateConnections(result_lines, outline);
 }
 
 void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def)
 {
     coord_t pitch = 0;
     double rot_rads = 0;
+    bool zig_zaggify = false;
+    coord_t left = std::numeric_limits<coord_t>::min();
+    coord_t right = std::numeric_limits<coord_t>::max();
+    coord_t bottom = std::numeric_limits<coord_t>::min();
+    coord_t top = std::numeric_limits<coord_t>::max();
 
     for (rapidjson::Value::ConstMemberIterator m_iter = one_def->MemberBegin(); m_iter != one_def->MemberEnd(); m_iter++)
     {
@@ -153,6 +154,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             double val = m_iter->value.GetDouble();
             rot_rads = val / (180 / M_PI);
         }
+        else if (m_iter->name == "zigzag")
+        {
+            zig_zaggify = m_iter->value.GetBool();
+        }
     }
 
     Polygons rotated_outline = outline;
@@ -182,32 +187,33 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     Point chain_end[2];
     for (coord_t x = x_min; x < x_max; x += pitch)
     {
-        Point last = rotate_around_origin(Point(x, y_min), rot_rads);
-        Point current = rotate_around_origin(Point(x, y_max), rot_rads);
+        Point line_start = rotate_around_origin(Point(x, y_min), rot_rads);
+        Point line_end = rotate_around_origin(Point(x, y_max), rot_rads);
 
         // add the parts of the line that are inside the boundary
         Polygons line;
-        line.addLine(last, current);
+        line.addLine(line_start, line_end);
         for (ConstPolygonRef line_seg : outline.intersectionPolyLines(line))
         {
-            result.addLine(line_seg[0], line_seg[1]);
+            // some of the line is inside the boundary, add it if it's not too small
+            if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
+            {
+                result.addLine(line_seg[0], line_seg[1]);
+            }
 
             if (zig_zaggify)
             {
                 for (const Point& pt : line_seg)
                 {
-                    if ((pt != last && pt != current) || !outline.inside(pt, false))
+                    chain_end[chain_end_index] = pt;
+                    if (++chain_end_index == 2)
                     {
-                        chain_end[chain_end_index] = pt;
-                        if (++chain_end_index == 2)
-                        {
-                            chains[0].push_back(chain_end[0]);
-                            chains[1].push_back(chain_end[1]);
-                            chain_end_index = 0;
-                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                            line_numbers.push_back(num_cols);
-                        }
+                        chains[0].push_back(chain_end[0]);
+                        chains[1].push_back(chain_end[1]);
+                        chain_end_index = 0;
+                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                        line_numbers.push_back(num_cols);
                     }
                 }
             }

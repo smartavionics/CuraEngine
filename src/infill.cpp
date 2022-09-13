@@ -255,7 +255,7 @@ void Infill::_generate( Polygons& result_polygons,
         break;
     case EFillMethod::DISCRETE_LINES:
         {
-            DiscreteLinesInfill infill(zig_zaggify, z, infill_origin, infill_line_width, mesh);
+            DiscreteLinesInfill infill(z, infill_origin, infill_line_width, mesh);
             infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
         }
         break;

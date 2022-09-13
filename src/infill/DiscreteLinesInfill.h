@@ -20,14 +20,13 @@ class Polygons;
 class DiscreteLinesInfill
 {
 public:
-    DiscreteLinesInfill(const bool zig_zaggify, const coord_t z, const Point& infill_origin, const coord_t infill_line_width, const SliceMeshStorage* mesh);
+    DiscreteLinesInfill(const coord_t z, const Point& infill_origin, const coord_t infill_line_width, const SliceMeshStorage* mesh);
 
     ~DiscreteLinesInfill();
 
     void generate(Polygons& result_lines, const Polygons& outline);
     
 protected:
-    const bool zig_zaggify;            //!< true if infill lines are to be connected where they meet the infill area walls
     const coord_t z;                   //!< height of the current layer
     const Point& infill_origin;        //!< point the infill is rotated around
     const coord_t min_line_len2 = 100; //!< minimum squared length of generated lines, don't output any shorter than 10um
