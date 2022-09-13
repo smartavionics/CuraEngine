@@ -43,6 +43,11 @@ DiscreteLinesInfill::DiscreteLinesInfill(const bool zig_zaggify, const coord_t z
             if (definition.at(start) == '@')
             {
                 const char *json_filename = definition.c_str() + start + 1;
+                while (isspace(*json_filename))
+                {
+                    ++json_filename;
+                }
+
                 FILE* file = fopen(json_filename, "rb");
                 if (!file)
                 {
