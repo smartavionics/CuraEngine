@@ -9,6 +9,9 @@
 #include "../settings/types/Ratio.h"
 #include "../utils/IntPoint.h"
 
+#include <rapidjson/rapidjson.h>
+#include <rapidjson/document.h>
+
 namespace cura
 {
 
@@ -17,7 +20,7 @@ class Polygons;
 class DiscreteLinesInfill
 {
 public:
-    DiscreteLinesInfill(const bool zig_zaggify, const coord_t z, const Point& infill_origin, const AngleDegrees fill_angle, const coord_t infill_line_width, const SliceMeshStorage* mesh);
+    DiscreteLinesInfill(const bool zig_zaggify, const coord_t z, const Point& infill_origin, const coord_t infill_line_width, const SliceMeshStorage* mesh);
 
     ~DiscreteLinesInfill();
 
@@ -27,10 +30,10 @@ protected:
     const bool zig_zaggify;            //!< true if infill lines are to be connected where they meet the infill area walls
     const coord_t z;                   //!< height of the current layer
     const Point& infill_origin;        //!< point the infill is rotated around
-    const double fill_angle_rads;      //!< infill rotation angle
     const coord_t min_line_len2 = 100; //!< minimum squared length of generated lines, don't output any shorter than 10um
     const coord_t infill_line_width;   //!< width of infill lines
     const SliceMeshStorage* mesh;      //!< mesh being filled
+    rapidjson::Document* json_document;
 
     coord_t x_min; //!< min X coordinate of generated infill
     coord_t x_max; //!< max X coordinate of generated infill
@@ -44,7 +47,7 @@ private:
     std::vector<unsigned> connected_to[2]; // [chain_indices[], chain_indices[]]
     std::vector<int> line_numbers; // which row/column line a chain is part of
 
-    void generateCoordinates(Polygons& result, const Polygons& outline, const coord_t pitch, const coord_t height);
+    void generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def);
 
     void generateConnections(Polygons& result, const Polygons& outline);
 

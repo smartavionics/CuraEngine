@@ -8,19 +8,18 @@
 #include "../utils/polygon.h"
 
 #include <fstream>
-#include <rapidjson/rapidjson.h>
-#include <rapidjson/document.h>
 #include <rapidjson/error/en.h> //Loading JSON documents to get settings from them.
 #include <rapidjson/filereadstream.h>
 #include <rapidjson/memorystream.h>
 
 namespace cura {
 
-DiscreteLinesInfill::DiscreteLinesInfill(const bool zig_zaggify, const coord_t z, const Point& infill_origin, const AngleDegrees fill_angle, const coord_t infill_line_width, const SliceMeshStorage* mesh)
+static std::map<std::string, rapidjson::Document*> definitions;
+
+DiscreteLinesInfill::DiscreteLinesInfill(const bool zig_zaggify, const coord_t z, const Point& infill_origin, const coord_t infill_line_width, const SliceMeshStorage* mesh)
     : zig_zaggify(zig_zaggify)
     , z((mesh)? z - mesh->settings.get<coord_t>("layer_height_0") : z)
     , infill_origin(infill_origin)
-    , fill_angle_rads(fill_angle / (180 / M_PI))
     , infill_line_width(infill_line_width)
     , mesh(mesh)
 {
@@ -28,9 +27,6 @@ DiscreteLinesInfill::DiscreteLinesInfill(const bool zig_zaggify, const coord_t z
     const std::size_t start = definition.find_first_not_of(" \t\r\n");
     if (start != std::string::npos)
     {
-        static std::map<std::string, rapidjson::Document*> definitions;
-        rapidjson::Document* json_document;
-
         if (definitions.find(definition) != definitions.end())
         {
             json_document = definitions.at(definition);
@@ -69,6 +65,21 @@ DiscreteLinesInfill::DiscreteLinesInfill(const bool zig_zaggify, const coord_t z
                 logError("Error parsing JSON (offset %u): %s\n", static_cast<unsigned int>(json_document->GetErrorOffset()), GetParseError_En(json_document->GetParseError()));
                 return;
             }
+            if (json_document->IsArray())
+            {
+                for (rapidjson::Value::ValueIterator def_iter = json_document->Begin(); def_iter != json_document->End(); def_iter++)
+                {
+                    if (!def_iter->IsObject())
+                    {
+                        logError("JSON definition must be a single object or an array of objects");
+                        return;
+                    }
+                }
+            }
+            else if (!json_document->IsObject())
+            {
+                logError("JSON definition must be a single object or an array of objects");
+            }
         }
     }
     else
@@ -87,29 +98,17 @@ Point DiscreteLinesInfill::rotate_around_origin(const Point& point, const double
 
 void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outline)
 {
-    Polygons rotated_outline = outline;
-    if (fill_angle_rads != 0)
+    if (json_document->IsArray())
     {
-        for (PolygonRef poly : rotated_outline)
+        for (rapidjson::Value::ValueIterator def_iter = json_document->Begin(); def_iter != json_document->End(); def_iter++)
         {
-            for (Point& point : poly)
-            {
-                point = rotate_around_origin(point, -fill_angle_rads);
-            }
+            generateCoordinates(result_lines, outline, def_iter);
         }
     }
-    const AABB aabb(rotated_outline);
-
-    const int pitch = 10000;
-
-    const coord_t height = pitch/3 * sqrt(3);
-
-    x_min = infill_origin.X - std::ceil((float)(infill_origin.X - aabb.min.X) / pitch + 1) * pitch;
-    y_min = infill_origin.Y - std::ceil((float)(infill_origin.Y - aabb.min.Y) / height + 1) * height;
-    x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / pitch + 1) * pitch;
-    y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / height + 1) * height;
-
-    generateCoordinates(result_lines, outline, pitch, height);
+    else
+    {
+        generateCoordinates(result_lines, outline, json_document);
+    }
 
     if (zig_zaggify)
     {
@@ -117,92 +116,103 @@ void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outli
     }
 }
 
-void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, const coord_t pitch, const coord_t height)
+void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def)
 {
-    unsigned num_rows = 0;
-    const coord_t line_width_adj_y = infill_line_width * 0.5;
-    const coord_t line_width_adj_x = infill_line_width * 0.275;
+    coord_t pitch = 0;
+    double rot_rads = 0;
+
+    for (rapidjson::Value::ConstMemberIterator m_iter = one_def->MemberBegin(); m_iter != one_def->MemberEnd(); m_iter++)
+    {
+        if (m_iter->name == "pitch")
+        {
+            double val = m_iter->value.GetDouble();
+            pitch = MM2INT(val);
+            if (pitch <= 0)
+            {
+                return;
+            }
+       }
+        else if (m_iter->name == "minz")
+        {
+            double val = m_iter->value.GetDouble();
+            if (z < MM2INT(val))
+            {
+                return;
+            }
+        }
+        else if (m_iter->name == "maxz")
+        {
+            double val = m_iter->value.GetDouble();
+            if (z >= MM2INT(val))
+            {
+                return;
+            }
+        }
+        else if (m_iter->name == "angle")
+        {
+            double val = m_iter->value.GetDouble();
+            rot_rads = val / (180 / M_PI);
+        }
+    }
+
+    Polygons rotated_outline = outline;
+    if (rot_rads != 0)
+    {
+        for (PolygonRef poly : rotated_outline)
+        {
+            for (Point& point : poly)
+            {
+                point = rotate_around_origin(point, -rot_rads);
+            }
+        }
+    }
+    const AABB aabb(rotated_outline);
+
+    unsigned num_cols = 0;
     // when testing to see if a line's ends are both inside the outline, use an outline that has been shrunk to ensure we
     // catch the situation where both ends are inside the area but between the ends the line hits/crosses the boundary
     const Polygons shrunk_outline = outline.offset(-pitch / 3);
 
-    for (coord_t y = y_min; y < y_max; y += height)
-    {
-        for (int sign_i = 0; sign_i < 2; ++sign_i)
-        {
-            const int sign = sign_i * 2 - 1;
-            bool is_first_point = true;
-            Point last(x_min, y + sign * line_width_adj_y);
-            bool last_inside = false;
-            unsigned chain_end_index = 0;
-            Point chain_end[2];
-            for (coord_t x = x_min; x < x_max; x += pitch)
-            {
-                for (int segment = 0; segment < 4; ++segment)
-                {
-                    Point current;
-                    switch (segment)
-                    {
-                        case 0:
-                            current = Point(x + pitch/3+line_width_adj_x, y + sign * line_width_adj_y);
-                            break;
-                        case 1:
-                            current = Point(x + pitch/2-line_width_adj_x, y + sign * (height/2 - line_width_adj_y));
-                            break;
-                        case 2:
-                            current = Point(x + pitch*5/6+line_width_adj_x, y + sign * (height/2 - line_width_adj_y));
-                            break;
-                        case 3:
-                            current = Point(x + pitch-line_width_adj_x, y + sign * line_width_adj_y);
-                            break;
-                    }
-                    current = rotate_around_origin(current, fill_angle_rads);
-                    const bool current_inside = shrunk_outline.inside(current, false);
-                    if (!is_first_point)
-                    {
-                        if (last_inside && current_inside)
-                        {
-                            // line doesn't hit the boundary, add the whole line
-                            result.addLine(last, current);
-                        }
-                        else
-                        {
-                            // add the parts of the line that are inside the boundary
-                            Polygons line;
-                            line.addLine(last, current);
-                            for (ConstPolygonRef line_seg : outline.intersectionPolyLines(line))
-                            {
-                                result.addLine(line_seg[0], line_seg[1]);
+    x_min = infill_origin.X - std::ceil((float)(infill_origin.X - aabb.min.X) / pitch + 1) * pitch;
+    y_min = infill_origin.Y - std::ceil((float)(infill_origin.Y - aabb.min.Y) / pitch + 1) * pitch;
+    x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / pitch + 1) * pitch;
+    y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / pitch + 1) * pitch;
 
-                                if (zig_zaggify)
-                                {
-                                    for (const Point& pt : line_seg)
-                                    {
-                                        if ((pt != last && pt != current) || !outline.inside(pt, false))
-                                        {
-                                            chain_end[chain_end_index] = pt;
-                                            if (++chain_end_index == 2)
-                                            {
-                                                chains[0].push_back(chain_end[0]);
-                                                chains[1].push_back(chain_end[1]);
-                                                chain_end_index = 0;
-                                                connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                                connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                                line_numbers.push_back(num_rows);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+    unsigned chain_end_index = 0;
+    Point chain_end[2];
+    for (coord_t x = x_min; x < x_max; x += pitch)
+    {
+        Point last = rotate_around_origin(Point(x, y_min), rot_rads);
+        Point current = rotate_around_origin(Point(x, y_max), rot_rads);
+
+        // add the parts of the line that are inside the boundary
+        Polygons line;
+        line.addLine(last, current);
+        for (ConstPolygonRef line_seg : outline.intersectionPolyLines(line))
+        {
+            result.addLine(line_seg[0], line_seg[1]);
+
+            if (zig_zaggify)
+            {
+                for (const Point& pt : line_seg)
+                {
+                    if ((pt != last && pt != current) || !outline.inside(pt, false))
+                    {
+                        chain_end[chain_end_index] = pt;
+                        if (++chain_end_index == 2)
+                        {
+                            chains[0].push_back(chain_end[0]);
+                            chains[1].push_back(chain_end[1]);
+                            chain_end_index = 0;
+                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                            line_numbers.push_back(num_cols);
                         }
                     }
-                    last = current;
-                    last_inside = current_inside;
-                    is_first_point = false;
                 }
             }
-            ++num_rows;
         }
+        ++num_cols;
     }
 }
 
