@@ -1583,7 +1583,7 @@ private:
         flags_ = kArrayFlag;
         if (count) {
             data_.a.elements = (GenericValue*)allocator.Malloc(count * sizeof(GenericValue));
-            std::memcpy(data_.a.elements, values, count * sizeof(GenericValue));
+            std::memcpy((void *)data_.a.elements, (void *)values, count * sizeof(GenericValue));
         }
         else
             data_.a.elements = NULL;
@@ -1595,7 +1595,7 @@ private:
         flags_ = kObjectFlag;
         if (count) {
             data_.o.members = (Member*)allocator.Malloc(count * sizeof(Member));
-            std::memcpy(data_.o.members, members, count * sizeof(Member));
+            std::memcpy((void *)data_.o.members, (void *)members, count * sizeof(Member));
         }
         else
             data_.o.members = NULL;
