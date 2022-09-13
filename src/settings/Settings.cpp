@@ -357,6 +357,10 @@ template<> EFillMethod Settings::get<EFillMethod>(const std::string& key) const
     {
         return EFillMethod::HONEYCOMB;
     }
+    else if (value == "discrete_lines")
+    {
+        return EFillMethod::DISCRETE_LINES;
+    }
     else //Default.
     {
         return EFillMethod::NONE;

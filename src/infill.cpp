@@ -11,6 +11,7 @@
 #include "infill/TPMSInfill.h"
 #include "infill/HilbertInfill.h"
 #include "infill/HoneycombInfill.h"
+#include "infill/DiscreteLinesInfill.h"
 #include "infill/NoZigZagConnectorProcessor.h"
 #include "infill/LightningGenerator.h"
 #include "infill/SierpinskiFill.h"
@@ -161,7 +162,7 @@ void Infill::_generate( Polygons& result_polygons,
     if (in_outline.empty()) return;
     if (line_distance == 0) return;
 
-    if (pattern == EFillMethod::ZIG_ZAG || (zig_zaggify && (pattern == EFillMethod::LINES || pattern == EFillMethod::TRIANGLES || pattern == EFillMethod::GRID || pattern == EFillMethod::CUBIC || pattern == EFillMethod::TETRAHEDRAL || pattern == EFillMethod::QUARTER_CUBIC || pattern == EFillMethod::TRIHEXAGON || pattern == EFillMethod::GYROID || pattern == EFillMethod::SCHWARZ_P || pattern == EFillMethod::SCHWARZ_D || pattern == EFillMethod::HONEYCOMB || pattern == EFillMethod::HILBERT)))
+    if (pattern == EFillMethod::ZIG_ZAG || (zig_zaggify && (pattern == EFillMethod::LINES || pattern == EFillMethod::TRIANGLES || pattern == EFillMethod::GRID || pattern == EFillMethod::CUBIC || pattern == EFillMethod::TETRAHEDRAL || pattern == EFillMethod::QUARTER_CUBIC || pattern == EFillMethod::TRIHEXAGON || pattern == EFillMethod::GYROID || pattern == EFillMethod::SCHWARZ_P || pattern == EFillMethod::SCHWARZ_D || pattern == EFillMethod::HONEYCOMB || pattern == EFillMethod::HILBERT || pattern == EFillMethod::DISCRETE_LINES)))
     {
         outline_offset -= infill_line_width / 2; // the infill line zig zag connections must lie next to the border, not on it
     }
@@ -251,6 +252,12 @@ void Infill::_generate( Polygons& result_polygons,
     case EFillMethod::LIGHTNING:
         assert(lightning_trees); // "Cannot generate Lightning infill without a generator!\n"
         generateLightningInfill(lightning_trees, result_lines);
+        break;
+    case EFillMethod::DISCRETE_LINES:
+        {
+            DiscreteLinesInfill infill(zig_zaggify, z, infill_origin, fill_angle, infill_line_width, mesh);
+            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
+        }
         break;
     default:
         logError("Fill pattern has unknown value.\n");

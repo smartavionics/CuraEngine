@@ -32,6 +32,7 @@ enum class EFillMethod
     SCHWARZ_D,
     HONEYCOMB,
     HILBERT,
+    DISCRETE_LINES,
     NONE  // NOTE: Should remain last! (May be used in testing to enumarate the enum.)
 };
 

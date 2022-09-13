@@ -208,6 +208,7 @@ set(engine_SRCS # Except main.cpp.
     src/infill/TPMSInfillSchwarzD.cpp
     src/infill/HilbertInfill.cpp
     src/infill/HoneycombInfill.cpp
+    src/infill/DiscreteLinesInfill.cpp
 
     src/pathPlanning/Comb.cpp
     src/pathPlanning/GCodePath.cpp
