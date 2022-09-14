@@ -114,7 +114,6 @@ void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outli
 
 void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def)
 {
-    coord_t pitch = 0;
     double rot_rads = 0;
     bool zig_zaggify = false;
     coord_t left = std::numeric_limits<coord_t>::min();
@@ -122,42 +121,38 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     coord_t bottom = std::numeric_limits<coord_t>::min();
     coord_t top = std::numeric_limits<coord_t>::max();
 
-    for (rapidjson::Value::ConstMemberIterator m_iter = one_def->MemberBegin(); m_iter != one_def->MemberEnd(); m_iter++)
+    std::vector<coord_t> x_vals;
+
+    if (one_def->HasMember("enable"))
     {
-        if (m_iter->name == "pitch")
+        if (!one_def->FindMember("enable")->value.GetBool())
         {
-            double val = m_iter->value.GetDouble();
-            pitch = MM2INT(val);
-            if (pitch <= 0)
-            {
-                return;
-            }
-       }
-        else if (m_iter->name == "minz")
-        {
-            double val = m_iter->value.GetDouble();
-            if (z < MM2INT(val))
-            {
-                return;
-            }
+            return;
         }
-        else if (m_iter->name == "maxz")
+    }
+
+    if (one_def->HasMember("minz"))
+    {
+        double val = one_def->FindMember("minz")->value.GetDouble();
+        if (z < MM2INT(val))
         {
-            double val = m_iter->value.GetDouble();
-            if (z >= MM2INT(val))
-            {
-                return;
-            }
+            return;
         }
-        else if (m_iter->name == "angle")
+    }
+
+    if (one_def->HasMember("maxz"))
+    {
+        double val = one_def->FindMember("maxz")->value.GetDouble();
+        if (z >= MM2INT(val))
         {
-            double val = m_iter->value.GetDouble();
-            rot_rads = val / (180 / M_PI);
+            return;
         }
-        else if (m_iter->name == "zigzag")
-        {
-            zig_zaggify = m_iter->value.GetBool();
-        }
+    }
+
+    if (one_def->HasMember("angle"))
+    {
+        double val = one_def->FindMember("angle")->value.GetDouble();
+        rot_rads = val / (180 / M_PI);
     }
 
     Polygons rotated_outline = outline;
@@ -173,19 +168,47 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     }
     const AABB aabb(rotated_outline);
 
+    if (one_def->HasMember("pitch"))
+    {
+        double val = one_def->FindMember("pitch")->value.GetDouble();
+        coord_t pitch = MM2INT(val);
+        if (pitch <= 0)
+        {
+            return;
+        }
+        x_min = infill_origin.X - std::ceil((float)(infill_origin.X - aabb.min.X) / pitch + 1) * pitch;
+        y_min = infill_origin.Y - std::ceil((float)(infill_origin.Y - aabb.min.Y) / pitch + 1) * pitch;
+        x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / pitch + 1) * pitch;
+        y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / pitch + 1) * pitch;
+        for (coord_t x = x_min; x < x_max; x += pitch)
+        {
+            x_vals.push_back(x);
+        }
+    }
+
+    if (one_def->HasMember("x"))
+    {
+        rapidjson::Value& x_array = one_def->FindMember("x")->value;
+
+        if (x_array.IsArray())
+        {
+            for (rapidjson::Value::ConstValueIterator x_iter = x_array.Begin(); x_iter != x_array.End(); x_iter++)
+            {
+                double x = x_iter->GetDouble();
+                x_vals.push_back(infill_origin.X + MM2INT(x));
+            }
+        }
+    }
+
+    if (one_def->HasMember("zigzag"))
+    {
+        zig_zaggify = one_def->FindMember("zigzag")->value.GetBool();
+    }
+
     unsigned num_cols = 0;
-    // when testing to see if a line's ends are both inside the outline, use an outline that has been shrunk to ensure we
-    // catch the situation where both ends are inside the area but between the ends the line hits/crosses the boundary
-    const Polygons shrunk_outline = outline.offset(-pitch / 3);
-
-    x_min = infill_origin.X - std::ceil((float)(infill_origin.X - aabb.min.X) / pitch + 1) * pitch;
-    y_min = infill_origin.Y - std::ceil((float)(infill_origin.Y - aabb.min.Y) / pitch + 1) * pitch;
-    x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / pitch + 1) * pitch;
-    y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / pitch + 1) * pitch;
-
     unsigned chain_end_index = 0;
     Point chain_end[2];
-    for (coord_t x = x_min; x < x_max; x += pitch)
+    for (coord_t x : x_vals)
     {
         Point line_start = rotate_around_origin(Point(x, y_min), rot_rads);
         Point line_end = rotate_around_origin(Point(x, y_max), rot_rads);
