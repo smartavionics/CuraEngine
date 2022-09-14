@@ -34,11 +34,6 @@ protected:
     const SliceMeshStorage* mesh;      //!< mesh being filled
     rapidjson::Document* json_document;
 
-    coord_t x_min; //!< min X coordinate of generated infill
-    coord_t x_max; //!< max X coordinate of generated infill
-    coord_t y_min; //!< min Y coordinate of generated infill
-    coord_t y_max; //!< max Y coordinate of generated infill
-
     Point rotate_around_origin(const Point& point, const double rads);
 
 private:
