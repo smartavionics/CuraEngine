@@ -97,31 +97,29 @@ Point DiscreteLinesInfill::rotate_around_origin(const Point& point, const double
 
 void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outline)
 {
+    Polygons clipped_outline(outline);
+
     if (json_document->IsArray())
     {
         for (rapidjson::Value::ValueIterator def_iter = json_document->Begin(); def_iter != json_document->End(); def_iter++)
         {
-            generateCoordinates(result_lines, outline, def_iter);
+            generateCoordinates(result_lines, outline, def_iter, clipped_outline);
         }
     }
     else
     {
-        generateCoordinates(result_lines, outline, json_document);
+        generateCoordinates(result_lines, outline, json_document, clipped_outline);
     }
 
     generateConnections(result_lines, outline);
 }
 
-void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def)
+void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def, Polygons& clipped_outline)
 {
     double rot_rads = 0;
     bool zig_zaggify = false;
-    coord_t left = std::numeric_limits<coord_t>::min();
-    coord_t right = std::numeric_limits<coord_t>::max();
-    coord_t bottom = std::numeric_limits<coord_t>::min();
-    coord_t top = std::numeric_limits<coord_t>::max();
-
     std::vector<coord_t> x_vals;
+    std::vector<coord_t> y_vals;
 
     if (one_def->HasMember("enable"))
     {
@@ -131,46 +129,22 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
-    if (one_def->HasMember("minz"))
+    if (one_def->HasMember("zmin"))
     {
-        double val = one_def->FindMember("minz")->value.GetDouble();
+        double val = one_def->FindMember("zmin")->value.GetDouble();
         if (z < MM2INT(val))
         {
             return;
         }
     }
 
-    if (one_def->HasMember("maxz"))
+    if (one_def->HasMember("zmax"))
     {
-        double val = one_def->FindMember("maxz")->value.GetDouble();
+        double val = one_def->FindMember("zmax")->value.GetDouble();
         if (z >= MM2INT(val))
         {
             return;
         }
-    }
-
-    if (one_def->HasMember("minx"))
-    {
-        double val = one_def->FindMember("minx")->value.GetDouble();
-        left = MM2INT(val);
-    }
-
-    if (one_def->HasMember("maxx"))
-    {
-        double val = one_def->FindMember("maxx")->value.GetDouble();
-        right = MM2INT(val);
-    }
-
-    if (one_def->HasMember("miny"))
-    {
-        double val = one_def->FindMember("miny")->value.GetDouble();
-        bottom = MM2INT(val);
-    }
-
-    if (one_def->HasMember("maxy"))
-    {
-        double val = one_def->FindMember("maxy")->value.GetDouble();
-        top = MM2INT(val);
     }
 
     if (one_def->HasMember("angle"))
@@ -192,23 +166,52 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     }
     const AABB aabb(rotated_outline);
 
-    if (one_def->HasMember("pitch"))
+    coord_t left = aabb.min.X - 1;
+    coord_t right = aabb.max.X + 1;
+    coord_t top = aabb.min.Y - 1;
+    coord_t bottom = aabb.max.Y + 1;
+
+    if (one_def->HasMember("xmin"))
     {
-        double val = one_def->FindMember("pitch")->value.GetDouble();
-        coord_t pitch = MM2INT(val);
-        if (pitch <= 0)
+        double val = one_def->FindMember("xmin")->value.GetDouble();
+        left = infill_origin.X + MM2INT(val);
+    }
+
+    if (one_def->HasMember("xmax"))
+    {
+        double val = one_def->FindMember("xmax")->value.GetDouble();
+        right = infill_origin.X + MM2INT(val);
+    }
+
+    if (one_def->HasMember("ymin"))
+    {
+        double val = one_def->FindMember("ymin")->value.GetDouble();
+        top = infill_origin.Y + MM2INT(val);
+    }
+
+    if (one_def->HasMember("ymax"))
+    {
+        double val = one_def->FindMember("ymax")->value.GetDouble();
+        bottom = infill_origin.Y + MM2INT(val);
+    }
+
+    if (one_def->HasMember("xpitch"))
+    {
+        double val = one_def->FindMember("xpitch")->value.GetDouble();
+        coord_t xpitch = MM2INT(val);
+        if (xpitch <= 0)
         {
             return;
         }
 
-        coord_t x_min = std::ceil((float)(infill_origin.X - aabb.min.X) / pitch + 1) * -pitch;
-        coord_t x_max = std::ceil((float)(aabb.max.X - infill_origin.X) / pitch + 1) * pitch;
+        coord_t x_min = infill_origin.X + std::ceil((float)(infill_origin.X - aabb.min.X) / xpitch + 1) * -xpitch;
+        coord_t x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / xpitch + 1) * xpitch;
 
-        for (coord_t x = x_min; x < x_max; x += pitch)
+        for (coord_t x = x_min; x < x_max; x += xpitch)
         {
             if (x >= left && x <= right)
             {
-                x_vals.push_back(infill_origin.X + x);
+                x_vals.push_back(x);
             }
         }
     }
@@ -230,23 +233,61 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
+    if (one_def->HasMember("ypitch"))
+    {
+        double val = one_def->FindMember("ypitch")->value.GetDouble();
+        coord_t ypitch = MM2INT(val);
+        if (ypitch <= 0)
+        {
+            return;
+        }
+
+        coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / ypitch + 1) * -ypitch;
+        coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / ypitch + 1) * ypitch;
+
+        for (coord_t y = y_min; y < y_max; y += ypitch)
+        {
+            if (y >= top && y <= bottom)
+            {
+                y_vals.push_back(y);
+            }
+        }
+    }
+
+    if (one_def->HasMember("y"))
+    {
+        rapidjson::Value& y_array = one_def->FindMember("y")->value;
+
+        if (y_array.IsArray())
+        {
+            for (rapidjson::Value::ConstValueIterator y_iter = y_array.Begin(); y_iter != y_array.End(); y_iter++)
+            {
+                double y = y_iter->GetDouble();
+                if (y >= top && y <= bottom)
+                {
+                    y_vals.push_back(infill_origin.Y + MM2INT(y));
+                }
+            }
+        }
+    }
+
     if (one_def->HasMember("zigzag"))
     {
         zig_zaggify = one_def->FindMember("zigzag")->value.GetBool();
     }
 
-    unsigned num_cols = 0;
+    unsigned num_lines = 0;
     unsigned chain_end_index = 0;
     Point chain_end[2];
     for (coord_t x : x_vals)
     {
-        Point line_start = rotate_around_origin(Point(x, infill_origin.Y + std::max(bottom, aabb.min.Y - infill_origin.Y)), rot_rads);
-        Point line_end = rotate_around_origin(Point(x, infill_origin.Y + std::min(top, aabb.max.Y - infill_origin.Y)), rot_rads);
+        Point line_start = rotate_around_origin(Point(x, bottom), rot_rads);
+        Point line_end = rotate_around_origin(Point(x, top), rot_rads);
 
         // add the parts of the line that are inside the boundary
         Polygons line;
         line.addLine(line_start, line_end);
-        for (ConstPolygonRef line_seg : outline.intersectionPolyLines(line))
+        for (ConstPolygonRef line_seg : clipped_outline.intersectionPolyLines(line))
         {
             // some of the line is inside the boundary, add it if it's not too small
             if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
@@ -266,12 +307,60 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                         chain_end_index = 0;
                         connected_to[0].push_back(std::numeric_limits<unsigned>::max());
                         connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                        line_numbers.push_back(num_cols);
+                        line_numbers.push_back(num_lines);
                     }
                 }
             }
         }
-        ++num_cols;
+        ++num_lines;
+    }
+
+    for (coord_t y : y_vals)
+    {
+        Point line_start = rotate_around_origin(Point(left, y), rot_rads);
+        Point line_end = rotate_around_origin(Point(right, y), rot_rads);
+
+        // add the parts of the line that are inside the boundary
+        Polygons line;
+        line.addLine(line_start, line_end);
+        for (ConstPolygonRef line_seg : clipped_outline.intersectionPolyLines(line))
+        {
+            // some of the line is inside the boundary, add it if it's not too small
+            if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
+            {
+                result.addLine(line_seg[0], line_seg[1]);
+            }
+
+            if (zig_zaggify)
+            {
+                for (const Point& pt : line_seg)
+                {
+                    chain_end[chain_end_index] = pt;
+                    if (++chain_end_index == 2)
+                    {
+                        chains[0].push_back(chain_end[0]);
+                        chains[1].push_back(chain_end[1]);
+                        chain_end_index = 0;
+                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                        line_numbers.push_back(num_lines);
+                    }
+                }
+            }
+        }
+        ++num_lines;
+    }
+
+    if (!one_def->HasMember("cut") || one_def->FindMember("cut")->value.GetBool())
+    {
+        Polygon infilled_area;
+        infilled_area.add(Point(left, top));
+        infilled_area.add(Point(right, top));
+        infilled_area.add(Point(right, bottom));
+        infilled_area.add(Point(left, bottom));
+        Polygons infilled_areas;
+        infilled_areas.add(infilled_area);
+        clipped_outline = clipped_outline.difference(infilled_areas);
     }
 }
 

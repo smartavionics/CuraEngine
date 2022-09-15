@@ -41,7 +41,7 @@ private:
     std::vector<unsigned> connected_to[2]; // [chain_indices[], chain_indices[]]
     std::vector<int> line_numbers; // which row/column line a chain is part of
 
-    void generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def);
+    void generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def, Polygons& clipped_outline);
 
     void generateConnections(Polygons& result, const Polygons& outline);
 
