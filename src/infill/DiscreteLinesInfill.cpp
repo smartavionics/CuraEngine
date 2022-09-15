@@ -166,33 +166,33 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     }
     const AABB aabb(rotated_outline);
 
-    coord_t left = aabb.min.X - 1;
-    coord_t right = aabb.max.X + 1;
-    coord_t top = aabb.min.Y - 1;
-    coord_t bottom = aabb.max.Y + 1;
+    coord_t clip_x_min = aabb.min.X - 1;
+    coord_t clip_x_max = aabb.max.X + 1;
+    coord_t clip_y_min = aabb.min.Y - 1;
+    coord_t clip_y_max = aabb.max.Y + 1;
 
     if (one_def->HasMember("xmin"))
     {
         double val = one_def->FindMember("xmin")->value.GetDouble();
-        left = infill_origin.X + MM2INT(val);
+        clip_x_min = infill_origin.X + MM2INT(val);
     }
 
     if (one_def->HasMember("xmax"))
     {
         double val = one_def->FindMember("xmax")->value.GetDouble();
-        right = infill_origin.X + MM2INT(val);
+        clip_x_max = infill_origin.X + MM2INT(val);
     }
 
     if (one_def->HasMember("ymin"))
     {
         double val = one_def->FindMember("ymin")->value.GetDouble();
-        top = infill_origin.Y + MM2INT(val);
+        clip_y_min = infill_origin.Y + MM2INT(val);
     }
 
     if (one_def->HasMember("ymax"))
     {
         double val = one_def->FindMember("ymax")->value.GetDouble();
-        bottom = infill_origin.Y + MM2INT(val);
+        clip_y_max = infill_origin.Y + MM2INT(val);
     }
 
     if (one_def->HasMember("xpitch"))
@@ -209,7 +209,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         for (coord_t x = x_min; x < x_max; x += xpitch)
         {
-            if (x >= left && x <= right)
+            if (x >= clip_x_min && x <= clip_x_max)
             {
                 x_vals.push_back(x);
             }
@@ -225,7 +225,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             for (rapidjson::Value::ConstValueIterator x_iter = x_array.Begin(); x_iter != x_array.End(); x_iter++)
             {
                 double x = x_iter->GetDouble();
-                if (x >= left && x <= right)
+                if (x >= clip_x_min && x <= clip_x_max)
                 {
                     x_vals.push_back(infill_origin.X + MM2INT(x));
                 }
@@ -247,7 +247,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         for (coord_t y = y_min; y < y_max; y += ypitch)
         {
-            if (y >= top && y <= bottom)
+            if (y >= clip_y_min && y <= clip_y_max)
             {
                 y_vals.push_back(y);
             }
@@ -263,7 +263,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             for (rapidjson::Value::ConstValueIterator y_iter = y_array.Begin(); y_iter != y_array.End(); y_iter++)
             {
                 double y = y_iter->GetDouble();
-                if (y >= top && y <= bottom)
+                if (y >= clip_y_min && y <= clip_y_max)
                 {
                     y_vals.push_back(infill_origin.Y + MM2INT(y));
                 }
@@ -281,8 +281,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     Point chain_end[2];
     for (coord_t x : x_vals)
     {
-        Point line_start = rotate_around_origin(Point(x, bottom), rot_rads);
-        Point line_end = rotate_around_origin(Point(x, top), rot_rads);
+        Point line_start = rotate_around_origin(Point(x, clip_y_min), rot_rads);
+        Point line_end = rotate_around_origin(Point(x, clip_y_max), rot_rads);
 
         // add the parts of the line that are inside the boundary
         Polygons line;
@@ -317,8 +317,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
     for (coord_t y : y_vals)
     {
-        Point line_start = rotate_around_origin(Point(left, y), rot_rads);
-        Point line_end = rotate_around_origin(Point(right, y), rot_rads);
+        Point line_start = rotate_around_origin(Point(clip_x_min, y), rot_rads);
+        Point line_end = rotate_around_origin(Point(clip_x_max, y), rot_rads);
 
         // add the parts of the line that are inside the boundary
         Polygons line;
@@ -354,10 +354,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     if (!one_def->HasMember("cut") || one_def->FindMember("cut")->value.GetBool())
     {
         Polygon infilled_area;
-        infilled_area.add(Point(left, top));
-        infilled_area.add(Point(right, top));
-        infilled_area.add(Point(right, bottom));
-        infilled_area.add(Point(left, bottom));
+        infilled_area.add(Point(clip_x_min, clip_y_max));
+        infilled_area.add(Point(clip_x_max, clip_y_max));
+        infilled_area.add(Point(clip_x_max, clip_y_min));
+        infilled_area.add(Point(clip_x_min, clip_y_min));
         Polygons infilled_areas;
         infilled_areas.add(infilled_area);
         clipped_outline = clipped_outline.difference(infilled_areas);
