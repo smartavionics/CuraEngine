@@ -324,7 +324,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
-    if (!one_def->HasMember("cut") || one_def->FindMember("cut")->value.GetBool())
+    if (!one_def->HasMember("clip") || one_def->FindMember("clip")->value.GetBool())
     {
         Polygon infilled_area;
         infilled_area.add(Point(clip_x_min, clip_y_max));
