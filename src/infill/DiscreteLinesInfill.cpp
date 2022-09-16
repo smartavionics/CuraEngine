@@ -155,6 +155,14 @@ void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outli
 
 void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def, Polygons& clipped_outline)
 {
+    rapidjson::Value::MemberIterator mi;
+
+    mi = one_def->FindMember("enable");
+    if (mi != one_def->MemberEnd() && !mi->value.GetBool())
+    {
+        // "enable" is false so no point in doing anything else
+        return;
+    }
     double rot_rads = 0;
     bool zig_zaggify = false;
 
@@ -175,16 +183,6 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
     std::vector<coord_t> x_vals;
     std::vector<coord_t> y_vals;
-    rapidjson::Value::MemberIterator mi;
-
-    mi = one_def->FindMember("enable");
-    if (mi != one_def->MemberEnd())
-    {
-        if (!mi->value.GetBool())
-        {
-            return;
-        }
-    }
 
     mi = one_def->FindMember("zmin");
     if (mi != one_def->MemberEnd())
