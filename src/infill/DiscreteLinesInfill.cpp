@@ -22,6 +22,15 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
     , infill_line_width(infill_line_width)
     , mesh(mesh)
 {
+    if (!mesh)
+    {
+        if (definitions.find("no mesh") == definitions.end())
+        {
+            logError("DiscreteLinesInfill: Cannot work without a mesh\n");
+            definitions["no mesh"] = nullptr;
+        }
+        return;
+    }
     const std::string definition = mesh->settings.get<std::string>("discrete_lines_infill_definition");
     const std::size_t start = definition.find_first_not_of(" \t\r\n");
     if (start != std::string::npos)
