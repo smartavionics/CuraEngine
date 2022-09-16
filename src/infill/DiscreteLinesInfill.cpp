@@ -112,6 +112,8 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
     else
     {
         logError("Empty Discrete Lines Infill Definition");
+        json_document = new rapidjson::Document();
+        definitions[definition] = json_document;
     }
 }
 
