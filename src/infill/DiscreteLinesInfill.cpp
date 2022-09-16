@@ -17,7 +17,7 @@ namespace cura {
 static std::map<std::string, rapidjson::Document*> definitions;
 
 DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_origin, const coord_t infill_line_width, const SliceMeshStorage* mesh)
-    : z((mesh)? z - mesh->settings.get<coord_t>("layer_height_0") : z)
+    : z(z)
     , infill_origin(infill_origin)
     , infill_line_width(infill_line_width)
     , mesh(mesh)
