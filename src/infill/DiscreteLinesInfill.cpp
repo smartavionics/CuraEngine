@@ -148,38 +148,55 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 {
     double rot_rads = 0;
     bool zig_zaggify = false;
+    coord_t bottom = mesh->bounding_box.min.z;
+    coord_t top = mesh->bounding_box.max.z;
     std::vector<coord_t> x_vals;
     std::vector<coord_t> y_vals;
+    rapidjson::Value::MemberIterator mi;
 
-    if (one_def->HasMember("enable"))
+    mi = one_def->FindMember("enable");
+    if (mi != one_def->MemberEnd())
     {
-        if (!one_def->FindMember("enable")->value.GetBool())
+        if (!mi->value.GetBool())
         {
             return;
         }
     }
 
-    if (one_def->HasMember("zmin"))
+    mi = one_def->FindMember("zmin");
+    if (mi != one_def->MemberEnd())
     {
-        double val = one_def->FindMember("zmin")->value.GetDouble();
-        if (z < MM2INT(val))
+        double val = mi->value.GetDouble();
+        coord_t zmin = MM2INT(val);
+        if (z < zmin)
         {
             return;
         }
-    }
-
-    if (one_def->HasMember("zmax"))
-    {
-        double val = one_def->FindMember("zmax")->value.GetDouble();
-        if (z >= MM2INT(val))
+        if (zmin > bottom)
         {
-            return;
+            bottom = zmin;
         }
     }
 
-    if (one_def->HasMember("angle"))
+    mi = one_def->FindMember("zmax");
+    if (mi != one_def->MemberEnd())
     {
-        double val = one_def->FindMember("angle")->value.GetDouble();
+        double val = mi->value.GetDouble();
+        coord_t zmax = MM2INT(val);
+        if (z >= zmax)
+        {
+            return;
+        }
+        if (zmax < top)
+        {
+            top = zmax;
+        }
+    }
+
+    mi = one_def->FindMember("angle");
+    if (mi != one_def->MemberEnd())
+    {
+        double val = mi->value.GetDouble();
         rot_rads = val / (180 / M_PI);
     }
 
@@ -201,34 +218,60 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     coord_t clip_y_min = aabb.min.Y - 1;
     coord_t clip_y_max = aabb.max.Y + 1;
 
-    if (one_def->HasMember("xmin"))
+    mi = one_def->FindMember("xmin");
+    if (mi != one_def->MemberEnd())
     {
-        double val = one_def->FindMember("xmin")->value.GetDouble();
+        double val = mi->value.GetDouble();
         clip_x_min = infill_origin.X + MM2INT(val);
     }
 
-    if (one_def->HasMember("xmax"))
+    mi = one_def->FindMember("xmax");
+    if (mi != one_def->MemberEnd())
     {
-        double val = one_def->FindMember("xmax")->value.GetDouble();
+        double val = mi->value.GetDouble();
         clip_x_max = infill_origin.X + MM2INT(val);
     }
 
-    if (one_def->HasMember("ymin"))
+    mi = one_def->FindMember("ymin");
+    if (mi != one_def->MemberEnd())
     {
-        double val = one_def->FindMember("ymin")->value.GetDouble();
+        double val = mi->value.GetDouble();
         clip_y_min = infill_origin.Y + MM2INT(val);
     }
 
-    if (one_def->HasMember("ymax"))
+    mi = one_def->FindMember("ymax");
+    if (mi != one_def->MemberEnd())
     {
-        double val = one_def->FindMember("ymax")->value.GetDouble();
+        double val = mi->value.GetDouble();
         clip_y_max = infill_origin.Y + MM2INT(val);
     }
 
-    if (one_def->HasMember("xpitch"))
+    mi = one_def->FindMember("xpitch");
+    if (mi != one_def->MemberEnd())
     {
-        double val = one_def->FindMember("xpitch")->value.GetDouble();
-        coord_t xpitch = MM2INT(val);
+        rapidjson::Value& xp = mi->value;
+        coord_t xpitch = 0;
+
+        if (xp.IsArray())
+        {
+            if (xp.Size() > 0)
+            {
+                double valb = xp[0].GetDouble();
+                xpitch = MM2INT(valb);
+                if (xp.Size() > 1)
+                {
+                    double valt = xp[1].GetDouble();
+                    coord_t xpt = MM2INT(valt);
+                    xpitch += (xpt - xpitch) * (z - bottom) / (top - bottom);
+                }
+            }
+        }
+        else
+        {
+            double val = xp.GetDouble();
+            xpitch = MM2INT(val);
+        }
+
         if (xpitch <= 0)
         {
             return;
@@ -246,9 +289,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
-    if (one_def->HasMember("x"))
+    mi = one_def->FindMember("x");
+    if (mi != one_def->MemberEnd())
     {
-        rapidjson::Value& x_array = one_def->FindMember("x")->value;
+        rapidjson::Value& x_array = mi->value;
 
         if (x_array.IsArray())
         {
@@ -264,10 +308,32 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
-    if (one_def->HasMember("ypitch"))
+    mi = one_def->FindMember("ypitch");
+    if (mi != one_def->MemberEnd())
     {
-        double val = one_def->FindMember("ypitch")->value.GetDouble();
-        coord_t ypitch = MM2INT(val);
+        rapidjson::Value& yp = mi->value;
+        coord_t ypitch = 0;
+
+        if (yp.IsArray())
+        {
+            if (yp.Size() > 0)
+            {
+                double valb = yp[0].GetDouble();
+                ypitch = MM2INT(valb);
+                if (yp.Size() > 1)
+                {
+                    double valt = yp[1].GetDouble();
+                    coord_t ypt = MM2INT(valt);
+                    ypitch += (ypt - ypitch) * (z - bottom) / (top - bottom);
+                }
+            }
+        }
+        else
+        {
+            double val = yp.GetDouble();
+            ypitch = MM2INT(val);
+        }
+
         if (ypitch <= 0)
         {
             return;
@@ -285,9 +351,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
-    if (one_def->HasMember("y"))
+    mi = one_def->FindMember("y");
+    if (mi != one_def->MemberEnd())
     {
-        rapidjson::Value& y_array = one_def->FindMember("y")->value;
+        rapidjson::Value& y_array = mi->value;
 
         if (y_array.IsArray())
         {
@@ -303,9 +370,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
-    if (one_def->HasMember("zigzag"))
+    mi = one_def->FindMember("zigzag");
+    if (mi != one_def->MemberEnd())
     {
-        zig_zaggify = one_def->FindMember("zigzag")->value.GetBool();
+        zig_zaggify = mi->value.GetBool();
     }
 
     Polygons lines;
@@ -354,7 +422,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
-    if (!one_def->HasMember("clip") || one_def->FindMember("clip")->value.GetBool())
+    mi = one_def->FindMember("clip");
+    if (mi == one_def->MemberEnd() || mi->value.GetBool())
     {
         Polygon infilled_area;
         infilled_area.add(Point(clip_x_min, clip_y_max));
