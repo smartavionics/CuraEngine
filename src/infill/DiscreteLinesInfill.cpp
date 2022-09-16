@@ -43,12 +43,40 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
                     ++json_filename;
                 }
 
-                FILE* file = fopen(json_filename, "rb");
+#if defined(__linux__) || (defined(__APPLE__) && defined(__MACH__))
+                const char *slash = "/";
+#else
+                const char *slash = "\\";
+#endif
+                std::string pathname(json_filename);
+
+                FILE* file = fopen(pathname.c_str(), "rb");
+                if (!file)
+                {
+                    std::string dir = mesh->settings.get<std::string>("project_file_dir");
+                    if (dir.size() > 0)
+                    {
+                        pathname = dir + slash + json_filename;
+                        file = fopen(pathname.c_str(), "rb");
+                    }
+                }
+
+                if (!file)
+                {
+                    std::string dir = mesh->settings.get<std::string>("home_dir");
+                    if (dir.size() > 0)
+                    {
+                        pathname = dir + slash + json_filename;
+                        file = fopen(pathname.c_str(), "rb");
+                    }
+                }
+
                 if (!file)
                 {
                     logError("DiscreteLinesInfill: Couldn't open JSON file: %s\n", json_filename);
                     return;
                 }
+                logAlways("DiscreteLinesInfill: Opened JSON file: %s\n", pathname.c_str());
                 char read_buffer[4096];
                 rapidjson::FileReadStream reader_stream(file, read_buffer, sizeof(read_buffer));
                 json_document->ParseStream(reader_stream);
