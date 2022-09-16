@@ -163,8 +163,6 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         // "enable" is false so no point in doing anything else
         return;
     }
-    double rot_rads = 0;
-    bool zig_zaggify = false;
 
     const size_t bottom_layers = mesh->settings.get<size_t>("initial_bottom_layers");
     coord_t bottom_skin_depth = 0;
@@ -214,11 +212,11 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
+    double rot_rads = 0;
     mi = one_def->FindMember("angle");
     if (mi != one_def->MemberEnd())
     {
-        double val = mi->value.GetDouble();
-        rot_rads = val / (180 / M_PI);
+        rot_rads = mi->value.GetDouble() / (180 / M_PI);
     }
 
     Polygons rotated_outline = outline;
@@ -391,10 +389,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     }
 
     mi = one_def->FindMember("zigzag");
-    if (mi != one_def->MemberEnd())
-    {
-        zig_zaggify = mi->value.GetBool();
-    }
+    bool zig_zaggify = (mi != one_def->MemberEnd() && mi->value.GetBool());
 
     Polygons lines;
     unsigned num_lines = 0;
