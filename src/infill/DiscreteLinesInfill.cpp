@@ -46,7 +46,7 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
                 FILE* file = fopen(json_filename, "rb");
                 if (!file)
                 {
-                    logError("Couldn't open JSON file: %s\n", json_filename);
+                    logError("DiscreteLinesInfill: Couldn't open JSON file: %s\n", json_filename);
                     return;
                 }
                 char read_buffer[4096];
@@ -61,7 +61,7 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
             }
             if (json_document->HasParseError())
             {
-                logError("Error parsing JSON (offset %u): %s\n", static_cast<unsigned int>(json_document->GetErrorOffset()), GetParseError_En(json_document->GetParseError()));
+                logError("DiscreteLinesInfill: Error parsing JSON (offset %u): %s\n", static_cast<unsigned int>(json_document->GetErrorOffset()), GetParseError_En(json_document->GetParseError()));
                 return;
             }
             if (json_document->IsArray())
@@ -70,14 +70,14 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
                 {
                     if (!def_iter->IsObject())
                     {
-                        logError("JSON definition must be a single object or an array of objects");
+                        logError("DiscreteLinesInfill: JSON definition must be a single object or an array of objects");
                         return;
                     }
                 }
             }
             else if (!json_document->IsObject())
             {
-                logError("JSON definition must be a single object or an array of objects");
+                logError("DiscreteLinesInfill: JSON definition must be a single object or an array of objects");
             }
         }
     }
