@@ -148,8 +148,22 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 {
     double rot_rads = 0;
     bool zig_zaggify = false;
-    coord_t bottom = mesh->bounding_box.min.z;
-    coord_t top = mesh->bounding_box.max.z;
+
+    const size_t bottom_layers = mesh->settings.get<size_t>("initial_bottom_layers");
+    coord_t bottom_skin_depth = 0;
+    if (bottom_layers > 0)
+    {
+        bottom_skin_depth += mesh->settings.get<coord_t>("layer_height_0");
+        if (bottom_layers > 1)
+        {
+            bottom_skin_depth += mesh->settings.get<coord_t>("layer_height") * (bottom_layers - 1);
+        }
+    }
+    const coord_t top_skin_depth = mesh->settings.get<coord_t>("layer_height") * mesh->settings.get<size_t>("top_layers");
+
+    coord_t bottom = mesh->bounding_box.min.z + bottom_skin_depth;
+    coord_t top = mesh->bounding_box.max.z - top_skin_depth + 10;
+
     std::vector<coord_t> x_vals;
     std::vector<coord_t> y_vals;
     rapidjson::Value::MemberIterator mi;
@@ -276,7 +290,6 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         {
             return;
         }
-
         coord_t x_min = infill_origin.X + std::ceil((float)(infill_origin.X - aabb.min.X) / xpitch + 1) * -xpitch;
         coord_t x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / xpitch + 1) * xpitch;
 
