@@ -225,9 +225,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             for (rapidjson::Value::ConstValueIterator x_iter = x_array.Begin(); x_iter != x_array.End(); x_iter++)
             {
                 double x = x_iter->GetDouble();
+                x = infill_origin.X + MM2INT(x);
                 if (x >= clip_x_min && x <= clip_x_max)
                 {
-                    x_vals.push_back(infill_origin.X + MM2INT(x));
+                    x_vals.push_back(x);
                 }
             }
         }
@@ -263,9 +264,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             for (rapidjson::Value::ConstValueIterator y_iter = y_array.Begin(); y_iter != y_array.End(); y_iter++)
             {
                 double y = y_iter->GetDouble();
+                y = infill_origin.Y + MM2INT(y);
                 if (y >= clip_y_min && y <= clip_y_max)
                 {
-                    y_vals.push_back(infill_origin.Y + MM2INT(y));
+                    y_vals.push_back(y);
                 }
             }
         }
