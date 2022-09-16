@@ -278,6 +278,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         zig_zaggify = one_def->FindMember("zigzag")->value.GetBool();
     }
 
+    Polygons lines;
     unsigned num_lines = 0;
     unsigned chain_end_index = 0;
     Point chain_end[2];
@@ -285,53 +286,23 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     {
         Point line_start = rotate_around_origin(Point(x, clip_y_min), rot_rads);
         Point line_end = rotate_around_origin(Point(x, clip_y_max), rot_rads);
-
-        // add the parts of the line that are inside the boundary
-        Polygons line;
-        line.addLine(line_start, line_end);
-        for (ConstPolygonRef line_seg : clipped_outline.intersectionPolyLines(line))
-        {
-            // some of the line is inside the boundary, add it if it's not too small
-            if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
-            {
-                result.addLine(line_seg[0], line_seg[1]);
-            }
-
-            if (zig_zaggify)
-            {
-                for (const Point& pt : line_seg)
-                {
-                    chain_end[chain_end_index] = pt;
-                    if (++chain_end_index == 2)
-                    {
-                        chains[0].push_back(chain_end[0]);
-                        chains[1].push_back(chain_end[1]);
-                        chain_end_index = 0;
-                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                        line_numbers.push_back(num_lines);
-                    }
-                }
-            }
-        }
-        ++num_lines;
+        lines.addLine(line_start, line_end);
     }
 
     for (coord_t y : y_vals)
     {
         Point line_start = rotate_around_origin(Point(clip_x_min, y), rot_rads);
         Point line_end = rotate_around_origin(Point(clip_x_max, y), rot_rads);
+        lines.addLine(line_start, line_end);
+    }
 
-        // add the parts of the line that are inside the boundary
-        Polygons line;
-        line.addLine(line_start, line_end);
-        for (ConstPolygonRef line_seg : clipped_outline.intersectionPolyLines(line))
+    // add the parts of the lines that are inside the boundary
+    for (ConstPolygonRef line_seg : clipped_outline.intersectionPolyLines(lines))
+    {
+        // some of the line is inside the clipped outline, add it if it's not too small
+        if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
         {
-            // some of the line is inside the boundary, add it if it's not too small
-            if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
-            {
-                result.addLine(line_seg[0], line_seg[1]);
-            }
+            result.addLine(line_seg[0], line_seg[1]);
 
             if (zig_zaggify)
             {
@@ -348,9 +319,9 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                         line_numbers.push_back(num_lines);
                     }
                 }
+                ++num_lines;
             }
         }
-        ++num_lines;
     }
 
     if (!one_def->HasMember("cut") || one_def->FindMember("cut")->value.GetBool())
