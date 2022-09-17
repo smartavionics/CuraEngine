@@ -182,6 +182,27 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     std::vector<coord_t> x_vals;
     std::vector<coord_t> y_vals;
 
+    auto interpolateValue = [&](rapidjson::Value& value) {
+        double result = 0;
+        if (value.IsArray())
+        {
+            if (value.Size() > 0)
+            {
+                result = value[0].GetDouble();
+                if (value.Size() > 1)
+                {
+                    double valt = value[1].GetDouble();
+                    result += (valt - result) * (z - bottom) / (top - bottom);
+                }
+            }
+        }
+        else if(value.IsNumber())
+        {
+            result = value.GetDouble();
+        }
+        return result;
+    };
+
     mi = one_def->FindMember("zmin");
     if (mi != one_def->MemberEnd())
     {
@@ -268,28 +289,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     mi = one_def->FindMember("xpitch");
     if (mi != one_def->MemberEnd())
     {
-        rapidjson::Value& xp = mi->value;
-        coord_t xpitch = 0;
-
-        if (xp.IsArray())
-        {
-            if (xp.Size() > 0)
-            {
-                double valb = xp[0].GetDouble();
-                xpitch = MM2INT(valb);
-                if (xp.Size() > 1)
-                {
-                    double valt = xp[1].GetDouble();
-                    coord_t xpt = MM2INT(valt);
-                    xpitch += (xpt - xpitch) * (z - bottom) / (top - bottom);
-                }
-            }
-        }
-        else
-        {
-            double val = xp.GetDouble();
-            xpitch = MM2INT(val);
-        }
+        double val = interpolateValue(mi->value);
+        coord_t xpitch = MM2INT(val);
 
         if (xpitch <= 0)
         {
@@ -329,28 +330,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     mi = one_def->FindMember("ypitch");
     if (mi != one_def->MemberEnd())
     {
-        rapidjson::Value& yp = mi->value;
-        coord_t ypitch = 0;
-
-        if (yp.IsArray())
-        {
-            if (yp.Size() > 0)
-            {
-                double valb = yp[0].GetDouble();
-                ypitch = MM2INT(valb);
-                if (yp.Size() > 1)
-                {
-                    double valt = yp[1].GetDouble();
-                    coord_t ypt = MM2INT(valt);
-                    ypitch += (ypt - ypitch) * (z - bottom) / (top - bottom);
-                }
-            }
-        }
-        else
-        {
-            double val = yp.GetDouble();
-            ypitch = MM2INT(val);
-        }
+        double val = interpolateValue(mi->value);
+        coord_t ypitch = MM2INT(val);
 
         if (ypitch <= 0)
         {
@@ -430,14 +411,14 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     mi = one_def->FindMember("wavelength");
     if (mi != one_def->MemberEnd())
     {
-        double val = mi->value.GetDouble();
+        double val = interpolateValue(mi->value);
         wavelength = MM2INT(val);
     }
     coord_t amplitude = 0;
     mi = one_def->FindMember("amplitude");
     if (mi != one_def->MemberEnd())
     {
-        double val = mi->value.GetDouble();
+        double val = interpolateValue(mi->value);
         amplitude = MM2INT(val);
     }
 
