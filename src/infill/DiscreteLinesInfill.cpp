@@ -422,7 +422,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     auto genWaveform = [&](std::vector<double>& amplitudes, std::vector<double>& phases)
     {
         int num_segs = amplitudes.size();
-        if (num_segs < 2)
+        if (num_segs < 1)
         {
             return;
         }
