@@ -391,50 +391,158 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     mi = one_def->FindMember("zigzag");
     bool zig_zaggify = (mi != one_def->MemberEnd() && mi->value.GetBool());
 
-    Polygons lines;
     unsigned num_lines = 0;
     unsigned chain_end_index = 0;
     Point chain_end[2];
-    for (coord_t x : x_vals)
+
+    auto addClippedLine = [&](const Point& p0, const Point& p1, unsigned line_index)
     {
-        Point line_start = rotate_around_origin(Point(x, clip_y_min), rot_rads);
-        Point line_end = rotate_around_origin(Point(x, clip_y_max), rot_rads);
-        lines.addLine(line_start, line_end);
+        Polygons lines;
+        lines.addLine(p0, p1);
+        for (ConstPolygonRef line_seg : clipped_outline.intersectionPolyLines(lines))
+        {
+            // some of the line is inside the clipped outline, add it if it's not too small
+            if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
+            {
+                result.addLine(line_seg[0], line_seg[1]);
+
+                if (zig_zaggify)
+                {
+                    for (const Point& pt : line_seg)
+                    {
+                        chain_end[chain_end_index] = pt;
+                        if (++chain_end_index == 2)
+                        {
+                            chains[0].push_back(chain_end[0]);
+                            chains[1].push_back(chain_end[1]);
+                            chain_end_index = 0;
+                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                            line_numbers.push_back(line_index);
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    coord_t wavelength = 0;
+    mi = one_def->FindMember("wavelength");
+    if (mi != one_def->MemberEnd())
+    {
+        double val = mi->value.GetDouble();
+        wavelength = MM2INT(val);
+    }
+    coord_t amplitude = 0;
+    mi = one_def->FindMember("amplitude");
+    if (mi != one_def->MemberEnd())
+    {
+        double val = mi->value.GetDouble();
+        amplitude = MM2INT(val);
+    }
+
+    mi = one_def->FindMember("waveform");
+    if (mi != one_def->MemberEnd() && mi->value.GetString() == std::string("triangle") && amplitude && wavelength)
+    {
+        // triangle wave
+        Polygons shrunk_outline(outline.offset(-wavelength / 2));
+        coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / wavelength + 1) * -wavelength;
+        coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / wavelength + 1) * wavelength;
+
+        for (coord_t x : x_vals)
+        {
+            Point line_start = rotate_around_origin(Point(x + amplitude / 2, y_min), rot_rads);
+            bool line_start_inside = shrunk_outline.inside(line_start, true);
+            for (coord_t y = y_min; y < y_max; y += wavelength)
+            {
+                Point line_end = rotate_around_origin(Point(x - amplitude / 2, y + wavelength / 2), rot_rads);
+                bool line_end_inside = shrunk_outline.inside(line_end, true);
+                if (line_start_inside && line_end_inside)
+                {
+                    result.addLine(line_start, line_end);
+                }
+                else
+                {
+                    addClippedLine(line_start, line_end, num_lines);
+                }
+                line_start_inside = line_end_inside;
+                line_start = line_end;
+                line_end = rotate_around_origin(Point(x + amplitude / 2, y + wavelength), rot_rads);
+                line_end_inside = shrunk_outline.inside(line_end, true);
+                if (line_start_inside && line_end_inside)
+                {
+                    result.addLine(line_start, line_end);
+                }
+                else
+                {
+                    addClippedLine(line_start, line_end, num_lines);
+                }
+                line_start_inside = line_end_inside;
+                line_start = line_end;
+            }
+            ++num_lines;
+        }
+    }
+    else if (mi != one_def->MemberEnd() && mi->value.GetString() == std::string("sine") && amplitude && wavelength)
+    {
+        // sine wave
+        int num_segs = 16;
+        while (num_segs > 4 && amplitude / num_segs < 100)
+        {
+            num_segs /= 2;
+        }
+
+        std::vector<double> amplitudes;
+        for (int seg = 1; seg <= num_segs; ++seg)
+        {
+            amplitudes.push_back(amplitude / 2 * std::sin(M_PI * 2 * seg / num_segs + M_PI/2));
+        }
+
+        Polygons shrunk_outline(outline.offset(-wavelength / num_segs));
+        coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / wavelength + 1) * -wavelength;
+        coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / wavelength + 1) * wavelength;
+
+        for (coord_t x : x_vals)
+        {
+            for (coord_t y = y_min; y < y_max; y += wavelength)
+            {
+                Point line_start = rotate_around_origin(Point(x + amplitudes.back(), y), rot_rads);
+                bool line_start_inside = outline.inside(line_start, true);
+                for (int seg = 1; seg <= num_segs; ++seg)
+                {
+                    Point line_end = rotate_around_origin(Point(x + amplitudes[seg - 1], y + wavelength * seg / num_segs), rot_rads);
+                    bool line_end_inside = shrunk_outline.inside(line_end, true);
+                    if (line_start_inside && line_end_inside)
+                    {
+                        result.addLine(line_start, line_end);
+                    }
+                    else
+                    {
+                        addClippedLine(line_start, line_end, num_lines);
+                    }
+                    line_start_inside = line_end_inside;
+                    line_start = line_end;
+                }
+            }
+            ++num_lines;
+        }
+    }
+    else
+    {
+        // straight lines
+        for (coord_t x : x_vals)
+        {
+            Point line_start = rotate_around_origin(Point(x, clip_y_min), rot_rads);
+            Point line_end = rotate_around_origin(Point(x, clip_y_max), rot_rads);
+            addClippedLine(line_start, line_end, num_lines++);
+        }
     }
 
     for (coord_t y : y_vals)
     {
         Point line_start = rotate_around_origin(Point(clip_x_min, y), rot_rads);
         Point line_end = rotate_around_origin(Point(clip_x_max, y), rot_rads);
-        lines.addLine(line_start, line_end);
-    }
-
-    // add the parts of the lines that are inside the boundary
-    for (ConstPolygonRef line_seg : clipped_outline.intersectionPolyLines(lines))
-    {
-        // some of the line is inside the clipped outline, add it if it's not too small
-        if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
-        {
-            result.addLine(line_seg[0], line_seg[1]);
-
-            if (zig_zaggify)
-            {
-                for (const Point& pt : line_seg)
-                {
-                    chain_end[chain_end_index] = pt;
-                    if (++chain_end_index == 2)
-                    {
-                        chains[0].push_back(chain_end[0]);
-                        chains[1].push_back(chain_end[1]);
-                        chain_end_index = 0;
-                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                        line_numbers.push_back(num_lines);
-                    }
-                }
-                ++num_lines;
-            }
-        }
+        addClippedLine(line_start, line_end, num_lines++);
     }
 
     mi = one_def->FindMember("clip");
