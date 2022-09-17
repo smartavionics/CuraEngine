@@ -554,6 +554,11 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
+    if (!x_vals.size() && !y_vals.size())
+    {
+        return;
+    }
+
     mi = one_def->FindMember("clip");
     if (mi == one_def->MemberEnd() || mi->value.GetBool())
     {
