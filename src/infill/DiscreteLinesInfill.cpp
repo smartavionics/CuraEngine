@@ -529,9 +529,18 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             {
                 amplitudes.push_back(iter->GetDouble());
             }
-            for (unsigned i = 1; i <= amplitudes.size(); ++i)
+            // 3 consecutive occurences of the same amplitude can be shortened by removing the middle value
+            for (unsigned i = 2; i < amplitudes.size();)
             {
-                phases.push_back(1.0 * i / amplitudes.size());
+                if (amplitudes[i] == amplitudes[i - 1] && amplitudes[i] == amplitudes[i - 2])
+                {
+                    amplitudes.erase(amplitudes.begin() + i - 1);
+                    phases.erase(phases.begin() + i - 1);
+                }
+                else
+                {
+                    ++i;
+                }
             }
             genWaveform(amplitudes, phases);
         }
