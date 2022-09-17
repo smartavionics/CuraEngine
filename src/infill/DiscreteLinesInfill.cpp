@@ -441,76 +441,28 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         amplitude = MM2INT(val);
     }
 
-    mi = one_def->FindMember("waveform");
-    if (mi != one_def->MemberEnd() && mi->value.GetString() == std::string("triangle") && amplitude && wavelength)
+    auto genWaveform = [&](std::vector<double>& amplitudes, std::vector<double>& phases)
     {
-        // triangle wave
-        Polygons shrunk_outline(outline.offset(-wavelength / 2));
+        int num_segs = amplitudes.size();
+        if (num_segs < 2)
+        {
+            return;
+        }
+        Polygons shrunk_outline(clipped_outline.offset(-std::max(wavelength / 2, amplitude)));
+
         coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / wavelength + 1) * -wavelength;
         coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / wavelength + 1) * wavelength;
 
         for (coord_t x : x_vals)
         {
-            Point line_start = rotate_around_origin(Point(x + amplitude / 2, y_min), rot_rads);
-            bool line_start_inside = shrunk_outline.inside(line_start, true);
+            bool line_start_inside = false;
             for (coord_t y = y_min; y < y_max; y += wavelength)
             {
-                Point line_end = rotate_around_origin(Point(x - amplitude / 2, y + wavelength / 2), rot_rads);
-                bool line_end_inside = shrunk_outline.inside(line_end, true);
-                if (line_start_inside && line_end_inside)
-                {
-                    result.addLine(line_start, line_end);
-                }
-                else
-                {
-                    addClippedLine(line_start, line_end, num_lines);
-                }
-                line_start_inside = line_end_inside;
-                line_start = line_end;
-                line_end = rotate_around_origin(Point(x + amplitude / 2, y + wavelength), rot_rads);
-                line_end_inside = shrunk_outline.inside(line_end, true);
-                if (line_start_inside && line_end_inside)
-                {
-                    result.addLine(line_start, line_end);
-                }
-                else
-                {
-                    addClippedLine(line_start, line_end, num_lines);
-                }
-                line_start_inside = line_end_inside;
-                line_start = line_end;
-            }
-            ++num_lines;
-        }
-    }
-    else if (mi != one_def->MemberEnd() && mi->value.GetString() == std::string("sine") && amplitude && wavelength)
-    {
-        // sine wave
-        int num_segs = 16;
-        while (num_segs > 4 && amplitude / num_segs < 100)
-        {
-            num_segs /= 2;
-        }
-
-        std::vector<double> amplitudes;
-        for (int seg = 1; seg <= num_segs; ++seg)
-        {
-            amplitudes.push_back(amplitude / 2 * std::sin(M_PI * 2 * seg / num_segs + M_PI/2));
-        }
-
-        Polygons shrunk_outline(outline.offset(-wavelength / num_segs));
-        coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / wavelength + 1) * -wavelength;
-        coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / wavelength + 1) * wavelength;
-
-        for (coord_t x : x_vals)
-        {
-            for (coord_t y = y_min; y < y_max; y += wavelength)
-            {
-                Point line_start = rotate_around_origin(Point(x + amplitudes.back(), y), rot_rads);
-                bool line_start_inside = outline.inside(line_start, true);
+                Point line_start = rotate_around_origin(Point(x + amplitudes.back() * amplitude, y), rot_rads);
+                //bool line_start_inside = shrunk_outline.inside(line_start, true);
                 for (int seg = 1; seg <= num_segs; ++seg)
                 {
-                    Point line_end = rotate_around_origin(Point(x + amplitudes[seg - 1], y + wavelength * seg / num_segs), rot_rads);
+                    Point line_end = rotate_around_origin(Point(x + amplitudes[seg - 1] * amplitude, y + wavelength * phases[seg - 1]), rot_rads);
                     bool line_end_inside = shrunk_outline.inside(line_end, true);
                     if (line_start_inside && line_end_inside)
                     {
@@ -526,6 +478,85 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             }
             ++num_lines;
         }
+
+        coord_t x_min = infill_origin.X + std::ceil((float)(infill_origin.X - aabb.min.X) / wavelength + 1) * -wavelength;
+        coord_t x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / wavelength + 1) * wavelength;
+
+        for (coord_t y : y_vals)
+        {
+            for (coord_t x = x_min; x < x_max; x += wavelength)
+            {
+                Point line_start = rotate_around_origin(Point(x, y + amplitudes.back() * amplitude), rot_rads);
+                bool line_start_inside = shrunk_outline.inside(line_start, true);
+                for (int seg = 1; seg <= num_segs; ++seg)
+                {
+                    Point line_end = rotate_around_origin(Point(x + wavelength * phases[seg - 1], y + amplitudes[seg - 1] * amplitude), rot_rads);
+                    bool line_end_inside = shrunk_outline.inside(line_end, true);
+                    if (line_start_inside && line_end_inside)
+                    {
+                        result.addLine(line_start, line_end);
+                    }
+                    else
+                    {
+                        addClippedLine(line_start, line_end, num_lines);
+                    }
+                    line_start_inside = line_end_inside;
+                    line_start = line_end;
+                }
+            }
+            ++num_lines;
+        }
+    };
+
+    mi = one_def->FindMember("waveform");
+    if (mi != one_def->MemberEnd() && amplitude && wavelength)
+    {
+        if (mi->value.IsString())
+        {
+            if (mi->value.GetString() == std::string("triangle"))
+            {
+                std::vector<double> amplitudes{-1.0, 1.0};
+                std::vector<double> phases{0.5, 1.0};
+                genWaveform(amplitudes, phases);
+            }
+            if (mi->value.GetString() == std::string("square"))
+            {
+                std::vector<double> amplitudes{-1.0, -1.0, 1.0, 1.0};
+                std::vector<double> phases{0.0, 0.5, 0.5, 1.0};
+                genWaveform(amplitudes, phases);
+            }
+            else if (mi->value.GetString() == std::string("sine"))
+            {
+                int num_segs = 16;
+                while (num_segs > 4 && amplitude / num_segs < 100)
+                {
+                    num_segs /= 2;
+                }
+
+                std::vector<double> amplitudes;
+                std::vector<double> phases;
+                for (int seg = 1; seg <= num_segs; ++seg)
+                {
+                    amplitudes.push_back(std::sin(M_PI * 2 * seg / num_segs + M_PI/2));
+                    phases.push_back((double)seg / num_segs);
+                }
+                genWaveform(amplitudes, phases);
+            }
+        }
+        else if (mi->value.IsArray())
+        {
+            std::vector<double> amplitudes;
+            std::vector<double> phases;
+            for (rapidjson::Value::ConstValueIterator iter = mi->value.Begin(); iter != mi->value.End(); iter++)
+            {
+                amplitudes.push_back(iter->GetDouble());
+            }
+            for (unsigned i = 1; i <= amplitudes.size(); ++i)
+            {
+                phases.push_back(1.0 * i / amplitudes.size());
+            }
+            genWaveform(amplitudes, phases);
+        }
     }
     else
     {
@@ -536,13 +567,13 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             Point line_end = rotate_around_origin(Point(x, clip_y_max), rot_rads);
             addClippedLine(line_start, line_end, num_lines++);
         }
-    }
 
-    for (coord_t y : y_vals)
-    {
-        Point line_start = rotate_around_origin(Point(clip_x_min, y), rot_rads);
-        Point line_end = rotate_around_origin(Point(clip_x_max, y), rot_rads);
-        addClippedLine(line_start, line_end, num_lines++);
+        for (coord_t y : y_vals)
+        {
+            Point line_start = rotate_around_origin(Point(clip_x_min, y), rot_rads);
+            Point line_end = rotate_around_origin(Point(clip_x_max, y), rot_rads);
+            addClippedLine(line_start, line_end, num_lines++);
+        }
     }
 
     mi = one_def->FindMember("clip");
