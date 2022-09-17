@@ -525,9 +525,35 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         {
             std::vector<double> amplitudes;
             std::vector<double> phases;
+            // changes in amplitude that occur with zero rise/fall time are prefixed by an array element that is a string, e.g. ""
+            int njumps = 0;
             for (rapidjson::Value::ConstValueIterator iter = mi->value.Begin(); iter != mi->value.End(); iter++)
             {
-                amplitudes.push_back(iter->GetDouble());
+                if (iter->IsNumber())
+                {
+                    amplitudes.push_back(iter->GetDouble());
+                }
+                else if (iter->IsString())
+                {
+                    ++njumps;
+                }
+            }
+            int nperiods = amplitudes.size() - njumps;
+            if (nperiods > 0)
+            {
+                int i = 0;
+                for (rapidjson::Value::ConstValueIterator iter = mi->value.Begin(); iter != mi->value.End(); iter++)
+                {
+                    if (iter->IsNumber())
+                    {
+                        phases.push_back((double)i / nperiods);
+                        ++i;
+                    }
+                    else if (iter->IsString() && i > 0)
+                    {
+                        --i;
+                    }
+                }
             }
             // 3 consecutive occurences of the same amplitude can be shortened by removing the middle value
             for (unsigned i = 2; i < amplitudes.size();)
