@@ -541,7 +541,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             int nperiods = amplitudes.size() - njumps;
             if (nperiods > 0)
             {
-                int i = 0;
+                int i = 1;
                 for (rapidjson::Value::ConstValueIterator iter = mi->value.Begin(); iter != mi->value.End(); iter++)
                 {
                     if (iter->IsNumber())
@@ -549,7 +549,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                         phases.push_back((double)i / nperiods);
                         ++i;
                     }
-                    else if (iter->IsString() && i > 0)
+                    else if (iter->IsString() && i > 1)
                     {
                         --i;
                     }
