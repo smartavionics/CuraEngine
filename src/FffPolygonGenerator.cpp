@@ -1286,7 +1286,7 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
                 // generate points in between p0 and p1
                 PolygonRef result = results.newPoly();
 
-                int64_t dist_left_over = rand() % (min_dist_between_points / 2); // the distance to be traversed on the line before making the first new point
+                int64_t dist_left_over = random() % (min_dist_between_points / 2); // the distance to be traversed on the line before making the first new point
                 Point* p0 = &poly.back();
                 for (Point& p1 : poly)
                 { // 'a' is the (next) new point between p0 and p1
@@ -1297,9 +1297,9 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
                     {
                         result.add(p1 - (p0p1 / 2));
                     }
-                    for (; p0pa_dist < p0p1_size; p0pa_dist += min_dist_between_points + rand() % range_random_point_dist)
+                    for (; p0pa_dist < p0p1_size; p0pa_dist += min_dist_between_points + random() % range_random_point_dist)
                     {
-                        int r = rand() % (fuzziness * 2) - fuzziness;
+                        int r = random() % (fuzziness * 2) - fuzziness;
                         Point perp_to_p0p1 = turn90CCW(p0p1);
                         Point fuzz = normal(perp_to_p0p1, r);
                         Point pa = *p0 + normal(p0p1, p0pa_dist) + fuzz;
