@@ -119,7 +119,7 @@ LayerPlan::LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord
 , has_prime_tower_planned_per_extruder(Application::getInstance().current_slice->scene.extruders.size(), false)
 , current_mesh("NONMESH")
 , max_path_time(0)
-, random_engine(layer_nr)
+, random_engine((int)layer_nr)
 , last_extruder_previous_layer(start_extruder)
 , last_planned_extruder(&Application::getInstance().current_slice->scene.extruders[start_extruder])
 , first_travel_destination_is_inside(false) // set properly when addTravel is called for the first time (otherwise not set properly)
