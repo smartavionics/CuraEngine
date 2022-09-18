@@ -265,7 +265,7 @@ private:
     double max_path_time; // when non-zero, paths are split when their print time reaches this value
 
     std::uniform_int_distribution<int> random_int_distribution;
-    std::default_random_engine random_engine;
+    std::mt19937 random_engine;
 
     /*!
      * Whether the skirt or brim polygons have been processed into planned paths
