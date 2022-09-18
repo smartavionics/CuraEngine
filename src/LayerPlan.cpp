@@ -1004,6 +1004,11 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             }
         }
     }
+    else if (mesh.settings.get<EZSeamType>("z_seam_type") == EZSeamType::RANDOM)
+    {
+        Point line_vec = wall[(start_idx + 1) % wall.size()] - wall[start_idx];
+        z_seam_point = wall[start_idx] + normal(line_vec, vSize(line_vec) * (random() % 10000) / 10000.0);
+    }
 
     // make sure wall start point is not above air!
     bool none_supported = false;
