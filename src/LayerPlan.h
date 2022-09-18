@@ -353,7 +353,7 @@ public:
 
     int random(void)
     {
-        return random_engine();
+        return random_engine() & 0x7ffffff;
     }
 private:
     /*!
