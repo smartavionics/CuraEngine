@@ -13,6 +13,8 @@
 namespace cura
 {
 
+class LayerPlan;
+
 /*!
  * Parts order optimization class.
  * 
@@ -28,11 +30,13 @@ public:
     std::vector<int> polyStart; //!< polygons[i][polyStart[i]] = point of polygon i which is to be the starting point in printing the polygon
     std::vector<int> polyOrder; //!< the optimized order as indices in #polygons
     LocToLineGrid* loc_to_line;
+    LayerPlan* layer_plan;
     const Polygons* combing_boundary;
 
-    PathOrderOptimizer(Point startPoint, const ZSeamConfig config = ZSeamConfig(), const Polygons* combing_boundary = nullptr)
+    PathOrderOptimizer(Point startPoint, const ZSeamConfig config = ZSeamConfig(), LayerPlan *layer_plan = nullptr, const Polygons* combing_boundary = nullptr)
     : startPoint(startPoint)
     , config(config)
+    , layer_plan(layer_plan)
     , combing_boundary((combing_boundary != nullptr && combing_boundary->size() > 0) ? combing_boundary : nullptr)
     {
     }

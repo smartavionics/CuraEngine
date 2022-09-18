@@ -8,6 +8,7 @@
 #include "utils/linearAlg2D.h"
 #include "pathPlanning/LinePolygonsCrossings.h"
 #include "pathPlanning/CombPath.h"
+#include "LayerPlan.h"
 
 #define INLINE static inline
 
@@ -251,7 +252,7 @@ int PathOrderOptimizer::getClosestPointInPolygon(Point prev_point, int poly_idx)
 
 int PathOrderOptimizer::getRandomPointInPolygon(int poly_idx)
 {
-    return rand() % polygons[poly_idx]->size();
+    return (layer_plan ? layer_plan->random() : random()) % polygons[poly_idx]->size();
 }
 
 static inline bool pointsAreCoincident(const Point& a, const Point& b)
