@@ -1401,7 +1401,7 @@ void FffGcodeWriter::addMeshLayerToGCode(const SliceDataStorage& storage, const 
     {
         // "normal" meshes with walls, skin, infill, etc. get the traditional part ordering based on the z-seam settings
         ZSeamConfig z_seam_config(mesh.settings.get<EZSeamType>("z_seam_type"), mesh.getZSeamHint(), mesh.settings.get<EZSeamCornerPrefType>("z_seam_corner"));
-        PathOrderOptimizer part_order_optimizer(gcode_layer.getLastPlannedPositionOrStartingPosition(), z_seam_config);
+        PathOrderOptimizer part_order_optimizer(gcode_layer.getLastPlannedPositionOrStartingPosition(), z_seam_config, &gcode_layer);
         for (unsigned int part_idx = 0; part_idx < layer.parts.size(); part_idx++)
         {
             const SliceLayerPart& part = layer.parts[part_idx];

@@ -139,7 +139,7 @@ void InsetOrderOptimizer::processHoleInsets()
     if (optimize_backwards)
     {
         // determine the location of the z-seam and use that as the start point
-        PathOrderOptimizer order_optimizer(Point(), z_seam_config);
+        PathOrderOptimizer order_optimizer(Point(), z_seam_config, &gcode_layer);
         order_optimizer.addPolygon(*inset_polys[0][0]);
         order_optimizer.optimize();
         const unsigned outer_poly_start_idx = gcode_layer.locateFirstSupportedVertex(*inset_polys[0][0], order_optimizer.polyStart[0]);
@@ -147,7 +147,7 @@ void InsetOrderOptimizer::processHoleInsets()
     }
     Polygons comb_boundary(*gcode_layer.getCombBoundaryInside());
     comb_boundary.simplify(MM2INT(0.1), MM2INT(0.1));
-    PathOrderOptimizer order_optimizer(start_point, z_seam_config, &comb_boundary);
+    PathOrderOptimizer order_optimizer(start_point, z_seam_config, &gcode_layer, &comb_boundary);
     for (unsigned int poly_idx = 1; poly_idx < inset_polys[0].size(); poly_idx++)
     {
         order_optimizer.addPolygon(*inset_polys[0][poly_idx]);
@@ -409,7 +409,7 @@ void InsetOrderOptimizer::processOuterWallInsets(const bool include_outer, const
         gcode_writer.setExtruder_addPrime(storage, gcode_layer, extruder_nr);
         gcode_layer.setIsInside(true); // going to print stuff inside print object
         // determine the location of the z seam
-        PathOrderOptimizer order_optimizer(gcode_layer.getLastPlannedPositionOrStartingPosition(), z_seam_config);
+        PathOrderOptimizer order_optimizer(gcode_layer.getLastPlannedPositionOrStartingPosition(), z_seam_config, &gcode_layer);
         order_optimizer.addPolygon(*inset_polys[0][0]);
         order_optimizer.optimize();
         const unsigned outer_poly_start_idx = gcode_layer.locateFirstSupportedVertex(*inset_polys[0][0], order_optimizer.polyStart[0]);
@@ -420,7 +420,7 @@ void InsetOrderOptimizer::processOuterWallInsets(const bool include_outer, const
             Polygons boundary(*gcode_layer.getCombBoundaryInside());
             boundary.simplify(100, 100);
             ZSeamConfig inner_walls_z_seam_config;
-            PathOrderOptimizer orderOptimizer(z_seam_location, inner_walls_z_seam_config, &boundary);
+            PathOrderOptimizer orderOptimizer(z_seam_location, inner_walls_z_seam_config, &gcode_layer, &boundary);
             orderOptimizer.addPolygons(part_inner_walls);
             orderOptimizer.optimize();
             if (!outer_inset_first)
