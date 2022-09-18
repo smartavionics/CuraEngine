@@ -1591,8 +1591,7 @@ bool FffGcodeWriter::processMultiLayerInfill(const SliceDataStorage& storage, La
             std::optional<Point> near_start_location;
             if (mesh.settings.get<bool>("infill_randomize_start_location"))
             {
-                srand(gcode_layer.getLayerNr());
-                near_start_location = infill_lines[rand() % infill_lines.size()][0];
+                near_start_location = infill_lines[gcode_layer.random() % infill_lines.size()][0];
             }
             const bool enable_travel_optimization = mesh.settings.get<bool>("infill_enable_travel_optimization");
             gcode_layer.addLinesByOptimizer(infill_lines, mesh_config.infill_config[combine_idx], zig_zaggify_infill ? SpaceFillType::PolyLines : SpaceFillType::Lines, enable_travel_optimization
@@ -1809,15 +1808,14 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
         std::optional<Point> near_start_location;
         if (mesh.settings.get<bool>("infill_randomize_start_location"))
         {
-            srand(gcode_layer.getLayerNr());
             if(! infill_lines.empty())
             {
-                near_start_location = infill_lines[rand() % infill_lines.size()][0];
+                near_start_location = infill_lines[gcode_layer.random() % infill_lines.size()][0];
             }
             else
             {
-                PolygonRef start_poly = infill_polygons[rand() % infill_polygons.size()];
-                near_start_location = start_poly[rand() % start_poly.size()];
+                PolygonRef start_poly = infill_polygons[gcode_layer.random() % infill_polygons.size()];
+                near_start_location = start_poly[gcode_layer.random() % start_poly.size()];
             }
         }
         if (! infill_polygons.empty())
