@@ -383,7 +383,7 @@ void LightningTreeNode::convertToPolylines(size_t long_line_idx, Polygons& outpu
         output[long_line_idx].add(p);
         return;
     }
-    size_t first_child_idx = random() % children.size();
+    size_t first_child_idx = rand() % children.size();
     children[first_child_idx]->convertToPolylines(long_line_idx, output);
     output[long_line_idx].add(p);
 
