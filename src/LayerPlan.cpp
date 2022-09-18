@@ -127,6 +127,10 @@ LayerPlan::LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord
 , comb_move_inside_distance(comb_move_inside_distance)
 , fan_speed_layer_time_settings_per_extruder(fan_speed_layer_time_settings_per_extruder)
 {
+    memset(random_state_buffer, 0, sizeof(random_state_buffer));
+    memset(&random_state, 0, sizeof(random_state));
+    initstate_r(layer_nr, random_state_buffer, sizeof(random_state_buffer), &random_state);
+
     size_t current_extruder = start_extruder;
     was_inside = true; // not used, because the first travel move is bogus
     is_inside = false; // assumes the next move will not be to inside a layer part (overwritten just before going into a layer part)

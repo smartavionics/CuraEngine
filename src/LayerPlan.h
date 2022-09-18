@@ -263,6 +263,9 @@ private:
     std::string current_mesh; //<! A unique ID for the mesh of the last planned move.
     double max_path_time; // when non-zero, paths are split when their print time reaches this value
 
+    char random_state_buffer[256];
+    struct random_data random_state;
+
     /*!
      * Whether the skirt or brim polygons have been processed into planned paths
      * for each extruder train.
@@ -348,6 +351,12 @@ public:
         return &comb_boundary_inside2;
     }
 
+    int32_t random(void)
+    {
+        int32_t r;
+        random_r(&random_state, &r);
+        return r;
+    }
 private:
     /*!
      * \brief Compute the boundary within which to comb, or to move into when
