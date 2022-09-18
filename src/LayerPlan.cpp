@@ -119,6 +119,7 @@ LayerPlan::LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord
 , has_prime_tower_planned_per_extruder(Application::getInstance().current_slice->scene.extruders.size(), false)
 , current_mesh("NONMESH")
 , max_path_time(0)
+, random_engine(layer_nr)
 , last_extruder_previous_layer(start_extruder)
 , last_planned_extruder(&Application::getInstance().current_slice->scene.extruders[start_extruder])
 , first_travel_destination_is_inside(false) // set properly when addTravel is called for the first time (otherwise not set properly)
@@ -127,10 +128,6 @@ LayerPlan::LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord
 , comb_move_inside_distance(comb_move_inside_distance)
 , fan_speed_layer_time_settings_per_extruder(fan_speed_layer_time_settings_per_extruder)
 {
-    memset(random_state_buffer, 0, sizeof(random_state_buffer));
-    memset(&random_state, 0, sizeof(random_state));
-    initstate_r(layer_nr, random_state_buffer, sizeof(random_state_buffer), &random_state);
-
     size_t current_extruder = start_extruder;
     was_inside = true; // not used, because the first travel move is bogus
     is_inside = false; // assumes the next move will not be to inside a layer part (overwritten just before going into a layer part)

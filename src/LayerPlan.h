@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <vector>
+#include <random>
 
 #include "FanSpeedLayerTime.h"
 #include "gcodeExport.h"
@@ -263,8 +264,8 @@ private:
     std::string current_mesh; //<! A unique ID for the mesh of the last planned move.
     double max_path_time; // when non-zero, paths are split when their print time reaches this value
 
-    char random_state_buffer[256];
-    struct random_data random_state;
+    std::uniform_int_distribution<int> random_int_distribution;
+    std::default_random_engine random_engine;
 
     /*!
      * Whether the skirt or brim polygons have been processed into planned paths
@@ -351,11 +352,9 @@ public:
         return &comb_boundary_inside2;
     }
 
-    int32_t random(void)
+    int random(void)
     {
-        int32_t r;
-        random_r(&random_state, &r);
-        return r;
+        return random_engine();
     }
 private:
     /*!
