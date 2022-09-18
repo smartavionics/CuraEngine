@@ -264,7 +264,6 @@ private:
     std::string current_mesh; //<! A unique ID for the mesh of the last planned move.
     double max_path_time; // when non-zero, paths are split when their print time reaches this value
 
-    std::uniform_int_distribution<int> random_int_distribution;
     std::mt19937 random_engine;
 
     /*!
