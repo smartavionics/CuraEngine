@@ -625,10 +625,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     if (mi == one_def->MemberEnd() || mi->value.GetBool())
     {
         Polygon infilled_area;
-        infilled_area.add(Point(clip_x_min, clip_y_max));
-        infilled_area.add(Point(clip_x_max, clip_y_max));
-        infilled_area.add(Point(clip_x_max, clip_y_min));
-        infilled_area.add(Point(clip_x_min, clip_y_min));
+        infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_max), rot_rads));
+        infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_max), rot_rads));
+        infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_min), rot_rads));
+        infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_min), rot_rads));
         Polygons infilled_areas;
         infilled_areas.add(infilled_area);
         clipped_outline = clipped_outline.difference(infilled_areas);
