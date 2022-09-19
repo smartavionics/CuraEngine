@@ -20,7 +20,7 @@ class Polygons;
 class DiscreteLinesInfill
 {
 public:
-    DiscreteLinesInfill(const coord_t z, const Point& infill_origin, const coord_t infill_line_width, const SliceMeshStorage* mesh);
+    DiscreteLinesInfill(const coord_t z, const Point& infill_origin, const AngleDegrees fill_angle, const coord_t infill_line_width, const SliceMeshStorage* mesh);
 
     ~DiscreteLinesInfill();
 
@@ -29,9 +29,10 @@ public:
 protected:
     const coord_t z;                   //!< height of the current layer
     const Point& infill_origin;        //!< point the infill is rotated around
-    const coord_t min_line_len2 = 100; //!< minimum squared length of generated lines, don't output any shorter than 10um
+    const double fill_angle_rads;      //!< infill rotation angle
     const coord_t infill_line_width;   //!< width of infill lines
     const SliceMeshStorage* mesh;      //!< mesh being filled
+    const coord_t min_line_len2 = 100; //!< minimum squared length of generated lines, don't output any shorter than 10um
     rapidjson::Document* json_document;
 
     Point rotate_around_origin(const Point& point, const double rads);

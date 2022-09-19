@@ -378,7 +378,7 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
             {
                 mesh.infill_angles.push_back(22); // put most infill lines in between 45 and 0 degrees
             }
-            else if (infill_pattern == EFillMethod::GYROID || infill_pattern == EFillMethod::SCHWARZ_P || infill_pattern == EFillMethod::SCHWARZ_D || infill_pattern == EFillMethod::HILBERT || infill_pattern == EFillMethod::DISCRETE_LINES)
+            else if (infill_pattern == EFillMethod::GYROID || infill_pattern == EFillMethod::SCHWARZ_P || infill_pattern == EFillMethod::SCHWARZ_D || infill_pattern == EFillMethod::HILBERT)
             {
                 mesh.infill_angles.push_back(0);
             }
@@ -387,6 +387,11 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
                 mesh.infill_angles.push_back(30);
                 mesh.infill_angles.push_back(150);
                 mesh.infill_angles.push_back(270);
+            }
+            else if (infill_pattern == EFillMethod::DISCRETE_LINES)
+            {
+                mesh.infill_angles.push_back(45);
+                mesh.infill_angles.push_back(135);
             }
             else
             {
