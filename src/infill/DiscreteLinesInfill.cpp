@@ -306,10 +306,20 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         clip_y_max = infill_origin.Y + MM2INT(val);
     }
 
+    bool is_density = false;
     mi = one_def->FindMember("xpitch");
+    if (mi == one_def->MemberEnd())
+    {
+        mi = one_def->FindMember("xdensity");
+        is_density = true;
+    }
     if (mi != one_def->MemberEnd())
     {
         double val = interpolateValue(mi->value);
+        if (is_density)
+        {
+            val = (val <= 0) ? 0 : INT2MM(infill_line_width) * 100.0 / std::min(val, 100.0);
+        }
         coord_t xpitch = MM2INT(val);
 
         if (xpitch > 0)
@@ -355,10 +365,20 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
+    is_density = false;
     mi = one_def->FindMember("ypitch");
+    if (mi == one_def->MemberEnd())
+    {
+        mi = one_def->FindMember("ydensity");
+        is_density = true;
+    }
     if (mi != one_def->MemberEnd())
     {
         double val = interpolateValue(mi->value);
+        if (is_density)
+        {
+            val = (val <= 0) ? 0 : INT2MM(infill_line_width) * 100.0 / std::min(val, 100.0);
+        }
         coord_t ypitch = MM2INT(val);
 
         if (ypitch > 0)
