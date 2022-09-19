@@ -252,7 +252,30 @@ int PathOrderOptimizer::getClosestPointInPolygon(Point prev_point, int poly_idx)
 
 int PathOrderOptimizer::getRandomPointInPolygon(int poly_idx)
 {
-    return (layer_plan ? layer_plan->random() : rand()) % polygons[poly_idx]->size();
+    ConstPolygonRef poly = *polygons[poly_idx];
+    const size_t num_points = poly.size();
+    if (num_points > 1000)
+    {
+        return (layer_plan ? layer_plan->random() : rand()) % num_points;
+    }
+    std::vector<coord_t> lens(num_points);
+    lens[0] = 0;
+    coord_t total_len = 0;
+    for (unsigned i = 1; i < num_points; ++i)
+    {
+        total_len += vSize(poly[i] - poly[i - 1]);
+        lens[i] = total_len;
+    }
+    total_len += vSize(poly[0] - poly.back());
+    unsigned r = (layer_plan ? layer_plan->random() : rand()) % total_len;
+    for (unsigned i = 0; i < (num_points - 1); ++i)
+    {
+        if (lens[i + 1] > r)
+        {
+            return i;
+        }
+    }
+    return num_points - 1;
 }
 
 static inline bool pointsAreCoincident(const Point& a, const Point& b)
