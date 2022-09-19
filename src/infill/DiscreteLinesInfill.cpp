@@ -424,8 +424,12 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
+    bool zig_zaggify = mesh->settings.get<bool>("zig_zaggify_infill");
     mi = one_def->FindMember("zigzag");
-    bool zig_zaggify = (mi != one_def->MemberEnd() && mi->value.GetBool());
+    if (mi != one_def->MemberEnd())
+    {
+        zig_zaggify = mi->value.GetBool();
+    }
 
     unsigned num_lines = 0;
     unsigned chain_end_index = 0;
