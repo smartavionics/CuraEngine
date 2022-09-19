@@ -257,7 +257,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     if (scattered)
     {
         rot_rads = fill_angle_rads;
-        rot_rads += M_PI * (rand() % 1024 / 1024.0 - 0.5);
+        rot_rads += 0.5 * M_PI * (rand() % 1024 / 1024.0 - 0.5);
     }
 
     Polygons rotated_outline = outline;
