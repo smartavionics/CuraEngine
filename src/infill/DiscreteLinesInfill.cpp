@@ -337,7 +337,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
             if (scattered)
             {
-                coord_t max = xpitch - 2 * infill_line_width;
+                coord_t max = xpitch - infill_line_width;
                 for (unsigned i = 0; i < x_vals.size(); ++i)
                 {
                     x_vals[i] += rand() % max - max/2;
@@ -395,7 +395,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             }
             if (scattered)
             {
-                coord_t max = ypitch - 2 * infill_line_width;
+                coord_t max = ypitch - infill_line_width;
                 for (unsigned i = 0; i < y_vals.size(); ++i)
                 {
                     y_vals[i] += rand() % max - max/2;
