@@ -452,15 +452,18 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                 {
                     for (const Point& pt : line_seg)
                     {
-                        chain_end[chain_end_index] = pt;
-                        if (++chain_end_index == 2)
+                        if (pt != p0 && pt != p1)
                         {
-                            chains[0].push_back(chain_end[0]);
-                            chains[1].push_back(chain_end[1]);
-                            chain_end_index = 0;
-                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                            line_numbers.push_back(line_index);
+                            chain_end[chain_end_index] = pt;
+                            if (++chain_end_index == 2)
+                            {
+                                chains[0].push_back(chain_end[0]);
+                                chains[1].push_back(chain_end[1]);
+                                chain_end_index = 0;
+                                connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                                connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                                line_numbers.push_back(line_index);
+                            }
                         }
                     }
                 }
