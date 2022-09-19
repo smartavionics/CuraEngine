@@ -204,6 +204,9 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         return result;
     };
 
+    mi = one_def->FindMember("scattered");
+    bool scattered = (mi != one_def->MemberEnd() && mi->value.GetBool());
+
     mi = one_def->FindMember("zmin");
     if (mi != one_def->MemberEnd())
     {
@@ -239,6 +242,11 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     if (mi != one_def->MemberEnd())
     {
         rot_rads = mi->value.GetDouble() / (180 / M_PI);
+
+    if (scattered)
+    {
+        rot_rads = fill_angle_rads;
+        rot_rads += M_PI * (rand() % 1024 / 1024.0 - 0.5);
     }
 
     Polygons rotated_outline = outline;
@@ -305,6 +313,15 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                     x_vals.push_back(x);
                 }
             }
+
+            if (scattered)
+            {
+                coord_t max = xpitch - 2 * infill_line_width;
+                for (unsigned i = 0; i < x_vals.size(); ++i)
+                {
+                    x_vals[i] += rand() % max - max/2;
+                }
+            }
         }
     }
 
@@ -345,6 +362,15 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                     y_vals.push_back(y);
                 }
             }
+            if (scattered)
+            {
+                coord_t max = ypitch - 2 * infill_line_width;
+                for (unsigned i = 0; i < y_vals.size(); ++i)
+                {
+                    y_vals[i] += rand() % max - max/2;
+                }
+            }
+
         }
     }
 
