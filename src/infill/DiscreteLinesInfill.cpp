@@ -241,7 +241,18 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     mi = one_def->FindMember("angle");
     if (mi != one_def->MemberEnd())
     {
-        rot_rads = mi->value.GetDouble() / (180 / M_PI);
+        if (mi->value.IsString())
+        {
+            if (mi->value.GetString() == std::string("infill-line-directions"))
+            {
+                rot_rads = fill_angle_rads;
+            }
+        }
+        else
+        {
+            rot_rads = mi->value.GetDouble() / (180 / M_PI);
+        }
+    }
 
     if (scattered)
     {
