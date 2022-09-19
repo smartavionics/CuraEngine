@@ -243,7 +243,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     {
         if (mi->value.IsString())
         {
-            if (mi->value.GetString() == std::string("infill-line-directions"))
+            if (mi->value.GetString() == std::string("from-settings"))
             {
                 rot_rads = fill_angle_rads;
             }
