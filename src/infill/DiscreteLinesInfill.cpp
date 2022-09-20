@@ -695,6 +695,7 @@ void DiscreteLinesInfill::generateConnections(Polygons& result, const Polygons& 
         // we need to remember the first chain processed and the path to it from the first outline point
         // so that later we can possibly connect to it from the last chain processed
         unsigned first_chain_chain_index = std::numeric_limits<unsigned>::max();
+        unsigned first_chain_point_index = std::numeric_limits<unsigned>::max();
         std::vector<Point> path_to_first_chain;
 
         bool drawing = false; // true when a connector line is being (potentially) created
@@ -779,6 +780,7 @@ void DiscreteLinesInfill::generateConnections(Polygons& result, const Polygons& 
                 {
                     // this is the first chain to be processed, remember it
                     first_chain_chain_index = chain_index;
+                    first_chain_point_index = point_index;
                     path_to_first_chain.push_back(cur_point);
                 }
 
@@ -835,12 +837,12 @@ void DiscreteLinesInfill::generateConnections(Polygons& result, const Polygons& 
         }
 
         // we have now visited all the points in the outline, if a connector was (potentially) being drawn
-        // check whether the first chain is already connected to the last chain and, if not, draw the
-        // connector between
+        // it may be drawn as long as the first chain and the last chain are not the same chain and the first chain
+        // has not been connected to any another chain at the near end and it has not been connected to the last chain at the far end
         if (drawing && first_chain_chain_index != std::numeric_limits<unsigned>::max()
             && first_chain_chain_index != connector_start_chain_index
-            && connected_to[0][first_chain_chain_index] != connector_start_chain_index
-            && connected_to[1][first_chain_chain_index] != connector_start_chain_index)
+            && connected_to[first_chain_point_index][first_chain_chain_index] == std::numeric_limits<unsigned>::max()
+            && connected_to[(first_chain_point_index + 1) % 2][first_chain_chain_index] != connector_start_chain_index)
         {
             // output the connector line segments from the last chain to the first point in the outline
             connector_points.push_back(outline_poly[0]);
