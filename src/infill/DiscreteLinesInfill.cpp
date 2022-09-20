@@ -447,23 +447,22 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
             {
                 result.addLine(line_seg[0], line_seg[1]);
-
-                if (zig_zaggify)
+            }
+            if (zig_zaggify)
+            {
+                for (const Point& pt : line_seg)
                 {
-                    for (const Point& pt : line_seg)
+                    if (pt != p0 && pt != p1)
                     {
-                        if (pt != p0 && pt != p1)
+                        chain_end[chain_end_index] = pt;
+                        if (++chain_end_index == 2)
                         {
-                            chain_end[chain_end_index] = pt;
-                            if (++chain_end_index == 2)
-                            {
-                                chains[0].push_back(chain_end[0]);
-                                chains[1].push_back(chain_end[1]);
-                                chain_end_index = 0;
-                                connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                line_numbers.push_back(line_index);
-                            }
+                            chains[0].push_back(chain_end[0]);
+                            chains[1].push_back(chain_end[1]);
+                            chain_end_index = 0;
+                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                            line_numbers.push_back(line_index);
                         }
                     }
                 }
