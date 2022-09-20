@@ -503,7 +503,6 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             for (coord_t y = y_min; y < y_max; y += wavelength)
             {
                 Point line_start = rotate_around_origin(Point(x + amplitudes.back() * amplitude, y), rot_rads);
-                //bool line_start_inside = shrunk_outline.inside(line_start, true);
                 for (int seg = 1; seg <= num_segs; ++seg)
                 {
                     Point line_end = rotate_around_origin(Point(x + amplitudes[seg - 1] * amplitude, y + wavelength * phases[seg - 1]), rot_rads);
@@ -528,10 +527,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         for (coord_t y : y_vals)
         {
+            bool line_start_inside = false;
             for (coord_t x = x_min; x < x_max; x += wavelength)
             {
                 Point line_start = rotate_around_origin(Point(x, y + amplitudes.back() * amplitude), rot_rads);
-                bool line_start_inside = shrunk_outline.inside(line_start, true);
                 for (int seg = 1; seg <= num_segs; ++seg)
                 {
                     Point line_end = rotate_around_origin(Point(x + wavelength * phases[seg - 1], y + amplitudes[seg - 1] * amplitude), rot_rads);
