@@ -836,8 +836,9 @@ void DiscreteLinesInfill::generateConnections(Polygons& result, const Polygons& 
             }
         }
 
-        // we have now visited all the points in the outline, if a connector was (potentially) being drawn
-        // it may be drawn as long as the first chain and the last chain are not the same chain and the first chain
+        // we have now visited all the points in the outline, now check to see if a connector is to be drawn
+        // between the last chain and the first chain
+        // it is drawn if the first chain and the last chain are not the same chain and the first chain
         // has not been connected to any another chain at the near end and it has not been connected to the last chain at the far end
         if (drawing && first_chain_chain_index != std::numeric_limits<unsigned>::max()
             && first_chain_chain_index != connector_start_chain_index
