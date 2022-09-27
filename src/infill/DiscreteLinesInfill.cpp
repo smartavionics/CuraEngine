@@ -748,29 +748,25 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             }
         }
 
-        if (num_spokes)
+        if (num_spokes > 1)
         {
-            coord_t margin = infill_line_width * num_spokes / M_PI / 2 - infill_line_width;
-            unsigned keep_every = 0;
-            if (num_spokes % 4 == 0)
+            unsigned spokes_to_draw = num_spokes;
+            coord_t length = std::max(aabb.max.X - aabb.min.X, aabb.max.Y - aabb.min.Y) * 2;
+            coord_t margin = infill_line_width * spokes_to_draw / M_PI / 2;
+            while (spokes_to_draw > 1)
             {
-                keep_every = num_spokes / 4;
-            }
-            else if (num_spokes % 2 == 0)
-            {
-                keep_every = num_spokes / 2;
-            }
-            for (unsigned i = 0; i < num_spokes; ++i)
-            {
-                double rads = 2 * M_PI * i / num_spokes;
-
-                Point line_start = aabb.getMiddle();
-                Point line_end = line_start + rotate(Point(line_start.X, line_start.Y + std::max(aabb.max.X - aabb.min.X, aabb.max.Y - aabb.min.Y) * 2) - line_start, rads);
-                if (keep_every && i % keep_every != 0)
+                for (unsigned i = 0; i < spokes_to_draw; ++i)
                 {
+                    double rads = 2 * M_PI * i / spokes_to_draw;
+                    Point line_start = (contours.empty()) ? infill_origin : aabb.getMiddle();
+                    Point line_end = line_start + rotate(Point(line_start.X, line_start.Y + margin + length) - line_start, rads);
                     line_start = line_start + normal(line_end - line_start, margin);
+                    addClippedLine(rotate_around_origin(line_start, rot_rads), rotate_around_origin(line_end, rot_rads), num_lines++);
                 }
-                addClippedLine(line_start, line_end, num_lines++);
+                spokes_to_draw >>= 1;
+                coord_t new_margin = infill_line_width * spokes_to_draw / M_PI / 2;
+                length = margin - new_margin;
+                margin = new_margin;
             }
         }
     }
