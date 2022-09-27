@@ -437,7 +437,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     unsigned chain_end_index = 0;
     Point chain_end[2];
 
-    auto addClippedLine = [&](const Point& p0, const Point& p1, unsigned line_index)
+    auto addClippedLine = [&](const Point& p0, const Point& p1, unsigned line_number)
     {
         Polygons lines;
         lines.addLine(p0, p1);
@@ -462,7 +462,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                             chain_end_index = 0;
                             connected_to[0].push_back(std::numeric_limits<unsigned>::max());
                             connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                            line_numbers.push_back(line_index);
+                            line_numbers.push_back(line_number);
                         }
                     }
                 }
