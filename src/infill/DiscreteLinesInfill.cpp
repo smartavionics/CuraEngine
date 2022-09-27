@@ -457,7 +457,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         if (rpitch > 0)
         {
-            const coord_t r_max = std::max(vSize(aabb.max.X - aabb.min.X), vSize(aabb.max.Y - aabb.min.Y)) * 0.707;
+            const coord_t r_max = std::max(vSize(aabb.max.X - aabb.min.X) + std::abs(infill_origin.X), vSize(aabb.max.Y - aabb.min.Y) + std::abs(infill_origin.Y)) * 0.707;
             for (coord_t r = rpitch; r <= r_max; r += rpitch)
             {
                 vals.push_back(r);
@@ -736,11 +736,11 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             for (coord_t r : rings)
             {
                 unsigned num_segs = (num_spokes) ? num_spokes : std::min(std::max((size_t)100, outline[0].size()), (size_t)std::ceil(2 * M_PI * INT2MM(r)));
-                Point line_start(rotate_around_origin(aabb.getMiddle() + Point(r * std::sin(0), r * std::cos(0)), rot_rads));
+                Point line_start = infill_origin + Point(r * std::sin(0), r * std::cos(0));
                 for (unsigned i = 1; i <= num_segs; ++i)
                 {
                     double a = 2 * M_PI * i / num_segs;
-                    Point line_end = rotate_around_origin(aabb.getMiddle() + Point(r * std::sin(a), r * std::cos(a)), rot_rads);
+                    Point line_end = infill_origin + Point(r * std::sin(a), r * std::cos(a));
                     addClippedLine(line_start, line_end, num_lines);
                     line_start = line_end;
                 }
