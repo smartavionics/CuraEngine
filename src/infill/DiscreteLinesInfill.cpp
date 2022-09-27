@@ -308,6 +308,15 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         clip_y_max = infill_origin.Y + MM2INT(val);
     }
 
+    Polygon infilled_area;
+    infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_max), rot_rads));
+    infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_max), rot_rads));
+    infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_min), rot_rads));
+    infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_min), rot_rads));
+    Polygons infilled_areas;
+    infilled_areas.add(infilled_area);
+    infilled_areas = infilled_areas.intersection(clipped_outline);
+
     mi = one_def->FindMember("xpitch");
     if (mi != one_def->MemberEnd())
     {
@@ -492,7 +501,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     {
         Polygons lines;
         lines.addLine(p0, p1);
-        for (ConstPolygonRef line_seg : clipped_outline.intersectionPolyLines(lines))
+        for (ConstPolygonRef line_seg : infilled_areas.intersectionPolyLines(lines))
         {
             // some of the line is inside the clipped outline, add it if it's not too small
             if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
@@ -543,7 +552,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         {
             return;
         }
-        Polygons shrunk_outline(clipped_outline.offset(-std::max(wavelength / 2, amplitude)));
+        Polygons shrunk_outline(infilled_areas.offset(-std::max(wavelength / 2, amplitude)));
 
         coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / wavelength + 1) * -wavelength;
         coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / wavelength + 1) * wavelength;
@@ -707,7 +716,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         // spider web
         if (!contours.empty())
         {
-            Polygons last_polys = rotated_outline;
+            Polygons last_polys = rotated_outline.intersection(infilled_areas);
             last_polys.simplify(100, 50);
             coord_t last_r = 0;
             for (coord_t r : contours)
@@ -779,13 +788,6 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     mi = one_def->FindMember("clip");
     if (mi == one_def->MemberEnd() || mi->value.GetBool())
     {
-        Polygon infilled_area;
-        infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_max), rot_rads));
-        infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_max), rot_rads));
-        infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_min), rot_rads));
-        infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_min), rot_rads));
-        Polygons infilled_areas;
-        infilled_areas.add(infilled_area);
         clipped_outline = clipped_outline.difference(infilled_areas);
     }
 }
