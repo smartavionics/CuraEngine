@@ -182,6 +182,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
     std::vector<coord_t> x_vals;
     std::vector<coord_t> y_vals;
+    std::vector<coord_t> rings;
+    std::vector<coord_t> contours;
 
     auto interpolateValue = [&](rapidjson::Value& value) {
         double result = 0;
@@ -426,6 +428,55 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
+    bool is_rings = false;
+    mi = one_def->FindMember("rings");
+    if (mi != one_def->MemberEnd())
+    {
+        is_rings = true;
+    }
+    else
+    {
+        mi = one_def->FindMember("contours");
+    }
+    if (mi != one_def->MemberEnd())
+    {
+        std::vector<coord_t>& vals = (is_rings)? rings : contours;
+        double val = 0;
+        if (mi->value.IsString())
+        {
+            if (mi->value.GetString() == std::string("from-settings"))
+            {
+                val = INT2MM(mesh->settings.get<coord_t>("infill_line_distance"));
+            }
+        }
+        else
+        {
+            val = interpolateValue(mi->value);
+        }
+        coord_t rpitch = MM2INT(val);
+
+        if (rpitch > 0)
+        {
+            const coord_t r_max = std::max(vSize(aabb.max.X - aabb.min.X), vSize(aabb.max.Y - aabb.min.Y)) * 0.707;
+            for (coord_t r = rpitch; r <= r_max; r += rpitch)
+            {
+                vals.push_back(r);
+            }
+        }
+    }
+
+    unsigned num_spokes = 0;
+    mi = one_def->FindMember("spokes");
+    if (mi != one_def->MemberEnd())
+    {
+        rapidjson::Value& val = mi->value;
+
+        if (val.IsNumber() && val.GetDouble() > 0)
+        {
+            num_spokes = val.GetDouble();
+        }
+    }
+
     bool zig_zaggify = mesh->settings.get<bool>("zig_zaggify_infill");
     mi = one_def->FindMember("zigzag");
     if (mi != one_def->MemberEnd())
@@ -652,9 +703,79 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             Point line_end = rotate_around_origin(Point(clip_x_max, y), rot_rads);
             addClippedLine(line_start, line_end, num_lines++);
         }
+
+        // spider web
+        if (!contours.empty())
+        {
+            Polygons last_polys = rotated_outline;
+            last_polys.simplify(100, 50);
+            coord_t last_r = 0;
+            for (coord_t r : contours)
+            {
+                Polygons polys = last_polys.offset(-(r - last_r + infill_line_width/2)).offset(infill_line_width/2);
+                polys.simplify(100, 50);
+                if (polys.empty())
+                {
+                    break;
+                }
+                for (auto poly : polys)
+                {
+                    for (unsigned i = 0; i < (poly.size() - 1); ++i)
+                    {
+                        result.addLine(poly[i], poly[i + 1]);
+                    }
+                    result.addLine(poly.back(), poly[0]);
+                }
+                last_polys = polys;
+                last_r = r;
+            }
+        }
+
+        if (!rings.empty())
+        {
+            for (coord_t r : rings)
+            {
+                unsigned num_segs = (num_spokes) ? num_spokes : std::min(std::max((size_t)100, outline[0].size()), (size_t)std::ceil(2 * M_PI * INT2MM(r)));
+                Point line_start(rotate_around_origin(aabb.getMiddle() + Point(r * std::sin(0), r * std::cos(0)), rot_rads));
+                for (unsigned i = 1; i <= num_segs; ++i)
+                {
+                    double a = 2 * M_PI * i / num_segs;
+                    Point line_end = rotate_around_origin(aabb.getMiddle() + Point(r * std::sin(a), r * std::cos(a)), rot_rads);
+                    addClippedLine(line_start, line_end, num_lines);
+                    line_start = line_end;
+                }
+                ++num_lines;
+            }
+        }
+
+        if (num_spokes)
+        {
+            coord_t margin = infill_line_width * num_spokes / M_PI / 2 - infill_line_width;
+            unsigned keep_every = 0;
+            if (num_spokes % 4 == 0)
+            {
+                keep_every = num_spokes / 4;
+            }
+            else if (num_spokes % 2 == 0)
+            {
+                keep_every = num_spokes / 2;
+            }
+            for (unsigned i = 0; i < num_spokes; ++i)
+            {
+                double rads = 2 * M_PI * i / num_spokes;
+
+                Point line_start = aabb.getMiddle();
+                Point line_end = line_start + rotate(Point(line_start.X, line_start.Y + std::max(aabb.max.X - aabb.min.X, aabb.max.Y - aabb.min.Y) * 2) - line_start, rads);
+                if (keep_every && i % keep_every != 0)
+                {
+                    line_start = line_start + normal(line_end - line_start, margin);
+                }
+                addClippedLine(line_start, line_end, num_lines++);
+            }
+        }
     }
 
-    if (!x_vals.size() && !y_vals.size())
+    if (x_vals.empty() && y_vals.empty() && contours.empty() && rings.empty() && num_spokes == 0)
     {
         return;
     }
