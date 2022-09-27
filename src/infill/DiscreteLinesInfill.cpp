@@ -735,7 +735,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         {
             for (coord_t r : rings)
             {
-                unsigned num_segs = (num_spokes) ? num_spokes : std::min(std::max((size_t)100, outline[0].size()), (size_t)std::ceil(2 * M_PI * INT2MM(r)));
+                unsigned num_segs = (num_spokes > 1) ? num_spokes : std::min(std::max((size_t)100, outline[0].size()), (size_t)std::ceil(2 * M_PI * INT2MM(r)));
                 Point line_start = infill_origin + Point(r * std::sin(0), r * std::cos(0));
                 for (unsigned i = 1; i <= num_segs; ++i)
                 {
