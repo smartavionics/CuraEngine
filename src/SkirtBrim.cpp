@@ -92,6 +92,7 @@ coord_t SkirtBrim::generatePrimarySkirtBrimLines(const coord_t start_distance, s
 {
     const Settings& adhesion_settings = Application::getInstance().current_slice->scene.current_mesh_group->settings.get<ExtruderTrain&>("adhesion_extruder_nr").settings;
     const coord_t primary_extruder_skirt_brim_line_width = adhesion_settings.get<coord_t>("skirt_brim_line_width") * adhesion_settings.get<Ratio>("initial_layer_line_width_factor");
+    const bool inside_only = adhesion_settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM && adhesion_settings.get<bool>("brim_inside_only");
     coord_t offset_distance = start_distance - primary_extruder_skirt_brim_line_width / 2;
     for (unsigned int skirt_brim_number = 0; skirt_brim_number < primary_line_count; skirt_brim_number++)
     {
@@ -107,12 +108,16 @@ coord_t SkirtBrim::generatePrimarySkirtBrimLines(const coord_t start_distance, s
             {
                 outer_skirt_brim_line.remove(n--);
             }
+            else if (inside_only && area > 0)
+            {
+                outer_skirt_brim_line.remove(n--);
+            }
         }
 
         skirt_brim_primary_extruder.add(outer_skirt_brim_line);
 
         const coord_t length = skirt_brim_primary_extruder.polygonLength();
-        if (skirt_brim_number + 1 >= primary_line_count && length > 0 && length < primary_extruder_minimal_length) //Make brim or skirt have more lines when total length is too small.
+        if (!inside_only && skirt_brim_number + 1 >= primary_line_count && length > 0 && length < primary_extruder_minimal_length) //Make brim or skirt have more lines when total length is too small.
         {
             primary_line_count++;
         }
