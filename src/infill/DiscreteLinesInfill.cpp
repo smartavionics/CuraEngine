@@ -143,10 +143,13 @@ void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outli
     {
         for (rapidjson::Value::ValueIterator def_iter = json_document->Begin(); def_iter != json_document->End(); def_iter++)
         {
-            generateCoordinates(result_lines, outline, def_iter, clipped_outline);
+            if (def_iter->IsObject())
+            {
+                generateCoordinates(result_lines, outline, def_iter, clipped_outline);
+            }
         }
     }
-    else
+    else if(json_document->IsObject())
     {
         generateCoordinates(result_lines, outline, json_document, clipped_outline);
     }
