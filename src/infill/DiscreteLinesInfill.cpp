@@ -159,7 +159,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     rapidjson::Value::MemberIterator mi;
 
     mi = one_def->FindMember("enable");
-    if (mi != one_def->MemberEnd() && !mi->value.GetBool())
+    if (mi != one_def->MemberEnd() && ((mi->value.IsBool() && !mi->value.GetBool()) || (mi->value.IsNumber() && !mi->value.GetDouble())))
     {
         // "enable" is false so no point in doing anything else
         return;
@@ -207,7 +207,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     };
 
     mi = one_def->FindMember("scattered");
-    bool scattered = (mi != one_def->MemberEnd() && mi->value.GetBool());
+    bool scattered = (mi != one_def->MemberEnd() && ((mi->value.IsBool() && mi->value.GetBool()) || (mi->value.IsNumber() && mi->value.GetDouble())));
 
     mi = one_def->FindMember("zmin");
     if (mi != one_def->MemberEnd())
@@ -490,7 +490,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     mi = one_def->FindMember("zigzag");
     if (mi != one_def->MemberEnd())
     {
-        zig_zaggify = mi->value.GetBool();
+        zig_zaggify = ((mi->value.IsBool() && mi->value.GetBool()) || (mi->value.IsNumber() && mi->value.GetDouble()));
     }
 
     unsigned num_lines = 0;
@@ -786,7 +786,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     }
 
     mi = one_def->FindMember("clip");
-    if (mi == one_def->MemberEnd() || mi->value.GetBool())
+    if (mi == one_def->MemberEnd() || ((mi->value.IsBool() && mi->value.GetBool()) || (mi->value.IsNumber() && mi->value.GetDouble())))
     {
         clipped_outline = clipped_outline.difference(infilled_areas);
     }
