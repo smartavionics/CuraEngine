@@ -138,6 +138,7 @@ Point DiscreteLinesInfill::rotate_around_origin(const Point& point, const double
 void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outline)
 {
     Polygons clipped_outline(outline);
+    Polygons connections_outline;
 
     if (json_document->IsArray())
     {
@@ -145,19 +146,19 @@ void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outli
         {
             if (def_iter->IsObject())
             {
-                generateCoordinates(result_lines, outline, def_iter, clipped_outline);
+                generateCoordinates(result_lines, outline, def_iter, clipped_outline, connections_outline);
             }
         }
     }
     else if(json_document->IsObject())
     {
-        generateCoordinates(result_lines, outline, json_document, clipped_outline);
+        generateCoordinates(result_lines, outline, json_document, clipped_outline, connections_outline);
     }
 
-    generateConnections(result_lines, outline);
+    generateConnections(result_lines, connections_outline);
 }
 
-void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def, Polygons& clipped_outline)
+void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def, Polygons& clipped_outline, Polygons& connections_outline)
 {
     rapidjson::Value::MemberIterator mi;
 
@@ -166,6 +167,13 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     {
         // "enable" is false so no point in doing anything else
         return;
+    }
+
+    bool zig_zaggify = mesh->settings.get<bool>("zig_zaggify_infill");
+    mi = one_def->FindMember("zigzag");
+    if (mi != one_def->MemberEnd())
+    {
+        zig_zaggify = ((mi->value.IsBool() && mi->value.GetBool()) || (mi->value.IsNumber() && mi->value.GetDouble()));
     }
 
     const size_t bottom_layers = mesh->settings.get<size_t>("initial_bottom_layers");
@@ -316,14 +324,18 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_max), rot_rads));
     infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_min), rot_rads));
     infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_min), rot_rads));
-    Polygons infilled_areas;
+    Polygons infilled_areas; // areas either filled with pattern or zigzag connection lines
     infilled_areas.add(infilled_area);
     infilled_areas = infilled_areas.intersection(clipped_outline);
 
-    if (infilled_areas.empty())
+    Polygons infill_pattern_areas(infilled_areas.offset((zig_zaggify) ? -infill_line_width / 2 : 0));
+
+    if (infill_pattern_areas.empty())
     {
         return;
     }
+
+    connections_outline.add(infill_pattern_areas);
 
     mi = one_def->FindMember("xpitch");
     if (mi != one_def->MemberEnd())
@@ -494,13 +506,6 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
-    bool zig_zaggify = mesh->settings.get<bool>("zig_zaggify_infill");
-    mi = one_def->FindMember("zigzag");
-    if (mi != one_def->MemberEnd())
-    {
-        zig_zaggify = ((mi->value.IsBool() && mi->value.GetBool()) || (mi->value.IsNumber() && mi->value.GetDouble()));
-    }
-
     unsigned num_lines = 0;
     unsigned chain_end_index = 0;
     Point chain_end[2];
@@ -509,7 +514,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     {
         Polygons lines;
         lines.addLine(p0, p1);
-        for (ConstPolygonRef line_seg : infilled_areas.intersectionPolyLines(lines))
+        for (ConstPolygonRef line_seg : infill_pattern_areas.intersectionPolyLines(lines))
         {
             // some of the line is inside the clipped outline, add it if it's not too small
             if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
@@ -560,7 +565,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         {
             return;
         }
-        Polygons shrunk_outline(infilled_areas.offset(-std::max(wavelength / 2, amplitude)));
+        Polygons shrunk_outline(infill_pattern_areas.offset(-std::max(wavelength / 2, amplitude)));
 
         coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / wavelength + 1) * -wavelength;
         coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / wavelength + 1) * wavelength;
@@ -724,7 +729,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         // spider web
         if (!contours.empty())
         {
-            Polygons last_polys = rotated_outline.intersection(infilled_areas);
+            Polygons last_polys = rotated_outline.intersection(infill_pattern_areas);
             last_polys.simplify(100, 50);
             coord_t last_r = 0;
             for (coord_t r : contours)
