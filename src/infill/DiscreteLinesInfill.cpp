@@ -317,6 +317,11 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     infilled_areas.add(infilled_area);
     infilled_areas = infilled_areas.intersection(clipped_outline);
 
+    if (infilled_areas.empty())
+    {
+        return;
+    }
+
     mi = one_def->FindMember("xpitch");
     if (mi != one_def->MemberEnd())
     {
