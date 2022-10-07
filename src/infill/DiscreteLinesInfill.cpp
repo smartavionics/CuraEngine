@@ -734,8 +734,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         for (coord_t y : y_vals)
         {
-            Point line_start = rotate_around_origin(Point(aabb.min.X, y), rot_rads);
-            Point line_end = rotate_around_origin(Point(aabb.max.X, y), rot_rads);
+            Point line_start = rotate_around_origin(Point(std::min(aabb.min.X, aabb.min.Y), y), rot_rads);
+            Point line_end = rotate_around_origin(Point(std::max(aabb.max.X, aabb.max.Y), y), rot_rads);
             addClippedLine(line_start, line_end, num_lines++);
         }
 
