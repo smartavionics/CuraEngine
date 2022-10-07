@@ -713,15 +713,15 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         // straight lines
         for (coord_t x : x_vals)
         {
-            Point line_start = rotate_around_origin(Point(x, clip_y_min), rot_rads);
-            Point line_end = rotate_around_origin(Point(x, clip_y_max), rot_rads);
+            Point line_start = rotate_around_origin(Point(x, std::min(aabb.min.Y, aabb.min.X)), rot_rads);
+            Point line_end = rotate_around_origin(Point(x, std::max(aabb.max.Y, aabb.max.X)), rot_rads);
             addClippedLine(line_start, line_end, num_lines++);
         }
 
         for (coord_t y : y_vals)
         {
-            Point line_start = rotate_around_origin(Point(clip_x_min, y), rot_rads);
-            Point line_end = rotate_around_origin(Point(clip_x_max, y), rot_rads);
+            Point line_start = rotate_around_origin(Point(aabb.min.X, y), rot_rads);
+            Point line_end = rotate_around_origin(Point(aabb.max.X, y), rot_rads);
             addClippedLine(line_start, line_end, num_lines++);
         }
 
