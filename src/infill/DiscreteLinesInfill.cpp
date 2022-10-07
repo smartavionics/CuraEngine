@@ -137,8 +137,7 @@ Point DiscreteLinesInfill::rotate_around_origin(const Point& point, const double
 
 void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outline)
 {
-    Polygons clipped_outline(outline);
-    Polygons connections_outline;
+    clipped_outline = outline;
 
     if (json_document->IsArray())
     {
@@ -146,19 +145,19 @@ void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outli
         {
             if (def_iter->IsObject())
             {
-                generateCoordinates(result_lines, outline, def_iter, clipped_outline, connections_outline);
+                generateCoordinates(result_lines, outline, def_iter);
             }
         }
     }
     else if(json_document->IsObject())
     {
-        generateCoordinates(result_lines, outline, json_document, clipped_outline, connections_outline);
+        generateCoordinates(result_lines, outline, json_document);
     }
 
     generateConnections(result_lines, connections_outline);
 }
 
-void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def, Polygons& clipped_outline, Polygons& connections_outline)
+void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def)
 {
     rapidjson::Value::MemberIterator mi;
 

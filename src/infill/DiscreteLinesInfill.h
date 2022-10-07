@@ -42,7 +42,10 @@ private:
     std::vector<unsigned> connected_to[2]; // [chain_indices[], chain_indices[]]
     std::vector<int> line_numbers; // which row/column line a chain is part of
 
-    void generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def, Polygons& clipped_outline, Polygons& connections_outline);
+    Polygons clipped_outline; // next infill pattern (including connecting wall lines if enabled) is clipped to this outline
+    Polygons connections_outline; // if connections are enabled, the connection line secgments follow this outline
+
+    void generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def);
 
     void generateConnections(Polygons& result, const Polygons& outline);
 
