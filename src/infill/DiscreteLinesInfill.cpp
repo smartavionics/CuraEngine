@@ -273,7 +273,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     }
 
     Polygons rotated_outline = outline;
-    if (rot_rads != 0)
+    if (!scattered && rot_rads != 0)
     {
         for (PolygonRef poly : rotated_outline)
         {
@@ -319,10 +319,20 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     }
 
     Polygon infilled_area;
-    infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_max), rot_rads));
-    infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_max), rot_rads));
-    infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_min), rot_rads));
-    infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_min), rot_rads));
+    if (scattered)
+    {
+        infilled_area.add(Point(clip_x_min, clip_y_max));
+        infilled_area.add(Point(clip_x_max, clip_y_max));
+        infilled_area.add(Point(clip_x_max, clip_y_min));
+        infilled_area.add(Point(clip_x_min, clip_y_min));
+    }
+    else
+    {
+        infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_max), rot_rads));
+        infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_max), rot_rads));
+        infilled_area.add(rotate_around_origin(Point(clip_x_max, clip_y_min), rot_rads));
+        infilled_area.add(rotate_around_origin(Point(clip_x_min, clip_y_min), rot_rads));
+    }
     Polygons infilled_areas; // areas either filled with pattern or zigzag connection lines
     infilled_areas.add(infilled_area);
     infilled_areas = infilled_areas.intersection(clipped_outline);
