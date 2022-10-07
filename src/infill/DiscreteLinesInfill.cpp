@@ -368,20 +368,22 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             coord_t x_min = infill_origin.X + std::ceil((float)(infill_origin.X - aabb.min.X) / xpitch + 1) * -xpitch;
             coord_t x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / xpitch + 1) * xpitch;
 
-            for (coord_t x = x_min; x < x_max; x += xpitch)
-            {
-                if (x >= clip_x_min && x <= clip_x_max)
-                {
-                    x_vals.push_back(x);
-                }
-            }
-
             if (scattered)
             {
                 coord_t max = xpitch - infill_line_width;
-                for (unsigned i = 0; i < x_vals.size(); ++i)
+                for (coord_t x = x_min; x < x_max; x += xpitch)
                 {
-                    x_vals[i] += rand() % max - max/2;
+                    x_vals.push_back(x + rand() % max - max/2);
+                }
+            }
+            else
+            {
+                for (coord_t x = x_min; x < x_max; x += xpitch)
+                {
+                    if (x >= clip_x_min && x <= clip_x_max)
+                    {
+                        x_vals.push_back(x);
+                    }
                 }
             }
         }
@@ -428,22 +430,24 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / ypitch + 1) * -ypitch;
             coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / ypitch + 1) * ypitch;
 
-            for (coord_t y = y_min; y < y_max; y += ypitch)
-            {
-                if (y >= clip_y_min && y <= clip_y_max)
-                {
-                    y_vals.push_back(y);
-                }
-            }
             if (scattered)
             {
                 coord_t max = ypitch - infill_line_width;
-                for (unsigned i = 0; i < y_vals.size(); ++i)
+                for (coord_t y = y_min; y < y_max; y += ypitch)
                 {
-                    y_vals[i] += rand() % max - max/2;
+                    y_vals.push_back(y + rand() % max - max/2);
                 }
             }
-
+            else
+            {
+                for (coord_t y = y_min; y < y_max; y += ypitch)
+                {
+                    if (y >= clip_y_min && y <= clip_y_max)
+                    {
+                        y_vals.push_back(y);
+                    }
+                }
+            }
         }
     }
 
