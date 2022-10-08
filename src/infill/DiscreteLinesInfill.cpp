@@ -249,6 +249,18 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
+    unsigned num_spokes = 0;
+    mi = one_def->FindMember("spokes");
+    if (mi != one_def->MemberEnd())
+    {
+        rapidjson::Value& val = mi->value;
+
+        if (val.IsNumber() && val.GetDouble() > 0)
+        {
+            num_spokes = val.GetDouble();
+        }
+    }
+
     double rot_rads = 0;
     mi = one_def->FindMember("angle");
     if (mi != one_def->MemberEnd())
@@ -504,18 +516,6 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             {
                 vals.push_back(r);
             }
-        }
-    }
-
-    unsigned num_spokes = 0;
-    mi = one_def->FindMember("spokes");
-    if (mi != one_def->MemberEnd())
-    {
-        rapidjson::Value& val = mi->value;
-
-        if (val.IsNumber() && val.GetDouble() > 0)
-        {
-            num_spokes = val.GetDouble();
         }
     }
 
