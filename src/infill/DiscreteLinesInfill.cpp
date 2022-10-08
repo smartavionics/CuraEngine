@@ -349,6 +349,39 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     infilled_areas.add(infilled_area);
     infilled_areas = infilled_areas.intersection(clipped_outline);
 
+    auto add_radial_clip = [&](double val, bool subtract) {
+        Polygon poly;
+        coord_t r = MM2INT(val);
+        unsigned num_segs = (num_spokes > 1) ? num_spokes : std::min(std::max((size_t)100, outline[0].size()), (size_t)std::ceil(2 * M_PI * INT2MM(r)));
+        for (unsigned i = 0; i < num_segs; ++i)
+        {
+            double a = 2 * M_PI * i / num_segs;
+            poly.add(infill_origin + Point(r * std::sin(a), r * std::cos(a)));
+        }
+        Polygons polys;
+        polys.add(poly);
+        if (subtract)
+        {
+            infilled_areas = infilled_areas.difference(polys);
+        }
+        else
+        {
+            infilled_areas = infilled_areas.intersection(polys);
+        }
+    };
+
+    mi = one_def->FindMember("rmin");
+    if (mi != one_def->MemberEnd())
+    {
+        add_radial_clip(mi->value.GetDouble(), true);
+    }
+
+    mi = one_def->FindMember("rmax");
+    if (mi != one_def->MemberEnd())
+    {
+        add_radial_clip(mi->value.GetDouble(), false);
+    }
+
     Polygons infill_pattern_areas(infilled_areas.offset((zig_zaggify) ? -infill_line_width / 2 : 0));
 
     if (infill_pattern_areas.empty())
