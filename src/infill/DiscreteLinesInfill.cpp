@@ -552,6 +552,22 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
     }
 
+    mi = one_def->FindMember("r");
+    if (mi != one_def->MemberEnd())
+    {
+        rapidjson::Value& r_array = mi->value;
+
+        if (r_array.IsArray())
+        {
+            for (rapidjson::Value::ConstValueIterator r_iter = r_array.Begin(); r_iter != r_array.End(); r_iter++)
+            {
+                double val = r_iter->GetDouble();
+                coord_t r = MM2INT(val);
+                rings.push_back(r);
+            }
+        }
+    }
+
     unsigned num_lines = 0;
     unsigned chain_end_index = 0;
     Point chain_end[2];
