@@ -822,12 +822,25 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         {
             for (coord_t r : rings)
             {
-                unsigned num_segs = (num_spokes > 1) ? num_spokes : std::min(std::max((size_t)100, outline[0].size()), (size_t)std::ceil(2 * M_PI * INT2MM(r)));
-                Point line_start = infill_origin + Point(r * std::sin(0), r * std::cos(0));
-                for (unsigned i = 1; i <= num_segs; ++i)
+                Polygon poly = gen_ring_poly(r);
+                unsigned start_index = 0;
+                if (zig_zaggify)
                 {
-                    double a = 2 * M_PI * i / num_segs;
-                    Point line_end = infill_origin + Point(r * std::sin(a), r * std::cos(a));
+                    // if the ring gets clipped, we need to start at a clipped point so that the chain
+                    // ends belong to the same chain
+                    for (unsigned i = 0; i < poly.size(); ++i)
+                    {
+                        if (!infill_pattern_areas.inside(poly[i]))
+                        {
+                            start_index = i;
+                            break;
+                        }
+                    }
+                }
+                Point line_start = poly[start_index];
+                for (unsigned i = 1; i <= poly.size(); ++i)
+                {
+                    Point line_end = poly[(start_index + i) % poly.size()];
                     addClippedLine(line_start, line_end, num_lines);
                     line_start = line_end;
                 }
