@@ -880,7 +880,9 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                     Point line_start = (contours.empty()) ? infill_origin : aabb.getMiddle();
                     Point line_end = line_start + rotate(Point(line_start.X, line_start.Y + margin + length) - line_start, rads);
                     line_start = line_start + normal(line_end - line_start, margin);
-                    addClippedLine(rotate_around_origin(line_start, rot_rads), rotate_around_origin(line_end, rot_rads), num_lines++);
+                    // addClippedLine() will order segments by increasing distance from p0 so it should always start with the segment
+                    // that is closest to line_end and that will be the segment that is clipped by the outline
+                    addClippedLine(rotate_around_origin(line_end, rot_rads), rotate_around_origin(line_start, rot_rads), num_lines++);
                     chain_end_index = 0;
                 }
                 spokes_to_draw >>= 1;
