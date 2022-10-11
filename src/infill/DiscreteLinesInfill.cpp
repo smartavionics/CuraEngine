@@ -579,7 +579,26 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     {
         Polygons lines;
         lines.addLine(p0, p1);
-        for (ConstPolygonRef line_seg : infill_pattern_areas.intersectionPolyLines(lines))
+        lines = infill_pattern_areas.intersectionPolyLines(lines);
+
+        // sort line segments by increasing distance from p0
+        for (unsigned i = 0; i < lines.size(); ++i)
+        {
+            for (unsigned j = i + 1; j < lines.size(); ++j)
+            {
+                if (vSize2(p0 - lines[j][0]) < vSize2(p0 - lines[i][0]))
+                {
+                    Point i0 = lines[i][0];
+                    Point i1 = lines[i][1];
+                    lines[i][0] = lines[j][0];
+                    lines[i][1] = lines[j][1];
+                    lines[j][0] = i0;
+                    lines[j][1] = i1;
+                }
+            }
+        }
+
+        for (ConstPolygonRef line_seg : lines)
         {
             // some of the line is inside the clipped outline, add it if it's not too small
             if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
