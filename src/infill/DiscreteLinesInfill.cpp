@@ -862,6 +862,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                     Point line_end = line_start + rotate(Point(line_start.X, line_start.Y + margin + length) - line_start, rads);
                     line_start = line_start + normal(line_end - line_start, margin);
                     addClippedLine(rotate_around_origin(line_start, rot_rads), rotate_around_origin(line_end, rot_rads), num_lines++);
+                    chain_end_index = 0;
                 }
                 spokes_to_draw >>= 1;
                 coord_t new_margin = infill_line_width * spokes_to_draw / M_PI / 2;
