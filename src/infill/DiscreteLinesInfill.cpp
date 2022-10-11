@@ -883,6 +883,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                     // addClippedLine() will order segments by increasing distance from p0 so it should always start with the segment
                     // that is closest to line_end and that will be the segment that is clipped by the outline
                     addClippedLine(rotate_around_origin(line_end, rot_rads), rotate_around_origin(line_start, rot_rads), num_lines++);
+                    // as line_start is possibly inside the clipping area, an odd number of clips can occur so
+                    // we need to ensure that chain_end_index is zero after drawing each spoke
                     chain_end_index = 0;
                 }
                 spokes_to_draw >>= 1;
