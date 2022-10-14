@@ -227,12 +227,13 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
             Point op1 = outline_poly[(outline_point_index + 1) % outline_poly.size()];
             std::vector<unsigned> points_on_outline_connection_point_index;
 
-            // collect the connections that meet this segment of the outline
+            // collect the chain ends that meet this segment of the outline and have not been used already
             for (unsigned connection_points_index = 0; connection_points_index < connection_points.size(); ++connection_points_index)
             {
                 // don't include connections that are close to the segment but are beyond the segment ends
                 short beyond = 0;
-                if (LinearAlg2D::getDist2FromLineSegment(op0, connection_points[connection_points_index], op1, &beyond) < 10 && !beyond)
+                const Point& p = connection_points[connection_points_index];
+                if (p.X != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
                 {
                     points_on_outline_connection_point_index.push_back(connection_points_index);
                 }
@@ -281,6 +282,9 @@ void TPMSInfillSchwarzP::generateConnections(Polygons& result, const Polygons& o
                     connector_points.pop_back();
                 }
                 connector_points.push_back(cur_point);
+
+                // mark the chain end as having been connected to
+                connection_points[points_on_outline_connection_point_index[nearest_connection_point_index]].X = std::numeric_limits<coord_t>::max();
 
                 if (first_connection_index == std::numeric_limits<unsigned>::max())
                 {

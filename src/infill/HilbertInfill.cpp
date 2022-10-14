@@ -167,14 +167,15 @@ void HilbertInfill::generateConnections(Polygons& result, const Polygons& outlin
             std::vector<unsigned> points_on_outline_chain_index;
             std::vector<unsigned> points_on_outline_point_index;
 
-            // collect the chain ends that meet this segment of the outline
+            // collect the chain ends that meet this segment of the outline and have not been used already
             for (unsigned chain_index = 0; chain_index < chains[0].size(); ++chain_index)
             {
                 for (unsigned point_index = 0; point_index < 2; ++point_index)
                 {
                     // don't include chain ends that are close to the segment but are beyond the segment ends
                     short beyond = 0;
-                    if (LinearAlg2D::getDist2FromLineSegment(op0, chains[point_index][chain_index], op1, &beyond) < 10 && !beyond)
+                    const Point& p = chains[point_index][chain_index];
+                    if (p.X != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
                     {
                         points_on_outline_point_index.push_back(point_index);
                         points_on_outline_chain_index.push_back(chain_index);
@@ -227,6 +228,9 @@ void HilbertInfill::generateConnections(Polygons& result, const Polygons& outlin
                     connector_points.pop_back();
                 }
                 connector_points.push_back(cur_point);
+
+                // mark the chain end as having been connected to
+                chains[point_index][chain_index].X = std::numeric_limits<coord_t>::max();
 
                 if (first_chain_chain_index == std::numeric_limits<unsigned>::max())
                 {
