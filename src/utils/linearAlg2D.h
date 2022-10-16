@@ -13,16 +13,16 @@ class LinearAlg2D
 public:
     static short pointLiesOnTheRightOfLine(const Point& p, const Point& p0, const Point& p1)
     {
-        // no tests unless the segment p0-p1 is at least partly at, or to right of, p.X
-        if ( std::max(p0.X, p1.X) >= p.X )
+        // no tests unless the segment p0-p1 is at least partly at, or to right of, p.x
+        if ( std::max(p0.x, p1.x) >= p.x )
         {
-            const coord_t pd_y = p1.Y - p0.Y;
+            const coord_t pd_y = p1.y - p0.y;
             if (pd_y < 0) // p0->p1 is 'falling'
             {
-                if (p1.Y <= p.Y && p0.Y > p.Y) // candidate
+                if (p1.y <= p.y && p0.y > p.y) // candidate
                 {
-                    // dx > 0 if intersection is to right of p.X
-                    const coord_t dx = (p1.X - p0.X) * (p1.Y - p.Y) - (p1.X - p.X) * pd_y;
+                    // dx > 0 if intersection is to right of p.x
+                    const coord_t dx = (p1.x - p0.x) * (p1.y - p.y) - (p1.x - p.x) * pd_y;
                     if (dx == 0) // includes p == p1
                     {
                         return 0;
@@ -33,12 +33,12 @@ public:
                     }
                 }
             }
-            else if (p.Y >= p0.Y)
+            else if (p.y >= p0.y)
             {
-                if (p.Y < p1.Y) // candidate for p0->p1 'rising' and includes p.Y
+                if (p.y < p1.y) // candidate for p0->p1 'rising' and includes p.y
                 {
-                    // dx > 0 if intersection is to right of p.X
-                    const coord_t dx = (p1.X - p0.X) * (p.Y - p0.Y) - (p.X - p0.X) * pd_y;
+                    // dx > 0 if intersection is to right of p.x
+                    const coord_t dx = (p1.x - p0.x) * (p.y - p0.y) - (p.x - p0.x) * pd_y;
                     if (dx == 0) // includes p == p0
                     {
                         return 0;
@@ -48,14 +48,14 @@ public:
                         return 1;
                     }
                 }
-                else if (p.Y == p1.Y)
+                else if (p.y == p1.y)
                 {
                     // some special cases here, points on border:
                     // - p1 exactly matches p (might otherwise be missed)
                     // - p0->p1 exactly horizontal, and includes p.
-                    // (we already tested std::max(p0.X,p1.X) >= p.X )
-                    if (p.X == p1.X ||
-                        (pd_y == 0 && std::min(p0.X, p1.X) <= p.X) )
+                    // (we already tested std::max(p0.x,p1.x) >= p.x )
+                    if (p.x == p1.x ||
+                        (pd_y == 0 && std::min(p0.x, p1.x) <= p.x) )
                     {
                         return 0;
                     }
@@ -69,12 +69,12 @@ public:
     static bool lineLineIntersection(const Point& a, const Point& b, const Point& c, const Point& d, Point& output)
     {
         // Line AB represented as a1x + b1y = c1
-        const double a1 = b.Y - a.Y;
-        const double b1 = a.X - b.X;
+        const double a1 = b.y - a.y;
+        const double b1 = a.x - b.x;
 
         // Line CD represented as a2x + b2y = c2
-        const double a2 = d.Y - c.Y;
-        const double b2 = c.X - d.X;
+        const double a2 = d.y - c.y;
+        const double b2 = c.x - d.x;
 
         const double determinant = a1 * b2 - a2 * b1;
 
@@ -84,12 +84,12 @@ public:
             return false;
         }
 
-        const double c1 = a1 * (a.X) + b1 * (a.Y);
-        const double c2 = a2 * (c.X) + b2 * (c.Y);
+        const double c1 = a1 * (a.x) + b1 * (a.y);
+        const double c2 = a2 * (c.x) + b2 * (c.y);
 
         const Point result((b2 * c1 - b1 * c2) / determinant,
                      (a1 * c1 - a2 * c1) / determinant);
-        if(std::abs(result.X) > std::numeric_limits<int32_t>::max() || std::abs(result.Y) > std::numeric_limits<int32_t>::max())
+        if(std::abs(result.x) > std::numeric_limits<int32_t>::max() || std::abs(result.x) > std::numeric_limits<int32_t>::max())
         {
             //Intersection is so far away that it could lead to integer overflows.
             //Even though the lines aren't 100% parallel, it's better to pretend they are. They are practically parallel.
@@ -333,7 +333,7 @@ public:
      */
     static inline coord_t pointIsLeftOfLine(const Point& p, const Point& a, const Point& b)
     {
-        return (b.X - a.X) * (p.Y - a.Y) - (b.Y - a.Y) * (p.X - a.X);
+        return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
     }
 
     /*!

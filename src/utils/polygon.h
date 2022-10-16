@@ -771,9 +771,9 @@ public:
      * \param other Input line segments to be cropped
      * \param segment_tree the resulting interior line segments
      */
-    void lineSegmentIntersection(const Polygons& other, Clipper2Lib::PolyTree64& segment_tree) const
+    void lineSegmentIntersection(const Polygons& other, Clipper2Lib::Paths64& segment_tree) const
     {
-        segment_tree = Clipper2Lib::Intersect(paths, other.paths, Clipper2Lib::FillRule::NonZero);
+        segment_tree = Clipper2Lib::Intersect(other.paths, paths, Clipper2Lib::FillRule::NonZero);
     }
 
     /*!
@@ -791,15 +791,12 @@ public:
 
     Polygons offset(int distance, Clipper2Lib::JoinType joinType = Clipper2Lib::JoinType::Miter, double miter_limit = 1.2) const;
 
-    Polygons offsetPolyLine(int distance, Clipper2Lib::JoinType joinType = Clipper2Lib::JoinType::Miter) const
+    Polygons offsetPolyLine(int distance, Clipper2Lib::JoinType join_type = Clipper2Lib::JoinType::Miter) const
     {
+        const Clipper2Lib::EndType end_type = (join_type == Clipper2Lib::JoinType::Miter)? Clipper2Lib::EndType::Square : Clipper2Lib::EndType::Round;
+        const double miter_limit = 1.2;
         Polygons ret;
-        double miterLimit = 1.2;
-        Clipper2Lib::EndType end_type = (joinType == Clipper2Lib::JoinType::Miter)? Clipper2Lib::EndType::Square : Clipper2Lib::EndType::Round;
-        Clipper2Lib::ClipperOffset clipper(miterLimit, 10.0);
-        clipper.AddPaths(paths, joinType, end_type);
-        clipper.MiterLimit = miterLimit;
-        clipper.Execute(ret.paths, distance);
+        ret.paths = Clipper2Lib::InflatePaths(paths, distance, join_type, end_type, miter_limit);
         return ret;
     }
     

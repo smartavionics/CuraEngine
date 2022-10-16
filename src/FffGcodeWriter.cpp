@@ -1961,7 +1961,7 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
         // wall doesn't have usable outline
         return;
     }
-    const ClipperLib::Path* last_wall_outline = &*part.insets[0][0]; // default to current wall outline
+    const Clipper2Lib::Path64* last_wall_outline = &*part.insets[0][0]; // default to current wall outline
     int last_seam_vertex_idx = -1; // last layer seam vertex index
     LayerIndex layer_nr = gcode_layer.getLayerNr();
     if (layer_nr > 0)
@@ -2349,7 +2349,7 @@ std::optional<Point> FffGcodeWriter::getSeamAvoidingLocation(const Polygons& fil
     // create a vector from the middle of the BB whose length is such that it can be rotated
     // around the middle of the BB and the end will always be a long way outside of the part's outline
     // and rotate the vector so that it is normal to the skin angle
-    const Point vec = rot.apply(Point(0, vSize(skin_part_bb.max - bb_middle) * 100));
+    const Point vec = rot.apply(Point((coord_t)0, vSize(skin_part_bb.max - bb_middle) * 100));
     // find the vertex in the outline that is closest to the end of the rotated vector
     const PolygonsPointIndex pa = PolygonUtils::findNearestVert(bb_middle + vec, filling_part);
     // and find another outline vertex, this time using the vector + 180 deg

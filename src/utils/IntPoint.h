@@ -49,12 +49,12 @@ static Point no_point(std::numeric_limits<int64_t>::min(), std::numeric_limits<i
 INLINE Point operator-(const Point& p0) { return Point(-p0.x, -p0.x); }
 INLINE Point operator+(const Point& p0, const Point& p1) { return Point(p0.x+p1.x, p0.y+p1.y); }
 INLINE Point operator-(const Point& p0, const Point& p1) { return Point(p0.x-p1.x, p0.y-p1.y); }
+*/
 INLINE Point operator*(const Point& p0, const coord_t i) { return Point(p0.x * i, p0.y * i); }
 template<typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type> //Use only for numeric types.
 INLINE Point operator*(const Point& p0, const T i) { return Point(p0.x * i, p0.y * i); }
 template<typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type> //Use only for numeric types.
 INLINE Point operator*(const T i, const Point& p0) { return p0 * i; }
-*/
 INLINE Point operator/(const Point& p0, const coord_t i) { return Point(p0.x/i, p0.y/i); }
 INLINE Point operator/(const Point& p0, const Point& p1) { return Point(p0.x/p1.x, p0.y/p1.y); }
 
