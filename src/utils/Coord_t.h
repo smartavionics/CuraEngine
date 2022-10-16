@@ -6,12 +6,12 @@
 
 
 //Include Clipper to get the ClipperLib::IntPoint definition, which we reuse as Point definition.
-#include "clipper.hpp"
+#include "clipper2/clipper.h"
 
 namespace cura
 {
 
-using coord_t = ClipperLib::cInt;
+using coord_t = int64_t;
 
 #define INT2MM(n) (static_cast<double>(n) / 1000.0)
 #define INT2MM2(n) (static_cast<double>(n) / 1000000.0)

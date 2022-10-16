@@ -140,8 +140,8 @@ endif()
 if(USE_SYSTEM_LIBS)
     include_directories(${Polyclipping_INCLUDE_DIRS} "${CMAKE_BINARY_DIR}" ${RAPIDJSON_INCLUDE_DIRS})
 else()
-    include_directories("${CMAKE_CURRENT_BINARY_DIR}" libs libs/clipper)
-    add_library(clipper STATIC libs/clipper/clipper.cpp)
+    include_directories("${CMAKE_CURRENT_BINARY_DIR}" libs libs/Clipper2/CPP/Clipper2Lib/include)
+    add_library(clipper STATIC libs/Clipper2/CPP/Clipper2Lib/src/clipper.engine.cpp libs/Clipper2/CPP/Clipper2Lib/src/clipper.offset.cpp)
 endif()
 
 set(engine_SRCS # Except main.cpp.
