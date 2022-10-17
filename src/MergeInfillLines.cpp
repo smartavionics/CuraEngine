@@ -1,6 +1,8 @@
 //Copyright (c) 2019 Ultimaker B.V.
 //CuraEngine is released under the terms of the AGPLv3 or higher.
 
+#include <set>
+
 #include "Application.h" //To get settings.
 #include "ExtruderTrain.h"
 #include "LayerPlan.h"
@@ -204,7 +206,7 @@ MergeInfillLines::MergeInfillLines(ExtruderPlan& plan)
         {
             return false; //Lines are too far away from each other.
         }
-        if (merged_direction.X == 0 && merged_direction.Y == 0)
+        if (merged_direction.x == 0 && merged_direction.y == 0)
         {
             new_first_path_start = first_path_start;
             return false;  // returning true will not work for the gradual infill
@@ -241,7 +243,7 @@ MergeInfillLines::MergeInfillLines(ExtruderPlan& plan)
 
         //For each two adjacent lines, see if they can be merged.
         size_t first_path_index = 0;
-        Point first_path_start = Point(starting_position.X, starting_position.Y);  // this one is not going to be overwritten
+        Point first_path_start = Point(starting_position.x, starting_position.y);  // this one is not going to be overwritten
         size_t second_path_index = 1;
         bool has_first_path = paths.empty() ? false : !paths[0].config->isTravelPath();  // in case the first path is not an extrusion path.
         coord_t error_area = 0;
@@ -316,8 +318,8 @@ MergeInfillLines::MergeInfillLines(ExtruderPlan& plan)
             {
                 if (!first_is_already_merged)
                 {
-                    paths[first_path_index - 1].points.back().X = new_first_path_start.X;
-                    paths[first_path_index - 1].points.back().Y = new_first_path_start.Y;
+                    paths[first_path_index - 1].points.back().x = new_first_path_start.x;
+                    paths[first_path_index - 1].points.back().y = new_first_path_start.y;
                 }
                 /* If we combine two lines, the next path may also be merged into the fist line, so we do NOT update
                 first_path_index. */

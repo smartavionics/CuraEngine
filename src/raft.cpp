@@ -1,7 +1,7 @@
 //Copyright (c) 2018 Ultimaker B.V.
 //CuraEngine is released under the terms of the AGPLv3 or higher.
 
-#include "clipper.hpp"
+#include "clipper2/clipper.h"
 
 #include "Application.h" //To get settings.
 #include "ExtruderTrain.h"
@@ -22,23 +22,23 @@ void Raft::generate(SliceDataStorage& storage)
     const coord_t distance = settings.get<coord_t>("raft_margin");
     constexpr bool include_support = true;
     constexpr bool include_prime_tower = true;
-    storage.raftOutline = storage.getLayerOutlines(0, include_support, include_prime_tower).offset(distance, ClipperLib::jtRound);
+    storage.raftOutline = storage.getLayerOutlines(0, include_support, include_prime_tower).offset(distance, Clipper2Lib::JoinType::Round);
     const coord_t shield_line_width_layer0 = settings.get<coord_t>("skirt_brim_line_width");
     if (storage.draft_protection_shield.size() > 0)
     {
         Polygons draft_shield_raft = storage.draft_protection_shield.offset(shield_line_width_layer0) // start half a line width outside shield
-                                        .difference(storage.draft_protection_shield.offset(-distance - shield_line_width_layer0 / 2, ClipperLib::jtRound)); // end distance inside shield
+                                        .difference(storage.draft_protection_shield.offset(-distance - shield_line_width_layer0 / 2, Clipper2Lib::JoinType::Round)); // end distance inside shield
         storage.raftOutline = storage.raftOutline.unionPolygons(draft_shield_raft);
     }
     if (storage.oozeShield.size() > 0 && storage.oozeShield[0].size() > 0)
     {
         const Polygons& ooze_shield = storage.oozeShield[0];
         Polygons ooze_shield_raft = ooze_shield.offset(shield_line_width_layer0) // start half a line width outside shield
-                                        .difference(ooze_shield.offset(-distance - shield_line_width_layer0 / 2, ClipperLib::jtRound)); // end distance inside shield
+                                        .difference(ooze_shield.offset(-distance - shield_line_width_layer0 / 2, Clipper2Lib::JoinType::Round)); // end distance inside shield
         storage.raftOutline = storage.raftOutline.unionPolygons(ooze_shield_raft);
     }
     const coord_t smoothing = settings.get<coord_t>("raft_smoothing");
-    storage.raftOutline = storage.raftOutline.offset(smoothing, ClipperLib::jtRound).offset(-smoothing, ClipperLib::jtRound); // remove small holes and smooth inward corners
+    storage.raftOutline = storage.raftOutline.offset(smoothing, Clipper2Lib::JoinType::Round).offset(-smoothing, Clipper2Lib::JoinType::Round); // remove small holes and smooth inward corners
 }
 
 coord_t Raft::getTotalThickness()

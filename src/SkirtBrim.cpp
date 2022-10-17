@@ -54,7 +54,7 @@ void SkirtBrim::getFirstLayerOutline(SliceDataStorage& storage, const size_t pri
                 //  |+-+|     |+--+|
                 //  +---+     +----+
                 const coord_t primary_extruder_skirt_brim_line_width = train.settings.get<coord_t>("skirt_brim_line_width") * train.settings.get<Ratio>("initial_layer_line_width_factor");
-                Polygons model_brim_covered_area = first_layer_outline.offset(primary_extruder_skirt_brim_line_width * (primary_line_count + primary_line_count % 2), ClipperLib::jtRound); // always leave a gap of an even number of brim lines, so that it fits if it's generating brim from both sides
+                Polygons model_brim_covered_area = first_layer_outline.offset(primary_extruder_skirt_brim_line_width * (primary_line_count + primary_line_count % 2), Clipper2Lib::JoinType::Round); // always leave a gap of an even number of brim lines, so that it fits if it's generating brim from both sides
                 if (external_only)
                 { // don't remove support within empty holes where no brim is generated.
                     model_brim_covered_area.add(first_layer_empty_holes);
@@ -98,7 +98,7 @@ coord_t SkirtBrim::generatePrimarySkirtBrimLines(const coord_t start_distance, s
     {
         offset_distance += primary_extruder_skirt_brim_line_width;
 
-        Polygons outer_skirt_brim_line = first_layer_outline.offset(offset_distance, ClipperLib::jtRound);
+        Polygons outer_skirt_brim_line = first_layer_outline.offset(offset_distance, Clipper2Lib::JoinType::Round);
 
         //Remove small inner skirt and brim holes. Holes have a negative area, remove anything smaller then 100x extrusion "area"
         for (unsigned int n = 0; n < outer_skirt_brim_line.size(); n++)
@@ -142,7 +142,7 @@ void SkirtBrim::generate(SliceDataStorage& storage, Polygons first_layer_outline
     coord_t gap;
     if (is_skirt && (has_ooze_shield || has_draft_shield))
     { // make sure we don't generate skirt through draft / ooze shield
-        first_layer_outline = first_layer_outline.offset(start_distance - primary_extruder_skirt_brim_line_width / 2, ClipperLib::jtRound).unionPolygons(storage.draft_protection_shield);
+        first_layer_outline = first_layer_outline.offset(start_distance - primary_extruder_skirt_brim_line_width / 2, Clipper2Lib::JoinType::Round).unionPolygons(storage.draft_protection_shield);
         if (has_ooze_shield)
         {
             first_layer_outline = first_layer_outline.unionPolygons(storage.oozeShield[0]);
@@ -191,7 +191,7 @@ void SkirtBrim::generate(SliceDataStorage& storage, Polygons first_layer_outline
         {
             shield_brim = shield_brim.unionPolygons(storage.draft_protection_shield.difference(storage.draft_protection_shield.offset(-primary_skirt_brim_width - primary_extruder_skirt_brim_line_width)));
         }
-        const Polygons outer_primary_brim = first_layer_outline.offset(offset_distance, ClipperLib::jtRound);
+        const Polygons outer_primary_brim = first_layer_outline.offset(offset_distance, Clipper2Lib::JoinType::Round);
         shield_brim = shield_brim.difference(outer_primary_brim.offset(primary_extruder_skirt_brim_line_width));
 
         // generate brim within shield_brim
@@ -233,7 +233,7 @@ void SkirtBrim::generate(SliceDataStorage& storage, Polygons first_layer_outline
             last_width = width;
             while (storage.skirt_brim[extruder_nr].polygonLength() < minimal_length)
             {
-                storage.skirt_brim[extruder_nr].add(first_layer_outline.offset(offset_distance, ClipperLib::jtRound));
+                storage.skirt_brim[extruder_nr].add(first_layer_outline.offset(offset_distance, Clipper2Lib::JoinType::Round));
                 offset_distance += width;
             }
         }
@@ -274,7 +274,7 @@ void SkirtBrim::generateSupportBrim(SliceDataStorage& storage, const bool merge_
     {
         offset_distance -= brim_line_width;
 
-        Polygons brim_line = support_outline.offset(offset_distance, ClipperLib::jtRound);
+        Polygons brim_line = support_outline.offset(offset_distance, Clipper2Lib::JoinType::Round);
 
         //Remove small inner skirt and brim holes. Holes have a negative area, remove anything smaller then multiplier x extrusion "area"
         for (size_t n = 0; n < brim_line.size(); n++)

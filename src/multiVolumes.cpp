@@ -78,7 +78,7 @@ void generateMultipleVolumesOverlap(std::vector<Slicer*> &volumes)
     int offset_to_merge_other_merged_volumes = 20;
     for (Slicer* volume : volumes)
     {
-        ClipperLib::PolyFillType fill_type = volume->mesh->settings.get<bool>("meshfix_union_all") ? ClipperLib::pftNonZero : ClipperLib::pftEvenOdd;
+        Clipper2Lib::FillRule fill_type = volume->mesh->settings.get<bool>("meshfix_union_all") ? Clipper2Lib::FillRule::NonZero : Clipper2Lib::FillRule::EvenOdd;
 
         coord_t overlap = volume->mesh->settings.get<coord_t>("multiple_mesh_overlap");
         if (volume->mesh->settings.get<bool>("infill_mesh")

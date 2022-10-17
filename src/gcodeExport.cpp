@@ -621,11 +621,11 @@ void GCodeExport::writeDelay(const Duration& time_amount)
 
 void GCodeExport::writeTravel(const Point& p, const Velocity& speed)
 {
-    writeTravel(Point3(p.X, p.Y, current_layer_z), speed);
+    writeTravel(Point3(p.x, p.y, current_layer_z), speed);
 }
 void GCodeExport::writeExtrusion(const Point& p, const Velocity& speed, double extrusion_mm3_per_mm, PrintFeatureType feature, bool update_extrusion_offset)
 {
-    writeExtrusion(Point3(p.X, p.Y, current_layer_z), speed, extrusion_mm3_per_mm, feature, update_extrusion_offset);
+    writeExtrusion(Point3(p.x, p.y, current_layer_z), speed, extrusion_mm3_per_mm, feature, update_extrusion_offset);
 }
 
 void GCodeExport::writeTravel(const Point3& p, const Velocity& speed)
@@ -705,7 +705,7 @@ void GCodeExport::writeMoveBFB(const int x, const int y, const int z, const Velo
             extruder_attr[current_extruder].retraction_e_amount_current = 1.0; // 1.0 used as stub; BFB doesn't use the actual retraction amount; it performs retraction on the firmware automatically
         }
     }
-    *output_stream << "G1 X" << MMtoStream{gcode_pos.X} << " Y" << MMtoStream{gcode_pos.Y} << " Z" << MMtoStream{z};
+    *output_stream << "G1 X" << MMtoStream{gcode_pos.x} << " Y" << MMtoStream{gcode_pos.y} << " Z" << MMtoStream{z};
     *output_stream << " F" << PrecisionedDouble{1, fspeed} << new_line;
     
     currentPosition = Point3(x, y, z);
@@ -815,9 +815,9 @@ void GCodeExport::writeFXYZE(const Velocity& speed, const coord_t x, const coord
     }
 
     Point gcode_pos = getGcodePos(x, y, current_extruder);
-    total_bounding_box.include(Point3(gcode_pos.X, gcode_pos.Y, z));
+    total_bounding_box.include(Point3(gcode_pos.x, gcode_pos.y, z));
 
-    *output_stream << " X" << MMtoStream{gcode_pos.X} << " Y" << MMtoStream{gcode_pos.Y};
+    *output_stream << " X" << MMtoStream{gcode_pos.x} << " Y" << MMtoStream{gcode_pos.y};
     if (z != currentPosition.z)
     {
         *output_stream << " Z" << MMtoStream{z};

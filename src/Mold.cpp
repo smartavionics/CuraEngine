@@ -81,19 +81,19 @@ void Mold::process(std::vector<Slicer*>& slicer_list)
 
             if (angle >= 90)
             {
-                layer.polygons = model_outlines.offset(width, ClipperLib::jtRound);
+                layer.polygons = model_outlines.offset(width, Clipper2Lib::JoinType::Round);
             }
             else
             {
                 Polygons& mold_outline_above = mold_outline_above_per_mesh[mesh_idx]; // the outside of the mold on the layer above
-                layer.polygons = mold_outline_above.offset(-inset).unionPolygons(model_outlines.offset(width, ClipperLib::jtRound));
+                layer.polygons = mold_outline_above.offset(-inset).unionPolygons(model_outlines.offset(width, Clipper2Lib::JoinType::Round));
             }
 
             // add roofs
             if (roof_layer_count > 0 && layer_nr > 0)
             {
                 unsigned int layer_nr_below = std::max(0, static_cast<int>(layer_nr - roof_layer_count));
-                Polygons roofs = slicer.layers[layer_nr_below].polygons.offset(width, ClipperLib::jtRound); // TODO: don't compute offset twice!
+                Polygons roofs = slicer.layers[layer_nr_below].polygons.offset(width, Clipper2Lib::JoinType::Round); // TODO: don't compute offset twice!
                 layer.polygons = layer.polygons.unionPolygons(roofs);
             }
 

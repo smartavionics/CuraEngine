@@ -2,6 +2,7 @@
 //CuraEngine is released under the terms of the AGPLv3 or higher.
 
 #include <map>
+#include <set>
 #include "pathOrderOptimizer.h"
 #include "utils/logoutput.h"
 #include "utils/SparsePointGridInclusive.h"
@@ -156,7 +157,7 @@ int PathOrderOptimizer::getClosestPointInPolygon(Point prev_point, int poly_idx)
     const Point focus_fixed_point =
         (config.type == EZSeamType::USER_SPECIFIED) ?
         config.pos :
-        Point(0, std::sqrt(std::numeric_limits<coord_t>::max()));  // NOTE: Use sqrt, so the squared size can be used when comparing distances.
+        Point((coord_t)0, (coord_t)std::sqrt(std::numeric_limits<coord_t>::max()));  // NOTE: Use sqrt, so the squared size can be used when comparing distances.
     coord_t smallest_dist_sqd = std::numeric_limits<coord_t>::max();
     for (unsigned int point_idx = 0; point_idx < poly.size(); point_idx++)
     {
@@ -305,7 +306,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 }
             }
         }
-        const double angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].X - 10000, (*angle_poly)[0].Y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
+        const double angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].x - 10000, (*angle_poly)[0].y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
         const Point3Matrix rot_mat = LinearAlg2D::rotateAround(Point(0, 0), angle);
         struct line {
             int poly_idx; // line's index in polygons vector, set to -1 when line has been printed
@@ -320,9 +321,9 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             Point p1 = rot_mat.apply(poly[0]);
             Point p2 = rot_mat.apply(poly[1]);
             lines[i].poly_idx = i;
-            lines[i].y = (p1.Y + p2.Y)/2;
-            lines[i].x1 = std::min(p1.X, p2.X);
-            lines[i].x2 = std::max(p1.X, p2.X);
+            lines[i].y = (p1.y + p2.y)/2;
+            lines[i].x1 = std::min(p1.x, p2.x);
+            lines[i].x2 = std::max(p1.x, p2.x);
         }
 
         // sort the lines by increasing Y

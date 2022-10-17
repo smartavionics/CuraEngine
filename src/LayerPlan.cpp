@@ -605,7 +605,7 @@ GCodePath& LayerPlan::addTravel_simple(Point p, GCodePath* path)
 void LayerPlan::planPrime(const float& prime_blob_wipe_length)
 {
     forceNewPathStart();
-    GCodePath& prime_travel = addTravel_simple(getLastPlannedPositionOrStartingPosition() + Point(0, MM2INT(prime_blob_wipe_length)));
+    GCodePath& prime_travel = addTravel_simple(getLastPlannedPositionOrStartingPosition() + Point((coord_t)0, MM2INT(prime_blob_wipe_length)));
     prime_travel.retract = false;
     prime_travel.perform_z_hop = false;
     prime_travel.perform_prime = true;

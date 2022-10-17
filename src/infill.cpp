@@ -241,7 +241,7 @@ void Infill::_generate( Polygons& result_polygons,
         {
             HilbertInfill infill(zig_zaggify, line_distance, infill_origin, fill_angle);
             AABB bb = (mesh) ? mesh->bounding_box.flatten() : AABB(in_outline); // if no mesh, just use size of infill area
-            coord_t mesh_max_size = std::max(bb.max.X - bb.min.X, bb.max.Y - bb.min.Y);
+            coord_t mesh_max_size = std::max(bb.max.x - bb.min.x, bb.max.y - bb.min.y);
             if ((int)fill_angle % 90 != 0)
             {
                 mesh_max_size *= 1.414;
@@ -542,7 +542,7 @@ void Infill::addLineInfill(Polygons& result, const PointMatrix& rotation_matrix,
     };
 
     unsigned int scanline_idx = 0;
-    for(coord_t x = scanline_min_idx * line_distance + shift; x < boundary.max.X; x += line_distance)
+    for(coord_t x = scanline_min_idx * line_distance + shift; x < boundary.max.x; x += line_distance)
     {
         if (scanline_idx >= cut_list.size())
         {
@@ -568,10 +568,10 @@ void Infill::addLineInfill(Polygons& result, const PointMatrix& rotation_matrix,
 
 coord_t Infill::getShiftOffsetFromInfillOriginAndRotation(const double& infill_rotation)
 {
-    if (infill_origin.X != 0 || infill_origin.Y != 0)
+    if (infill_origin.x != 0 || infill_origin.y != 0)
     {
         const double rotation_rads = infill_rotation * M_PI / 180;
-        return infill_origin.X * std::cos(rotation_rads) - infill_origin.Y * std::sin(rotation_rads);
+        return infill_origin.x * std::cos(rotation_rads) - infill_origin.y * std::sin(rotation_rads);
     }
     return 0;
 }
@@ -663,8 +663,8 @@ void Infill::generateLinearBasedInfill(const int outline_offset, Polygons& resul
 
     AABB boundary(outline);
 
-    int scanline_min_idx = computeScanSegmentIdx(boundary.min.X - shift, line_distance);
-    int line_count = computeScanSegmentIdx(boundary.max.X - shift, line_distance) + 1 - scanline_min_idx;
+    int scanline_min_idx = computeScanSegmentIdx(boundary.min.x - shift, line_distance);
+    int line_count = computeScanSegmentIdx(boundary.max.x - shift, line_distance) + 1 - scanline_min_idx;
 
     std::vector<std::vector<coord_t>> cut_list; // mapping from scanline to all intersections with polygon segments
 
@@ -683,12 +683,12 @@ void Infill::generateLinearBasedInfill(const int outline_offset, Polygons& resul
         size_t vertex_index;
         bool operator <(const Crossing& other) const //Crossings will be ordered by their Y coordinate so that they get ordered along the scanline.
         {
-            return coordinate.Y < other.coordinate.Y;
+            return coordinate.y < other.coordinate.y;
         }
     };
     std::vector<std::vector<Crossing>> crossings_per_scanline; //For each scanline, a list of crossings.
-    const int min_scanline_index = computeScanSegmentIdx(boundary.min.X - shift, line_distance) + 1;
-    const int max_scanline_index = computeScanSegmentIdx(boundary.max.X - shift, line_distance) + 1;
+    const int min_scanline_index = computeScanSegmentIdx(boundary.min.x - shift, line_distance) + 1;
+    const int max_scanline_index = computeScanSegmentIdx(boundary.max.x - shift, line_distance) + 1;
     crossings_per_scanline.resize(max_scanline_index - min_scanline_index);
 
     for(size_t poly_idx = 0; poly_idx < outline.size(); poly_idx++)
@@ -701,7 +701,7 @@ void Infill::generateLinearBasedInfill(const int outline_offset, Polygons& resul
         for(size_t point_idx = 0; point_idx < poly.size(); point_idx++)
         {
             Point p1 = poly[point_idx];
-            if (p1.X == p0.X)
+            if (p1.x == p0.x)
             {
                 zigzag_connector_processor.registerVertex(p1); 
                 // TODO: how to make sure it always adds the shortest line? (in order to prevent overlap with the zigzag connectors)
@@ -716,22 +716,22 @@ void Infill::generateLinearBasedInfill(const int outline_offset, Polygons& resul
             // in case the next segment moves back from that scanline either 2 or 0 scanline-boundary intersections are created
             // otherwise only 1 will be created, counting as an actual intersection
             int direction = 1;
-            if (p0.X < p1.X) 
+            if (p0.x < p1.x) 
             {
-                scanline_idx0 = computeScanSegmentIdx(p0.X - shift, line_distance) + 1; // + 1 cause we don't cross the scanline of the first scan segment
-                scanline_idx1 = computeScanSegmentIdx(p1.X - shift, line_distance); // -1 cause the vertex point is handled in the next segment (or not in the case which looks like >)
+                scanline_idx0 = computeScanSegmentIdx(p0.x - shift, line_distance) + 1; // + 1 cause we don't cross the scanline of the first scan segment
+                scanline_idx1 = computeScanSegmentIdx(p1.x - shift, line_distance); // -1 cause the vertex point is handled in the next segment (or not in the case which looks like >)
             }
             else
             {
                 direction = -1;
-                scanline_idx0 = computeScanSegmentIdx(p0.X - shift, line_distance); // -1 cause the vertex point is handled in the previous segment (or not in the case which looks like >)
-                scanline_idx1 = computeScanSegmentIdx(p1.X - shift, line_distance) + 1; // + 1 cause we don't cross the scanline of the first scan segment
+                scanline_idx0 = computeScanSegmentIdx(p0.x - shift, line_distance); // -1 cause the vertex point is handled in the previous segment (or not in the case which looks like >)
+                scanline_idx1 = computeScanSegmentIdx(p1.x - shift, line_distance) + 1; // + 1 cause we don't cross the scanline of the first scan segment
             }
 
             for(int scanline_idx = scanline_idx0; scanline_idx != scanline_idx1 + direction; scanline_idx += direction)
             {
                 int x = scanline_idx * line_distance + shift;
-                int y = p1.Y + (p0.Y - p1.Y) * (x - p1.X) / (p0.X - p1.X);
+                int y = p1.y + (p0.y - p1.y) * (x - p1.x) / (p0.x - p1.x);
                 assert(scanline_idx - scanline_min_idx >= 0 && scanline_idx - scanline_min_idx < int(cut_list.size()) && "reading infill cutlist index out of bounds!");
                 cut_list[scanline_idx - scanline_min_idx].push_back(y);
                 Point scanline_linesegment_intersection(x, y);
