@@ -61,7 +61,7 @@ void SubDivCube::precomputeOctree(SliceMeshStorage& mesh, const Point& infill_or
             curr_recursion_depth++;
         }
     }
-    Point3 center(infill_origin.X, infill_origin.Y, 0);
+    Point3 center(infill_origin.x, infill_origin.y, 0);
 
     Point3Matrix tilt; // rotation matrix to get from axis aligned cubes to cubes standing on their tip
     // The Z axis is transformed to go in positive Y direction
@@ -120,18 +120,18 @@ void SubDivCube::generateSubdivisionLines(const coord_t z, Polygons& result, Pol
     {
         Point relative_a, relative_b; //!< relative coordinates of line endpoints around cube center
         Point a, b; //!< absolute coordinates of line endpoints
-        relative_a.X = (cube_properties.square_height / 2) * (cube_properties.max_draw_z_diff - z_diff) / cube_properties.max_draw_z_diff;
-        relative_b.X = -relative_a.X;
-        relative_a.Y = cube_properties.max_line_offset - ((z - (center.z - cube_properties.max_draw_z_diff)) * ONE_OVER_SQRT_2);
-        relative_b.Y = relative_a.Y;
+        relative_a.x = (cube_properties.square_height / 2) * (cube_properties.max_draw_z_diff - z_diff) / cube_properties.max_draw_z_diff;
+        relative_b.x = -relative_a.x;
+        relative_a.y = cube_properties.max_line_offset - ((z - (center.z - cube_properties.max_draw_z_diff)) * ONE_OVER_SQRT_2);
+        relative_b.y = relative_a.y;
         rotatePointInitial(relative_a);
         rotatePointInitial(relative_b);
         for (int dir_idx = 0; dir_idx < 3; dir_idx++)//!< draw the line, then rotate 120 degrees.
         {
-            a.X = center.x + relative_a.X;
-            a.Y = center.y + relative_a.Y;
-            b.X = center.x + relative_b.X;
-            b.Y = center.y + relative_b.Y;
+            a.x = center.x + relative_a.x;
+            a.y = center.y + relative_a.y;
+            b.x = center.x + relative_b.x;
+            b.y = center.y + relative_b.y;
             addLineAndCombine(directional_line_groups[dir_idx], a, b);
             if (dir_idx < 2)
             {
@@ -257,9 +257,9 @@ void SubDivCube::rotatePoint120(Point& target)
 {
     //constexpr double sqrt_three_fourths = sqrt(3.0 / 4.0); //TODO: Reactivate once MacOS is upgraded to a more modern compiler.
 #define sqrt_three_fourths 0.86602540378443864676372317
-    const coord_t x = -0.5 * target.X - sqrt_three_fourths * target.Y;
-    target.Y = -0.5 * target.Y + sqrt_three_fourths * target.X;
-    target.X = x;
+    const coord_t x = -0.5 * target.x - sqrt_three_fourths * target.y;
+    target.y = -0.5 * target.y + sqrt_three_fourths * target.x;
+    target.x = x;
 }
 
 void SubDivCube::addLineAndCombine(Polygons& group, Point from, Point to)
@@ -267,14 +267,14 @@ void SubDivCube::addLineAndCombine(Polygons& group, Point from, Point to)
     int epsilon = 10; // the smallest distance of two points which are viewed as coincident (dist > 0 due to rounding errors)
     for (unsigned int idx = 0; idx < group.size(); idx++)
     {
-        if (std::abs(from.X - group[idx][1].X) < epsilon && std::abs(from.Y - group[idx][1].Y) < epsilon)
+        if (std::abs(from.x - group[idx][1].x) < epsilon && std::abs(from.y - group[idx][1].y) < epsilon)
         {
             from = group[idx][0];
             group.remove(idx);
             idx--;
             continue;
         }
-        if (std::abs(to.X - group[idx][0].X) < epsilon && std::abs(to.Y - group[idx][0].Y) < epsilon)
+        if (std::abs(to.x - group[idx][0].x) < epsilon && std::abs(to.y - group[idx][0].y) < epsilon)
         {
             to = group[idx][1];
             group.remove(idx);

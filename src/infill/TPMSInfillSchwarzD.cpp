@@ -85,8 +85,8 @@ void TPMSInfillSchwarzD::generateCoordinates(Polygons& result, const Polygons& o
                                 Point connection_point = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
                                 connection_points.push_back(connection_point);
                                 ConnectionId connection_id = 0;
-                                const int col = (connection_point.X - x_min) / pitch;
-                                const int row = (connection_point.Y - y_min) / pitch;
+                                const int col = (connection_point.x - x_min) / pitch;
+                                const int row = (connection_point.y - y_min) / pitch;
                                 if (std::abs(cos_z) >= 0.707)
                                 {
                                     // sloping backwards (\\)
@@ -109,8 +109,8 @@ void TPMSInfillSchwarzD::generateCoordinates(Polygons& result, const Polygons& o
                                 Point connection_point = (last_inside) ? last : current;
                                 connection_points.push_back(connection_point);
                                 ConnectionId connection_id = 0;
-                                const int col = (connection_point.X - x_min) / pitch;
-                                const int row = (connection_point.Y - y_min) / pitch;
+                                const int col = (connection_point.x - x_min) / pitch;
+                                const int row = (connection_point.y - y_min) / pitch;
                                 if (std::abs(cos_z) >= 0.707)
                                 {
                                     // sloping backwards (\\)
@@ -185,7 +185,7 @@ void TPMSInfillSchwarzD::generateConnections(Polygons& result, const Polygons& o
                 // don't include connections that are close to the segment but are beyond the segment ends
                 short beyond = 0;
                 const Point& p = connection_points[connection_points_index];
-                if (p.X != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
+                if (p.x != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
                 {
                     points_on_outline_connection_point_index.push_back(connection_points_index);
                 }
@@ -236,7 +236,7 @@ void TPMSInfillSchwarzD::generateConnections(Polygons& result, const Polygons& o
                 connector_points.push_back(cur_point);
 
                 // mark the chain end as having been connected to
-                connection_points[points_on_outline_connection_point_index[nearest_connection_point_index]].X = std::numeric_limits<coord_t>::max();
+                connection_points[points_on_outline_connection_point_index[nearest_connection_point_index]].x = std::numeric_limits<coord_t>::max();
 
                 const ConnectionId this_point_id = connection_ids[points_on_outline_connection_point_index[nearest_connection_point_index]];
 

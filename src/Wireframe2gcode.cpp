@@ -231,7 +231,7 @@ void Wireframe2gcode::strategy_knot(WeaveConnectionPart& part, unsigned int segm
     }
     Point next_dir_2D(next_vector.x, next_vector.y);
     next_dir_2D = next_dir_2D * top_jump_dist / vSize(next_dir_2D);
-    Point3 next_dir (next_dir_2D.X / 2, next_dir_2D.Y / 2, -top_jump_dist);
+    Point3 next_dir (next_dir_2D.x / 2, next_dir_2D.y / 2, -top_jump_dist);
     
     Point3 current_pos = gcode.getPosition();
     
@@ -313,7 +313,7 @@ void Wireframe2gcode::strategy_compensate(WeaveConnectionPart& part, unsigned in
     int64_t next_dir_2D_size = vSize(next_dir_2D);
     if (next_dir_2D_size > 0)
         next_dir_2D = next_dir_2D * drag_along / next_dir_2D_size;
-    Point3 next_dir (next_dir_2D.X, next_dir_2D.Y, 0);
+    Point3 next_dir (next_dir_2D.x, next_dir_2D.y, 0);
     
     Point3 newTop = to - next_dir + dir;
     
@@ -395,7 +395,7 @@ void Wireframe2gcode::handle_roof_segment(WeaveConnectionPart& part, unsigned in
                 if (vSize2(next_dir_2D) > 0) 
                 {
                     next_dir_2D = next_dir_2D * roof_drag_along / vSize(next_dir_2D);
-                    Point3 next_dir (next_dir_2D.X, next_dir_2D.Y, 0);
+                    Point3 next_dir (next_dir_2D.x, next_dir_2D.y, 0);
                     detoured -= next_dir;
                 }
                 
@@ -469,7 +469,7 @@ void Wireframe2gcode::writeFill(std::vector<WeaveRoofPart>& infill_insets, Polyg
         writeMoveWithRetract(poly[poly.size() - 1]);
         for (Point& p : poly)
         {
-            Point3 to(p.X, p.Y, gcode.getPositionZ());
+            Point3 to(p.x, p.y, gcode.getPositionZ());
             WeaveConnectionSegment segment(to, WeaveSegmentType::FLAT);
             flatHandler(*this, segment); 
         }
@@ -636,7 +636,7 @@ void Wireframe2gcode::processSkirt()
     {
         return;
     }
-    Polygons skirt = wireFrame.bottom_outline.offset(MM2INT(100 + 5), ClipperLib::jtRound).offset(MM2INT(-100), ClipperLib::jtRound);
+    Polygons skirt = wireFrame.bottom_outline.offset(MM2INT(100 + 5), Clipper2Lib::JoinType::Round).offset(MM2INT(-100), Clipper2Lib::JoinType::Round);
     PathOrderOptimizer order(Point(INT32_MIN, INT32_MIN));
     order.addPolygons(skirt);
     order.optimize();

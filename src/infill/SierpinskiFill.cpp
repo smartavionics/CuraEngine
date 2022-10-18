@@ -59,8 +59,8 @@ SierpinskiFill::~SierpinskiFill()
 
 void SierpinskiFill::createTree()
 {
-    Point lt = Point(aabb.min.X, aabb.max.Y);
-    Point rb = Point(aabb.max.X, aabb.min.Y);
+    Point lt = Point(aabb.min.x, aabb.max.y);
+    Point rb = Point(aabb.max.x, aabb.min.y);
 
     bool root_straight_corner_is_left = false;
     int root_depth = 1;
@@ -133,7 +133,7 @@ void SierpinskiFill::createTreeRequestedLengths(SierpinskiTriangle& triangle)
         triangle_aabb.include(triangle.a);
         triangle_aabb.include(triangle.b);
         triangle_aabb.include(triangle.straight_corner);
-        AABB3D triangle_aabb3d(Point3(triangle_aabb.min.X, triangle_aabb.min.Y, 0), Point3(triangle_aabb.max.X, triangle_aabb.max.Y, 1));
+        AABB3D triangle_aabb3d(Point3(triangle_aabb.min.x, triangle_aabb.min.y, 0), Point3(triangle_aabb.max.x, triangle_aabb.max.y, 1));
         float density = density_provider(triangle_aabb3d); // The density of the square around the triangle is a rough estimate of the density of the triangle.
         triangle.requested_length = density * triangle.area / INT2MM(line_width);
     }

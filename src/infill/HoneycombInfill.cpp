@@ -33,10 +33,10 @@ void HoneycombInfill::generate(Polygons& result_lines, const Polygons& outline)
 
     const coord_t height = pitch/3 * sqrt(3);
 
-    x_min = infill_origin.X - std::ceil((float)(infill_origin.X - aabb.min.X) / pitch + 1) * pitch;
-    y_min = infill_origin.Y - std::ceil((float)(infill_origin.Y - aabb.min.Y) / height + 1) * height;
-    x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / pitch + 1) * pitch;
-    y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / height + 1) * height;
+    x_min = infill_origin.x - std::ceil((float)(infill_origin.x - aabb.min.x) / pitch + 1) * pitch;
+    y_min = infill_origin.y - std::ceil((float)(infill_origin.y - aabb.min.y) / height + 1) * height;
+    x_max = infill_origin.x + std::ceil((float)(aabb.max.x - infill_origin.x) / pitch + 1) * pitch;
+    y_max = infill_origin.y + std::ceil((float)(aabb.max.y - infill_origin.y) / height + 1) * height;
 
     generateCoordinates(result_lines, outline, pitch, height);
 
@@ -185,7 +185,7 @@ void HoneycombInfill::generateConnections(Polygons& result, const Polygons& outl
                     // don't include chain ends that are close to the segment but are beyond the segment ends
                     short beyond = 0;
                     const Point& p = chains[point_index][chain_index];
-                    if (p.X != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
+                    if (p.x != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
                     {
                         points_on_outline_point_index.push_back(point_index);
                         points_on_outline_chain_index.push_back(chain_index);
@@ -240,7 +240,7 @@ void HoneycombInfill::generateConnections(Polygons& result, const Polygons& outl
                 connector_points.push_back(cur_point);
 
                 // mark the chain end as having been connected to
-                chains[point_index][chain_index].X = std::numeric_limits<coord_t>::max();
+                chains[point_index][chain_index].x = std::numeric_limits<coord_t>::max();
 
                 if (first_chain_chain_index == std::numeric_limits<unsigned>::max())
                 {

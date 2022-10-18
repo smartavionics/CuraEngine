@@ -297,37 +297,37 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     }
     const AABB aabb(rotated_outline);
 
-    coord_t clip_x_min = aabb.min.X - 1;
-    coord_t clip_x_max = aabb.max.X + 1;
-    coord_t clip_y_min = aabb.min.Y - 1;
-    coord_t clip_y_max = aabb.max.Y + 1;
+    coord_t clip_x_min = aabb.min.x - 1;
+    coord_t clip_x_max = aabb.max.x + 1;
+    coord_t clip_y_min = aabb.min.y - 1;
+    coord_t clip_y_max = aabb.max.y + 1;
 
     mi = one_def->FindMember("xmin");
     if (mi != one_def->MemberEnd())
     {
         double val = mi->value.GetDouble();
-        clip_x_min = infill_origin.X + MM2INT(val);
+        clip_x_min = infill_origin.x + MM2INT(val);
     }
 
     mi = one_def->FindMember("xmax");
     if (mi != one_def->MemberEnd())
     {
         double val = mi->value.GetDouble();
-        clip_x_max = infill_origin.X + MM2INT(val);
+        clip_x_max = infill_origin.x + MM2INT(val);
     }
 
     mi = one_def->FindMember("ymin");
     if (mi != one_def->MemberEnd())
     {
         double val = mi->value.GetDouble();
-        clip_y_min = infill_origin.Y + MM2INT(val);
+        clip_y_min = infill_origin.y + MM2INT(val);
     }
 
     mi = one_def->FindMember("ymax");
     if (mi != one_def->MemberEnd())
     {
         double val = mi->value.GetDouble();
-        clip_y_max = infill_origin.Y + MM2INT(val);
+        clip_y_max = infill_origin.y + MM2INT(val);
     }
 
     Polygon infilled_area;
@@ -413,8 +413,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         if (xpitch > 0)
         {
-            coord_t x_min = infill_origin.X + std::ceil((float)(infill_origin.X - aabb.min.X) / xpitch + 1) * -xpitch;
-            coord_t x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / xpitch + 1) * xpitch;
+            coord_t x_min = infill_origin.x + std::ceil((float)(infill_origin.x - aabb.min.x) / xpitch + 1) * -xpitch;
+            coord_t x_max = infill_origin.x + std::ceil((float)(aabb.max.x - infill_origin.x) / xpitch + 1) * xpitch;
 
             if (scattered)
             {
@@ -447,7 +447,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             for (rapidjson::Value::ConstValueIterator x_iter = x_array.Begin(); x_iter != x_array.End(); x_iter++)
             {
                 double x = x_iter->GetDouble();
-                x = infill_origin.X + MM2INT(x);
+                x = infill_origin.x + MM2INT(x);
                 if (x >= clip_x_min && x <= clip_x_max)
                 {
                     x_vals.push_back(x);
@@ -475,8 +475,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         if (ypitch > 0)
         {
-            coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / ypitch + 1) * -ypitch;
-            coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / ypitch + 1) * ypitch;
+            coord_t y_min = infill_origin.y + std::ceil((float)(infill_origin.y - aabb.min.y) / ypitch + 1) * -ypitch;
+            coord_t y_max = infill_origin.y + std::ceil((float)(aabb.max.y - infill_origin.y) / ypitch + 1) * ypitch;
 
             if (scattered)
             {
@@ -509,7 +509,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             for (rapidjson::Value::ConstValueIterator y_iter = y_array.Begin(); y_iter != y_array.End(); y_iter++)
             {
                 double y = y_iter->GetDouble();
-                y = infill_origin.Y + MM2INT(y);
+                y = infill_origin.y + MM2INT(y);
                 if (y >= clip_y_min && y <= clip_y_max)
                 {
                     y_vals.push_back(y);
@@ -547,7 +547,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         if (rpitch > 0)
         {
-            const coord_t r_max = std::max(vSize(aabb.max.X - aabb.min.X) + std::abs(infill_origin.X), vSize(aabb.max.Y - aabb.min.Y) + std::abs(infill_origin.Y)) * 0.707;
+            const coord_t r_max = std::max((aabb.max.x - aabb.min.x), (aabb.max.y - aabb.min.y)) * 1.414;
             for (coord_t r = rpitch; r <= r_max; r += rpitch)
             {
                 vals.push_back(r);
@@ -651,15 +651,15 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
         Polygons shrunk_outline(infill_pattern_areas.offset(-std::max(wavelength / 2, amplitude)));
 
-        coord_t y_min = infill_origin.Y + std::ceil((float)(infill_origin.Y - aabb.min.Y) / wavelength + 1) * -wavelength;
-        coord_t y_max = infill_origin.Y + std::ceil((float)(aabb.max.Y - infill_origin.Y) / wavelength + 1) * wavelength;
+        coord_t y_min = infill_origin.y + std::ceil((float)(infill_origin.y - aabb.min.y) / wavelength + 1) * -wavelength;
+        coord_t y_max = infill_origin.y + std::ceil((float)(aabb.max.y - infill_origin.y) / wavelength + 1) * wavelength;
 
         for (coord_t x : x_vals)
         {
             bool line_start_inside = false;
             for (coord_t y = y_min; y < y_max; y += wavelength)
             {
-                Point line_start = rotate_around_origin(Point(x + amplitudes.back() * amplitude, y), rot_rads);
+                Point line_start = rotate_around_origin(Point((coord_t)(x + amplitudes.back() * amplitude), y), rot_rads);
                 for (int seg = 1; seg <= num_segs; ++seg)
                 {
                     Point line_end = rotate_around_origin(Point(x + amplitudes[seg - 1] * amplitude, y + wavelength * phases[seg - 1]), rot_rads);
@@ -679,15 +679,15 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             ++num_lines;
         }
 
-        coord_t x_min = infill_origin.X + std::ceil((float)(infill_origin.X - aabb.min.X) / wavelength + 1) * -wavelength;
-        coord_t x_max = infill_origin.X + std::ceil((float)(aabb.max.X - infill_origin.X) / wavelength + 1) * wavelength;
+        coord_t x_min = infill_origin.x + std::ceil((float)(infill_origin.x - aabb.min.x) / wavelength + 1) * -wavelength;
+        coord_t x_max = infill_origin.x + std::ceil((float)(aabb.max.x - infill_origin.x) / wavelength + 1) * wavelength;
 
         for (coord_t y : y_vals)
         {
             bool line_start_inside = false;
             for (coord_t x = x_min; x < x_max; x += wavelength)
             {
-                Point line_start = rotate_around_origin(Point(x, y + amplitudes.back() * amplitude), rot_rads);
+                Point line_start = rotate_around_origin(Point(x, (coord_t)(y + amplitudes.back() * amplitude)), rot_rads);
                 for (int seg = 1; seg <= num_segs; ++seg)
                 {
                     Point line_end = rotate_around_origin(Point(x + wavelength * phases[seg - 1], y + amplitudes[seg - 1] * amplitude), rot_rads);
@@ -798,15 +798,15 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         // straight lines
         for (coord_t x : x_vals)
         {
-            Point line_start = rotate_around_origin(Point(x, std::min(aabb.min.Y, aabb.min.X)), rot_rads);
-            Point line_end = rotate_around_origin(Point(x, std::max(aabb.max.Y, aabb.max.X)), rot_rads);
+            Point line_start = rotate_around_origin(Point(x, std::min(aabb.min.y, aabb.min.x)), rot_rads);
+            Point line_end = rotate_around_origin(Point(x, std::max(aabb.max.y, aabb.max.x)), rot_rads);
             addClippedLine(line_start, line_end, num_lines++);
         }
 
         for (coord_t y : y_vals)
         {
-            Point line_start = rotate_around_origin(Point(std::min(aabb.min.X, aabb.min.Y), y), rot_rads);
-            Point line_end = rotate_around_origin(Point(std::max(aabb.max.X, aabb.max.Y), y), rot_rads);
+            Point line_start = rotate_around_origin(Point(std::min(aabb.min.x, aabb.min.y), y), rot_rads);
+            Point line_end = rotate_around_origin(Point(std::max(aabb.max.x, aabb.max.y), y), rot_rads);
             addClippedLine(line_start, line_end, num_lines++);
         }
 
@@ -870,7 +870,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         if (num_spokes > 1)
         {
             unsigned spokes_to_draw = num_spokes;
-            coord_t length = std::max(aabb.max.X - aabb.min.X, aabb.max.Y - aabb.min.Y) * 2;
+            coord_t length = std::max(aabb.max.x - aabb.min.x, aabb.max.y - aabb.min.y) * 2;
             coord_t margin = infill_line_width * spokes_to_draw / M_PI / 2;
             while (spokes_to_draw > 1)
             {
@@ -878,7 +878,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                 {
                     double rads = 2 * M_PI * i / spokes_to_draw;
                     Point line_start = (contours.empty()) ? infill_origin : aabb.getMiddle();
-                    Point line_end = line_start + rotate(Point(line_start.X, line_start.Y + margin + length) - line_start, rads);
+                    Point line_end = line_start + rotate(Point(line_start.x, line_start.y + margin + length) - line_start, rads);
                     line_start = line_start + normal(line_end - line_start, margin);
                     // addClippedLine() will order segments by increasing distance from p0 so it should always start with the segment
                     // that is closest to line_end and that will be the segment that is clipped by the outline
@@ -957,7 +957,7 @@ void DiscreteLinesInfill::generateConnections(Polygons& result, const Polygons& 
                     // don't include chain ends that are close to the segment but are beyond the segment ends
                     short beyond = 0;
                     const Point& p = chains[point_index][chain_index];
-                    if (p.X != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
+                    if (p.x != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
                     {
                         points_on_outline_point_index.push_back(point_index);
                         points_on_outline_chain_index.push_back(chain_index);
@@ -1012,7 +1012,7 @@ void DiscreteLinesInfill::generateConnections(Polygons& result, const Polygons& 
                 connector_points.push_back(cur_point);
 
                 // mark the chain end as having been connected to
-                chains[point_index][chain_index].X = std::numeric_limits<coord_t>::max();
+                chains[point_index][chain_index].x = std::numeric_limits<coord_t>::max();
 
                 if (first_chain_chain_index == std::numeric_limits<unsigned>::max())
                 {

@@ -126,7 +126,7 @@ bool TopSurface::ironing(const SliceMeshStorage& mesh, const GCodePathConfig& li
             const AABB bounding_box(areas);
             PointMatrix rotate(-direction + 90);
             const Point center = bounding_box.getMiddle();
-            const Point far_away = rotate.apply(Point(0, vSize(bounding_box.max - center) * 100)); //Some direction very far away in the direction perpendicular to the ironing lines, relative to the centre.
+            const Point far_away = rotate.apply(Point((coord_t)0, vSize(bounding_box.max - center) * 100)); //Some direction very far away in the direction perpendicular to the ironing lines, relative to the centre.
             //Two options to start, both perpendicular to the ironing lines. Which is closer?
             const Point front_side = PolygonUtils::findNearestVert(center + far_away, areas).p();
             const Point back_side = PolygonUtils::findNearestVert(center - far_away, areas).p();

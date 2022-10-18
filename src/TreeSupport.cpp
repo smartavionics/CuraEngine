@@ -127,8 +127,8 @@ void TreeSupport::drawCircles(SliceDataStorage& storage, const std::vector<std::
                 if (node.distance_to_top < tip_layers) //We're in the tip.
                 {
                     const int mul = node.skin_direction ? 1 : -1;
-                    corner = Point(corner.X * (0.5 + scale / 2) + mul * corner.Y * (0.5 - scale / 2),
-                                   mul * corner.X * (0.5 - scale / 2) + corner.Y * (0.5 + scale / 2));
+                    corner = Point(corner.x * (0.5 + scale / 2) + mul * corner.y * (0.5 - scale / 2),
+                                   mul * corner.x * (0.5 - scale / 2) + corner.y * (0.5 + scale / 2));
                 }
                 else
                 {
@@ -504,13 +504,13 @@ void TreeSupport::generateContactPoints(const SliceMeshStorage& mesh, std::vecto
     // rotation angle becomes a user-configurable value then this will need to
     // be changed
     const Point rotated_dims = Point(
-        bounding_box_size.X * cos_angle + bounding_box_size.Y * sin_angle,
-        bounding_box_size.X * sin_angle + bounding_box_size.Y * cos_angle) / 2;
+        bounding_box_size.x * cos_angle + bounding_box_size.y * sin_angle,
+        bounding_box_size.x * sin_angle + bounding_box_size.y * cos_angle) / 2;
 
     std::vector<Point> grid_points;
-    for (auto x = -rotated_dims.X; x <= rotated_dims.X; x += point_spread)
+    for (auto x = -rotated_dims.x; x <= rotated_dims.x; x += point_spread)
     {
-        for (auto y = -rotated_dims.Y; y <= rotated_dims.Y; y += point_spread)
+        for (auto y = -rotated_dims.y; y <= rotated_dims.y; y += point_spread)
         {
             // Construct a point as an offset from the mesh AABB center, rotated
             // about the mesh AABB center

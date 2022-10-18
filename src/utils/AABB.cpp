@@ -61,33 +61,33 @@ void AABB::calculate(ConstPolygonRef poly)
 
 bool AABB::contains(const Point& point) const
 {
-    return point.X >= min.X && point.X <= max.X && point.Y >= min.Y && point.Y <= max.Y;
+    return point.x >= min.x && point.x <= max.x && point.y >= min.y && point.y <= max.y;
 }
 
 bool AABB::hit(const AABB& other) const
 {
-    if (max.X < other.min.X) return false;
-    if (min.X > other.max.X) return false;
-    if (max.Y < other.min.Y) return false;
-    if (min.Y > other.max.Y) return false;
+    if (max.x < other.min.x) return false;
+    if (min.x > other.max.x) return false;
+    if (max.y < other.min.y) return false;
+    if (min.y > other.max.y) return false;
     return true;
 }
 
 void AABB::include(Point point)
 {
-    min.X = std::min(min.X,point.X);
-    min.Y = std::min(min.Y,point.Y);
-    max.X = std::max(max.X,point.X);
-    max.Y = std::max(max.Y,point.Y);
+    min.x = std::min(min.x,point.x);
+    min.y = std::min(min.y,point.y);
+    max.x = std::max(max.x,point.x);
+    max.y = std::max(max.y,point.y);
 }
 
 void AABB::include(const AABB other)
 {
     // Note that this is different from including the min and max points, since when 'min > max' it's used to denote an negative/empty box.
-    min.X = std::min(min.X, other.min.X);
-    min.Y = std::min(min.Y, other.min.Y);
-    max.X = std::max(max.X, other.max.X);
-    max.Y = std::max(max.Y, other.max.Y);
+    min.x = std::min(min.x, other.min.x);
+    min.y = std::min(min.y, other.min.y);
+    max.x = std::max(max.x, other.max.x);
+    max.y = std::max(max.y, other.max.y);
 }
 
 void AABB::expand(int dist)
@@ -96,19 +96,19 @@ void AABB::expand(int dist)
     {
         return;
     }
-    min.X -= dist;
-    min.Y -= dist;
-    max.X += dist;
-    max.Y += dist;
+    min.x -= dist;
+    min.y -= dist;
+    max.x += dist;
+    max.y += dist;
 }
 
 Polygon AABB::toPolygon() const
 {
     Polygon ret;
     ret.add(min);
-    ret.add(Point(max.X, min.Y));
+    ret.add(Point(max.x, min.y));
     ret.add(max);
-    ret.add(Point(min.X, max.Y));
+    ret.add(Point(min.x, max.y));
     return ret;
 }
 

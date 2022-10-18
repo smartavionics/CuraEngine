@@ -65,7 +65,7 @@ SierpinskiFillProvider::FractalConfig SierpinskiFillProvider::getFractalConfig(c
 {
     AABB model_aabb = aabb_3d.flatten();
     Point model_aabb_size = model_aabb.max - model_aabb.min;
-    coord_t max_side_length = std::max(model_aabb_size.X, model_aabb_size.Y);
+    coord_t max_side_length = std::max(model_aabb_size.x, model_aabb_size.y);
     Point model_middle = model_aabb.getMiddle();
 
     int depth = 0;

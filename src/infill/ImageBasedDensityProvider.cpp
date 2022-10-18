@@ -36,19 +36,19 @@ ImageBasedDensityProvider::ImageBasedDensityProvider(const std::string filename,
         Point middle = model_aabb.getMiddle();
         Point model_aabb_size = model_aabb.max - model_aabb.min;
         Point image_size2 = Point(image_size.x, image_size.y);
-        float aabb_aspect_ratio = float(model_aabb_size.X) / float(model_aabb_size.Y);
+        float aabb_aspect_ratio = float(model_aabb_size.x) / float(model_aabb_size.y);
         float image_aspect_ratio = float(image_size.x) / float(image_size.y);
         Point aabb_size;
         if (image_aspect_ratio < aabb_aspect_ratio)
         {
-            aabb_size = image_size2 * model_aabb_size.X / image_size.x;
+            aabb_size = image_size2 * model_aabb_size.x / image_size.x;
         }
         else
         {
-            aabb_size = image_size2 * model_aabb_size.Y / image_size.y;
+            aabb_size = image_size2 * model_aabb_size.y / image_size.y;
         }
         print_aabb = AABB(middle - aabb_size / 2, middle + aabb_size / 2);
-        assert(aabb_size.X >= model_aabb_size.X && aabb_size.Y >= model_aabb_size.Y);
+        assert(aabb_size.x >= model_aabb_size.x && aabb_size.y >= model_aabb_size.y);
     }
 }
 
@@ -64,13 +64,13 @@ ImageBasedDensityProvider::~ImageBasedDensityProvider()
 float ImageBasedDensityProvider::operator()(const AABB3D& query_cube) const
 {
     AABB query_box(Point(query_cube.min.x, query_cube.min.y), Point(query_cube.max.x, query_cube.max.y));
-    Point img_min = (query_box.min - print_aabb.min - Point(1,1)) * image_size.x / (print_aabb.max.X - print_aabb.min.X);
-    Point img_max = (query_box.max - print_aabb.min + Point(1,1)) * image_size.y / (print_aabb.max.Y - print_aabb.min.Y);
+    Point img_min = (query_box.min - print_aabb.min - Point(1,1)) * image_size.x / (print_aabb.max.x - print_aabb.min.x);
+    Point img_max = (query_box.max - print_aabb.min + Point(1,1)) * image_size.y / (print_aabb.max.y - print_aabb.min.y);
     long total_lightness = 0;
     int value_count = 0;
-    for (int x = std::max((coord_t)0, img_min.X); x <= std::min((coord_t)image_size.x - 1, img_max.X); x++)
+    for (int x = std::max((coord_t)0, img_min.x); x <= std::min((coord_t)image_size.x - 1, img_max.x); x++)
     {
-        for (int y = std::max((coord_t)0, img_min.Y); y <= std::min((coord_t)image_size.y - 1, img_max.Y); y++)
+        for (int y = std::max((coord_t)0, img_min.y); y <= std::min((coord_t)image_size.y - 1, img_max.y); y++)
         {
             for (int z = 0; z < image_size.z; z++)
             {
@@ -82,12 +82,12 @@ float ImageBasedDensityProvider::operator()(const AABB3D& query_cube) const
     if (value_count == 0)
     { // triangle falls outside of image or in between pixels, so we return the closest pixel
         Point closest_pixel = (img_min + img_max) / 2;
-        closest_pixel.X = std::max((coord_t)0, std::min((coord_t)image_size.x - 1, (coord_t)closest_pixel.X));
-        closest_pixel.Y = std::max((coord_t)0, std::min((coord_t)image_size.y - 1, (coord_t)closest_pixel.Y));
+        closest_pixel.x = std::max((coord_t)0, std::min((coord_t)image_size.x - 1, (coord_t)closest_pixel.x));
+        closest_pixel.y = std::max((coord_t)0, std::min((coord_t)image_size.y - 1, (coord_t)closest_pixel.y));
         assert(total_lightness == 0);
         for (int z = 0; z < image_size.z; z++)
         {
-            total_lightness += image[((image_size.y - 1 - closest_pixel.Y) * image_size.x + closest_pixel.X) * image_size.z + z];
+            total_lightness += image[((image_size.y - 1 - closest_pixel.y) * image_size.x + closest_pixel.x) * image_size.z + z];
             value_count++;
         }
     }

@@ -966,7 +966,7 @@ std::vector<SlicerLayer> Slicer::buildLayersWithHeight(size_t slice_layer_count,
     layers_res.resize(slice_layer_count);
 
     // set (and initialize compensation for) initial layer, depending on slicing mode
-    layers_res[0].z = slicing_tolerance == SlicingTolerance::INCLUSIVE ? 0 : std::max(0LL, initial_layer_thickness - thickness);
+    layers_res[0].z = slicing_tolerance == SlicingTolerance::INCLUSIVE ? 0 : std::max((coord_t)0, initial_layer_thickness - thickness);
     coord_t adjusted_layer_offset = initial_layer_thickness;
     if (use_variable_layer_heights)
     {
@@ -1053,7 +1053,7 @@ void Slicer::makePolygons(Mesh& mesh, SlicingTolerance slicing_tolerance, std::v
 
         if (xy_offset != 0)
         {
-            layers_ref[layer_nr].polygons = layers_ref[layer_nr].polygons.offset(xy_offset, ClipperLib::JoinType::jtRound);
+            layers_ref[layer_nr].polygons = layers_ref[layer_nr].polygons.offset(xy_offset, Clipper2Lib::JoinType::Round);
         }
     }
 
@@ -1108,10 +1108,10 @@ SlicerSegment Slicer::project2D(const Point3& p0, const Point3& p1, const Point3
 {
     SlicerSegment seg;
 
-    seg.start.X = interpolate(z, p0.z, p1.z, p0.x, p1.x);
-    seg.start.Y = interpolate(z, p0.z, p1.z, p0.y, p1.y);
-    seg.end  .X = interpolate(z, p0.z, p2.z, p0.x, p2.x);
-    seg.end  .Y = interpolate(z, p0.z, p2.z, p0.y, p2.y);
+    seg.start.x = interpolate(z, p0.z, p1.z, p0.x, p1.x);
+    seg.start.y = interpolate(z, p0.z, p1.z, p0.y, p1.y);
+    seg.end  .x = interpolate(z, p0.z, p2.z, p0.x, p2.x);
+    seg.end  .y = interpolate(z, p0.z, p2.z, p0.y, p2.y);
 
     return seg;
 }

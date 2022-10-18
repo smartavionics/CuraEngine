@@ -17,7 +17,7 @@ void HilbertInfill::generate(Polygons& result_lines, const Polygons& outline, co
 {
     const AABB aabb(outline);
 
-    const coord_t outline_max_size = std::max(aabb.max.X - aabb.min.X, aabb.max.Y - aabb.min.Y);
+    const coord_t outline_max_size = std::max(aabb.max.x - aabb.min.x, aabb.max.y - aabb.min.y);
 
     if (outline_max_size < 10)
     {
@@ -34,10 +34,10 @@ void HilbertInfill::generate(Polygons& result_lines, const Polygons& outline, co
 
     //std::cerr << "max_size = " << max_size << ", size = " << size << ", depth = " << depth << ", line_distance = " << line_distance << "\n";
 
-    x_min = aabb.min.X;
-    y_min = aabb.min.Y;
-    x_max = aabb.max.X;
-    y_max = aabb.max.Y;
+    x_min = aabb.min.x;
+    y_min = aabb.min.y;
+    x_max = aabb.max.x;
+    y_max = aabb.max.y;
 
     // when testing to see if a line's ends are both inside the outline, use an outline that has been shrunk to ensure we
     // catch the situation where both ends are inside the area but between the ends the line hits/crosses the boundary
@@ -64,8 +64,8 @@ void HilbertInfill::generateCoordinates(Polygons& result, const Polygons& outlin
             const coord_t y = y0 + (xj + yj)/2;
             Point current(x, y);
             current = rotate_around_origin(current, fill_angle_rads);
-            if ((current.X < x_min && last.X < x_min) || (current.X > x_max && last.X > x_max) ||
-                (current.Y < y_min && last.Y < y_min) || (current.Y > y_max && last.Y > y_max))
+            if ((current.x < x_min && last.x < x_min) || (current.x > x_max && last.x > x_max) ||
+                (current.y < y_min && last.y < y_min) || (current.y > y_max && last.y > y_max))
             {
                 last = current;
                 last_inside = false;
@@ -122,7 +122,7 @@ void HilbertInfill::generateCoordinates(Polygons& result, const Polygons& outlin
         }
     };
 
-    hilbert(infill_origin.X - size/2, infill_origin.Y - size/2, size, 0, 0, size, depth);
+    hilbert(infill_origin.x - size/2, infill_origin.y - size/2, size, 0, 0, size, depth);
 }
 
 void HilbertInfill::generateConnections(Polygons& result, const Polygons& outline)
@@ -175,7 +175,7 @@ void HilbertInfill::generateConnections(Polygons& result, const Polygons& outlin
                     // don't include chain ends that are close to the segment but are beyond the segment ends
                     short beyond = 0;
                     const Point& p = chains[point_index][chain_index];
-                    if (p.X != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
+                    if (p.x != std::numeric_limits<coord_t>::max() && LinearAlg2D::getDist2FromLineSegment(op0, p, op1, &beyond) < 10 && !beyond)
                     {
                         points_on_outline_point_index.push_back(point_index);
                         points_on_outline_chain_index.push_back(chain_index);
@@ -230,7 +230,7 @@ void HilbertInfill::generateConnections(Polygons& result, const Polygons& outlin
                 connector_points.push_back(cur_point);
 
                 // mark the chain end as having been connected to
-                chains[point_index][chain_index].X = std::numeric_limits<coord_t>::max();
+                chains[point_index][chain_index].x = std::numeric_limits<coord_t>::max();
 
                 if (first_chain_chain_index == std::numeric_limits<unsigned>::max())
                 {

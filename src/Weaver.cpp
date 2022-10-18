@@ -245,7 +245,7 @@ void Weaver::fillRoofs(Polygons& supporting, Polygons& to_be_supported, int dire
     Polygons last_supported = supporting;
     for (Polygons inset0 = supporting_outlines; inset0.size() > 0; inset0 = last_inset)
     {
-        last_inset = inset0.offset(direction * roof_inset, ClipperLib::jtRound);
+        last_inset = inset0.offset(direction * roof_inset, Clipper2Lib::JoinType::Round);
         inset1 = last_inset.intersection(roof_outlines); // stay within roof area
         inset1 = inset1.unionPolygons(roof_holes);// make insets go around holes
 
@@ -303,7 +303,7 @@ void Weaver::fillFloors(Polygons& supporting, Polygons& to_be_supported, int dir
     
     for (Polygons outset0 = supporting; outset0.size() > 0; outset0 = outset1)
     {
-        outset1 = outset0.offset(roof_inset * direction, ClipperLib::jtRound).intersection(floors);
+        outset1 = outset0.offset(roof_inset * direction, Clipper2Lib::JoinType::Round).intersection(floors);
         outset1 = outset1.remove(floor_holes); // throw away holes which appear in every intersection
         outset1 = outset1.remove(floor_outlines); // throw away holes which appear in every intersection
         
@@ -475,8 +475,8 @@ void Weaver::connect_polygons(Polygons& supporting, int z0, Polygons& supported,
             ClosestPolygonPoint lowerPolyPoint = PolygonUtils::findClosest(upper_point, supporting);
             Point& lower = lowerPolyPoint.location;
             
-            Point3 lower3 = Point3(lower.X, lower.Y, z0);
-            Point3 upper3 = Point3(upper_point.X, upper_point.Y, z1);
+            Point3 lower3 = Point3(lower.x, lower.y, z0);
+            Point3 upper3 = Point3(upper_point.x, upper_point.y, z1);
             
             
             if (firstIter)

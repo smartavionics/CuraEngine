@@ -153,7 +153,7 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
         {
             if (recompute_outline_based_on_outer_wall)
             {
-                part->print_outline = part->insets[0].offset(line_width_0 / 2, ClipperLib::jtSquare);
+                part->print_outline = part->insets[0].offset(line_width_0 / 2, Clipper2Lib::JoinType::Square);
             }
             else
             {

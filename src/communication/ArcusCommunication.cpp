@@ -222,7 +222,7 @@ public:
             return;
         }
 
-        ClipperLib::Path::const_iterator point = polygon.begin();
+        Clipper2Lib::Path64::const_iterator point = polygon.begin();
         handleInitialPoint(*point);
 
         //Send all coordinates one by one.
@@ -251,8 +251,8 @@ private:
      */
     void addPoint2D(const Point& point)
     {
-        points.push_back(INT2MM(point.X));
-        points.push_back(INT2MM(point.Y));
+        points.push_back(INT2MM(point.x));
+        points.push_back(INT2MM(point.y));
         last_point = point;
     }
 

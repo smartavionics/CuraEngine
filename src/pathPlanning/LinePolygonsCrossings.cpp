@@ -26,18 +26,18 @@ bool LinePolygonsCrossings::calcScanlineCrossings(bool fail_on_unavoidable_obsta
         for(unsigned int point_idx = 0; point_idx < poly.size(); point_idx++)
         {
             Point p1 = transformation_matrix.apply(poly[point_idx]);
-            if ((p0.Y >= transformed_startPoint.Y && p1.Y <= transformed_startPoint.Y) || (p1.Y >= transformed_startPoint.Y && p0.Y <= transformed_startPoint.Y))
+            if ((p0.y >= transformed_startPoint.y && p1.y <= transformed_startPoint.y) || (p1.y >= transformed_startPoint.y && p0.y <= transformed_startPoint.y))
             { // if line segment crosses the line through the transformed start and end point (aka scanline)
-                if (p1.Y == p0.Y) //Line segment is parallel with the scanline. That means that both endpoints lie on the scanline, so they will have intersected with the adjacent line.
+                if (p1.y == p0.y) //Line segment is parallel with the scanline. That means that both endpoints lie on the scanline, so they will have intersected with the adjacent line.
                 {
                     p0 = p1;
                     continue;
                 }
-                const coord_t x = p0.X + (p1.X - p0.X) * (transformed_startPoint.Y - p0.Y) / (p1.Y - p0.Y); // intersection point between line segment and the scanline
+                const coord_t x = p0.x + (p1.x - p0.x) * (transformed_startPoint.y - p0.y) / (p1.y - p0.y); // intersection point between line segment and the scanline
                 
-                if (x >= transformed_startPoint.X && x <= transformed_endPoint.X)
+                if (x >= transformed_startPoint.x && x <= transformed_endPoint.x)
                 {
-                    if (!((p1.Y == transformed_startPoint.Y && p1.Y < p0.Y) || (p0.Y == transformed_startPoint.Y && p0.Y < p1.Y)))
+                    if (!((p1.y == transformed_startPoint.y && p1.y < p0.y) || (p0.y == transformed_startPoint.y && p0.y < p1.y)))
                     { // perform edge case only for line segments on and below the scanline, not for line segments on and above.
                         // \/ will be no crossings and /\ two, but most importantly | will be one crossing.
                         crossings.emplace_back(poly_idx, x, point_idx);
@@ -77,11 +77,11 @@ bool LinePolygonsCrossings::lineSegmentCollidesWithBoundary()
             //
             // disregard overlapping line segments; probably the next or previous line segment is not overlapping, but will give a collision
             // when the boundary line segment fully overlaps with the line segment this edge case is not viewed as a collision
-            if (p1.Y != p0.Y && ((p0.Y >= transformed_startPoint.Y && p1.Y <= transformed_startPoint.Y) || (p1.Y >= transformed_startPoint.Y && p0.Y <= transformed_startPoint.Y)))
+            if (p1.y != p0.y && ((p0.y >= transformed_startPoint.y && p1.y <= transformed_startPoint.y) || (p1.y >= transformed_startPoint.y && p0.y <= transformed_startPoint.y)))
             {
-                int64_t x = p0.X + (p1.X - p0.X) * (transformed_startPoint.Y - p0.Y) / (p1.Y - p0.Y);
+                int64_t x = p0.x + (p1.x - p0.x) * (transformed_startPoint.y - p0.y) / (p1.y - p0.y);
 
-                if (x > transformed_startPoint.X && x < transformed_endPoint.X)
+                if (x > transformed_startPoint.x && x < transformed_endPoint.x)
                 {
                     return true;
                 }
@@ -144,7 +144,7 @@ void LinePolygonsCrossings::generateBasicCombingPath(const Crossing& min, const 
     // minimise the path length by measuring the length of both paths around the polygon so we can determine the shorter path
 
     ConstPolygonRef poly = boundary[min.poly_idx];
-    combPath.push_back(transformation_matrix.unapply(Point(min.x - std::abs(dist_to_move_boundary_point_outside), transformed_startPoint.Y)));
+    combPath.push_back(transformation_matrix.unapply(Point(min.x - std::abs(dist_to_move_boundary_point_outside), transformed_startPoint.y)));
 
     // follow the path in the same direction as the winding order of the boundary polygon
     std::vector<Point> fwd_points;
@@ -160,7 +160,7 @@ void LinePolygonsCrossings::generateBasicCombingPath(const Crossing& min, const 
         prev = p;
     }
 
-    const Point last = transformation_matrix.unapply(Point(max.x + std::abs(dist_to_move_boundary_point_outside), transformed_startPoint.Y));
+    const Point last = transformation_matrix.unapply(Point(max.x + std::abs(dist_to_move_boundary_point_outside), transformed_startPoint.y));
 
     if (fwd_points.size() > 0)
     {
