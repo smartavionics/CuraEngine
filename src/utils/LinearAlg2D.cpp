@@ -17,12 +17,12 @@ float LinearAlg2D::getAngleLeft(const Point& a, const Point& b, const Point& c)
     const Point ba = a - b;
     const Point bc = c - b;
     const coord_t dott = dot(ba, bc); // dot product
-    const coord_t det = ba.X * bc.Y - ba.Y * bc.X; // determinant
+    const coord_t det = ba.x * bc.y - ba.y * bc.x; // determinant
     if (det == 0)
     {
         if (
-            (ba.X != 0 && (ba.X > 0) == (bc.X > 0))
-            || (ba.X == 0 && (ba.Y > 0) == (bc.Y > 0))
+            (ba.x != 0 && (ba.x > 0) == (bc.x > 0))
+            || (ba.x == 0 && (ba.y > 0) == (bc.y > 0))
             )
         {
             return 0; // pointy bit
@@ -157,21 +157,21 @@ std::pair<Point, Point> LinearAlg2D::getClosestConnection(Point a1, Point a2, Po
 
 bool LinearAlg2D::lineSegmentsCollide(const Point& a_from_transformed, const Point& a_to_transformed, Point b_from_transformed, Point b_to_transformed)
 {
-    assert(std::abs(a_from_transformed.Y - a_to_transformed.Y) < 2 && "line a is supposed to be transformed to be aligned with the X axis!");
-    assert(a_from_transformed.X - 2 <= a_to_transformed.X && "line a is supposed to be aligned with X axis in positive direction!");
-    if ((b_from_transformed.Y >= a_from_transformed.Y && b_to_transformed.Y <= a_from_transformed.Y) || (b_to_transformed.Y >= a_from_transformed.Y && b_from_transformed.Y <= a_from_transformed.Y))
+    assert(std::abs(a_from_transformed.y - a_to_transformed.y) < 2 && "line a is supposed to be transformed to be aligned with the X axis!");
+    assert(a_from_transformed.x - 2 <= a_to_transformed.x && "line a is supposed to be aligned with X axis in positive direction!");
+    if ((b_from_transformed.y >= a_from_transformed.y && b_to_transformed.y <= a_from_transformed.y) || (b_to_transformed.y >= a_from_transformed.y && b_from_transformed.y <= a_from_transformed.y))
     {
-        if(b_to_transformed.Y == b_from_transformed.Y)
+        if(b_to_transformed.y == b_from_transformed.y)
         {
-            if (b_to_transformed.X < b_from_transformed.X)
+            if (b_to_transformed.x < b_from_transformed.x)
             {
-                std::swap(b_to_transformed.X, b_from_transformed.X);
+                std::swap(b_to_transformed.x, b_from_transformed.x);
             }
-            if (b_from_transformed.X > a_to_transformed.X)
+            if (b_from_transformed.x > a_to_transformed.x)
             {
                 return false;
             }
-            if (b_to_transformed.X < a_from_transformed.X)
+            if (b_to_transformed.x < a_from_transformed.x)
             {
                 return false;
             }
@@ -179,8 +179,8 @@ bool LinearAlg2D::lineSegmentsCollide(const Point& a_from_transformed, const Poi
         }
         else
         {
-            const coord_t x = b_from_transformed.X + (b_to_transformed.X - b_from_transformed.X) * (a_from_transformed.Y - b_from_transformed.Y) / (b_to_transformed.Y - b_from_transformed.Y);
-            if (x >= a_from_transformed.X && x <= a_to_transformed.X)
+            const coord_t x = b_from_transformed.x + (b_to_transformed.x - b_from_transformed.x) * (a_from_transformed.y - b_from_transformed.y) / (b_to_transformed.y - b_from_transformed.y);
+            if (x >= a_from_transformed.x && x <= a_to_transformed.x)
             {
                 return true;
             }
@@ -244,7 +244,7 @@ coord_t LinearAlg2D::getDistFromLine(const Point& p, const Point& a, const Point
     {
         return vSize(vap);
     }
-    const coord_t area_times_two = std::abs((p.X - b.X) * (p.Y - a.Y) + (a.X - p.X) * (p.Y - b.Y)); // Shoelace formula, factored
+    const coord_t area_times_two = std::abs((p.x - b.x) * (p.y - a.y) + (a.x - p.x) * (p.y - b.y)); // Shoelace formula, factored
     const coord_t px_size = area_times_two / ab_size;
     return px_size;
 }

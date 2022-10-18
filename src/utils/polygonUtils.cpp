@@ -96,15 +96,15 @@ std::vector<Point> PolygonUtils::spreadDotsArea(const Polygons& polygons, coord_
         assert(line.size() == 2);
         Point a = line[0];
         Point b = line[1];
-        assert(a.X == b.X);
-        if (a.Y > b.Y)
+        assert(a.x == b.x);
+        if (a.y > b.y)
         {
             std::swap(a, b);
         }
-        for (coord_t y = a.Y - (a.Y % grid_size) - grid_size; y < b.Y; y += grid_size)
+        for (coord_t y = a.y - (a.y % grid_size) - grid_size; y < b.y; y += grid_size)
         {
-            if (y < a.Y) continue;
-            result.emplace_back(a.X, y);
+            if (y < a.y) continue;
+            result.emplace_back(a.x, y);
         }
     }
     return result;

@@ -16,7 +16,7 @@ SquareGrid::SquareGrid(coord_t cell_size) : cell_size(cell_size)
 
 SquareGrid::GridPoint SquareGrid::toGridPoint(const Point &point)  const
 {
-    return Point(toGridCoord(point.X), toGridCoord(point.Y));
+    return Point(toGridCoord(point.x), toGridCoord(point.y));
 }
 
 
@@ -34,7 +34,7 @@ SquareGrid::grid_coord_t SquareGrid::toGridCoord(const coord_t& coord)  const
 
 cura::Point SquareGrid::toLowerCorner(const GridPoint& location)  const
 {
-    return cura::Point(toLowerCoord(location.X), toLowerCoord(location.Y));
+    return cura::Point(toLowerCoord(location.x), toLowerCoord(location.y));
 }
 
 
@@ -60,37 +60,37 @@ bool SquareGrid::processLineCells(const std::pair<Point, Point> line, const std:
 {
     Point start = line.first;
     Point end = line.second;
-    if (end.X < start.X)
+    if (end.x < start.x)
     { // make sure X increases between start and end
         std::swap(start, end);
     }
 
     const GridPoint start_cell = toGridPoint(start);
     const GridPoint end_cell = toGridPoint(end);
-    const coord_t y_diff = end.Y - start.Y;
+    const coord_t y_diff = end.y - start.y;
     const grid_coord_t y_dir = nonzeroSign(y_diff);
 
     /* This line drawing algorithm iterates over the range of Y coordinates, and
     for each Y coordinate computes the range of X coordinates crossed in one
     unit of Y. These ranges are rounded to be inclusive, so effectively this
     creates a "fat" line, marking more cells than a strict one-cell-wide path.*/
-    grid_coord_t x_cell_start = start_cell.X;
-    for (grid_coord_t cell_y = start_cell.Y; cell_y * y_dir <= end_cell.Y * y_dir; cell_y += y_dir)
+    grid_coord_t x_cell_start = start_cell.x;
+    for (grid_coord_t cell_y = start_cell.y; cell_y * y_dir <= end_cell.y * y_dir; cell_y += y_dir)
     { // for all Y from start to end
         // nearest y coordinate of the cells in the next row
         const coord_t nearest_next_y = toLowerCoord(cell_y + ((nonzeroSign(cell_y) == y_dir || cell_y == 0) ? y_dir : coord_t(0)));
         grid_coord_t x_cell_end; // the X coord of the last cell to include from this row
         if (y_diff == 0)
         {
-            x_cell_end = end_cell.X;
+            x_cell_end = end_cell.x;
         }
         else
         {
-            const coord_t area = (end.X - start.X) * (nearest_next_y - start.Y);
+            const coord_t area = (end.x - start.x) * (nearest_next_y - start.y);
             // corresponding_x: the x coordinate corresponding to nearest_next_y
-            coord_t corresponding_x = start.X + area / y_diff;
+            coord_t corresponding_x = start.x + area / y_diff;
             x_cell_end = toGridCoord(corresponding_x + ((corresponding_x < 0) && ((area % y_diff) != 0)));
-            if (x_cell_end < start_cell.X)
+            if (x_cell_end < start_cell.x)
             { // process at least one cell!
                 x_cell_end = x_cell_start;
             }
@@ -127,7 +127,7 @@ bool SquareGrid::processAxisAlignedTriangle
 {
     Point a = from;
     Point b = to;
-    if ((a.X < b.X == a.Y < b.Y) != to_the_right)
+    if ((a.x < b.x == a.y < b.y) != to_the_right)
     {
         std::swap(a, b);
     }
@@ -141,12 +141,12 @@ bool SquareGrid::processAxisAlignedTriangle(const Point from, const Point to, co
     return processLineCells(std::make_pair(from, to),
         [grid_to, &last, &process_cell_func, this] (const GridPoint grid_loc)
         {
-            if (grid_loc.Y != last.Y)
+            if (grid_loc.y != last.y)
             {
-                const coord_t sign = nonzeroSign(grid_to.X - grid_loc.X);
-                for (grid_coord_t x = grid_loc.X; x * sign <= grid_to.X * sign; x += sign)
+                const coord_t sign = nonzeroSign(grid_to.x - grid_loc.x);
+                for (grid_coord_t x = grid_loc.x; x * sign <= grid_to.x * sign; x += sign)
                 {
-                    if (! process_cell_func(GridPoint(x, grid_loc.Y)))
+                    if (! process_cell_func(GridPoint(x, grid_loc.y)))
                     {
                         return false;
                     }
@@ -172,15 +172,15 @@ bool SquareGrid::processNearby
     const std::function<bool (const GridPoint&)>& process_func
 ) const
 {
-    const Point min_loc(query_pt.X - radius, query_pt.Y - radius);
-    const Point max_loc(query_pt.X + radius, query_pt.Y + radius);
+    const Point min_loc(query_pt.x - radius, query_pt.y - radius);
+    const Point max_loc(query_pt.x + radius, query_pt.y + radius);
 
     GridPoint min_grid = toGridPoint(min_loc);
     GridPoint max_grid = toGridPoint(max_loc);
 
-    for (coord_t grid_y = min_grid.Y; grid_y <= max_grid.Y; ++grid_y)
+    for (coord_t grid_y = min_grid.y; grid_y <= max_grid.y; ++grid_y)
     {
-        for (coord_t grid_x = min_grid.X; grid_x <= max_grid.X; ++grid_x)
+        for (coord_t grid_x = min_grid.x; grid_x <= max_grid.x; ++grid_x)
         {
             GridPoint grid_pt(grid_x,grid_y);
             if (!process_func(grid_pt))

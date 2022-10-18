@@ -40,7 +40,7 @@ Polygons PolygonConnector::connect()
             all_bridges.push_back(*bridge); // just for keeping scores
             // remove other poly from the list and put the newly connected one on the list
             // i.e. replace the old other poly by the new one
-            PolygonRef other_poly(*const_cast<ClipperLib::Path*>(bridge->a.to.poly.operator->())); // const casting a ConstPolygonPointer is difficult!
+            PolygonRef other_poly(*const_cast<Clipper2Lib::Path64*>(bridge->a.to.poly.operator->())); // const casting a ConstPolygonPointer is difficult!
             other_poly = std::move(connectPolygonsAlongBridge(*bridge)); // connect the bridged parts and overwrite the other polygon with it.
 
             // don't store the current poly, it has just been connected and stored

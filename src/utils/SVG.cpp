@@ -3,6 +3,7 @@
 //CuraEngine is released under the terms of the AGPLv3 or higher.
 
 #include <sstream>
+#include <cstring>
 
 #include "floatpoint.h"
 #include "logoutput.h"
@@ -44,7 +45,7 @@ std::string SVG::toString(ColorObject& color)
 
 
 SVG::SVG(std::string filename, AABB aabb, Point canvas_size, ColorObject background)
-: SVG(filename, aabb, std::min(double(canvas_size.X - canvas_size.X / 5 * 2) / (aabb.max.X - aabb.min.X), double(canvas_size.Y - canvas_size.Y / 5) / (aabb.max.Y - aabb.min.Y)), canvas_size, background)
+: SVG(filename, aabb, std::min(double(canvas_size.x - canvas_size.x / 5 * 2) / (aabb.max.x - aabb.min.x), double(canvas_size.y - canvas_size.y / 5) / (aabb.max.y - aabb.min.y)), canvas_size, background)
 {
 }
 
@@ -77,8 +78,8 @@ SVG::SVG(std::string filename, AABB aabb, double scale, Point canvas_size, Color
     fprintf(out, "<svg \n");
     fprintf(out,"   xmlns=\"http://www.w3.org/2000/svg\"\n");
     fprintf(out,"   xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\"\n");
-    fprintf(out,"   height=\"%f\"\n", scale * (aabb.max.Y - aabb.min.Y));
-    fprintf(out,"   width=\"%f\"\n", scale * (aabb.max.X - aabb.min.X));
+    fprintf(out,"   height=\"%f\"\n", scale * (aabb.max.y - aabb.min.y));
+    fprintf(out,"   width=\"%f\"\n", scale * (aabb.max.x - aabb.min.x));
     fprintf(out,"   version=\"1.1\">\n");
     fprintf(out,"  <g\n");
     fprintf(out,"    inkscape:groupmode=\"layer\"\n");
@@ -120,12 +121,12 @@ void SVG::nextLayer()
 
 Point SVG::transform(const Point& p) 
 {
-    return Point((p.X - aabb.min.X) * scale, (p.Y - aabb.min.Y) * scale);
+    return Point((p.x - aabb.min.x) * scale, (p.y - aabb.min.y) * scale);
 }
 
 FPoint3 SVG::transformF(const Point& p) 
 {
-    return FPoint3((p.X - aabb.min.X) * scale, (p.Y-aabb.min.Y) * scale, 0.0);
+    return FPoint3((p.x - aabb.min.x) * scale, (p.y-aabb.min.y) * scale, 0.0);
 }
 
 void SVG::writeComment(std::string comment)
@@ -173,7 +174,7 @@ void SVG::writePoint(const Point& p, bool write_coords, float size, ColorObject 
     
     if (write_coords)
     {
-        fprintf(out, "<text x=\"%f\" y=\"%f\" style=\"font-size: 10px;\" fill=\"black\">%lli,%lli</text>\n",pf.x, pf.y, p.X, p.Y);
+        fprintf(out, "<text x=\"%f\" y=\"%f\" style=\"font-size: 10px;\" fill=\"black\">%li,%li</text>\n",pf.x, pf.y, p.x, p.y);
     }
 }
 
@@ -244,7 +245,7 @@ void SVG::writeDashedLine(const Point& a, const Point& b, ColorObject color)
 void SVG::writeText(Point p, std::string txt, ColorObject color, coord_t font_size)
 {
     FPoint3 pf = transformF(p);
-    fprintf(out, "<text x=\"%f\" y=\"%f\" style=\"font-size: %llipx;\" fill=\"%s\">%s</text>\n",pf.x, pf.y, font_size, toString(color).c_str(), txt.c_str());
+    fprintf(out, "<text x=\"%f\" y=\"%f\" style=\"font-size: %lipx;\" fill=\"%s\">%s</text>\n",pf.x, pf.y, font_size, toString(color).c_str(), txt.c_str());
 }
 
 void SVG::writePolygons(const Polygons& polys, ColorObject color, float stroke_width)
