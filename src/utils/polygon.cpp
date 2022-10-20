@@ -68,11 +68,13 @@ bool ConstPolygonRef::_inside(Point p, bool border_result) const
 
 Polygons ConstPolygonRef::intersection(const ConstPolygonRef& other) const
 {
+    Clipper2Lib::Clipper64 clipper;
+    Polygons subjects;
+    subjects.add(*this);
+    Polygons clips;
+    clips.add(other);
     Polygons ret;
-    ClipperLib::Clipper clipper(clipper_init);
-    clipper.AddPath(*path, ClipperLib::ptSubject, true);
-    clipper.AddPath(*other.path, ClipperLib::ptClip, true);
-    clipper.Execute(ClipperLib::ctIntersection, ret.paths);
+    ret.paths = Clipper2Lib::Intersect(subjects.paths, clips.paths, Clipper2Lib::FillRule::NonZero);
     return ret;
 }
 
@@ -89,21 +91,21 @@ Polygons Polygons::approxConvexHull(int extra_outset)
     //Perform the offset for each polygon one at a time.
     //This is necessary because the polygons may overlap, in which case the offset could end up in an infinite loop.
     //See http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Classes/ClipperOffset/_Body.htm
-    for (const ClipperLib::Path& path : paths)
+    for (const Clipper2Lib::Path64& path : paths)
     {
         Polygons offset_result;
-        ClipperLib::ClipperOffset offsetter(1.2, 10.0);
-        offsetter.AddPath(path, ClipperLib::jtRound, ClipperLib::etClosedPolygon);
+        Clipper2Lib::ClipperOffset offsetter(1.2, 10.0);
+        offsetter.AddPath(path, Clipper2Lib::JoinType::Round, Clipper2Lib::EndType::Polygon);
         offsetter.Execute(offset_result.paths, overshoot);
         convex_hull.add(offset_result);
     }
-    return convex_hull.unionPolygons().offset(-overshoot + extra_outset, ClipperLib::jtRound);
+    return convex_hull.unionPolygons().offset(-overshoot + extra_outset, Clipper2Lib::JoinType::Round);
 }
 
 unsigned int Polygons::pointCount() const
 {
     unsigned int count = 0;
-    for (const ClipperLib::Path& path : paths)
+    for (const Clipper2Lib::Path64& path : paths)
     {
         count += path.size();
     }
@@ -113,14 +115,14 @@ unsigned int Polygons::pointCount() const
 bool Polygons::inside(Point p, bool border_result) const
 {
     int poly_count_inside = 0;
-    for (const ClipperLib::Path& poly : *this)
+    for (const Clipper2Lib::Path64& poly : *this)
     {
-        const int is_inside_this_poly = ClipperLib::PointInPolygon(p, poly);
-        if (is_inside_this_poly == -1)
+        const Clipper2Lib::PointInPolygonResult res = Clipper2Lib::PointInPolygon(p, poly);
+        if (res == Clipper2Lib::PointInPolygonResult::IsOn)
         {
             return border_result;
         }
-        poly_count_inside += is_inside_this_poly;
+        poly_count_inside += (res == Clipper2Lib::PointInPolygonResult::IsInside);
     }
     return (poly_count_inside % 2) == 1;
 }
@@ -154,7 +156,7 @@ bool Polygons::insideOld(Point p, bool border_result) const
     }
 
     int crossings = 0;
-    for (const ClipperLib::Path& poly : thiss)
+    for (const Clipper2Lib::Path64& poly : thiss)
     {
         Point p0 = poly.back();
         for (const Point& p1 : poly)
@@ -197,13 +199,13 @@ unsigned int Polygons::findInside(Point p, bool border_result)
             {
                 crossings[poly_idx]++;
                 int64_t x;
-                if (p1.Y == p0.Y)
+                if (p1.y == p0.y)
                 {
-                    x = p0.X;
+                    x = p0.x;
                 }
                 else
                 {
-                    x = p0.X + (p1.X-p0.X) * (p.Y-p0.Y) / (p1.Y-p0.Y);
+                    x = p0.x + (p1.x-p0.x) * (p.y-p0.y) / (p1.y-p0.y);
                 }
                 if (x < min_x[poly_idx])
                 {
