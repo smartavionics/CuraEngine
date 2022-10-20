@@ -130,11 +130,6 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
 DiscreteLinesInfill::~DiscreteLinesInfill() {
 }
 
-Point DiscreteLinesInfill::rotate_around_origin(const Point& point, const double rads)
-{
-    return (rads != 0) ? infill_origin + rotate(point - infill_origin, rads) : point;
-}
-
 void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outline)
 {
     clipped_outline = outline;
