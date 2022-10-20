@@ -2827,7 +2827,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     const GCodePathConfig* skin_config = &mesh_config.skin_config;
     Ratio skin_density = 1.0;
     // for bridge skins, overlap has already been applied
-    const coord_t skin_overlap = (bridge_layer_nr == 0) ? mesh.settings.get<coord_t>("skin_overlap_mm") : 0;
+    const coord_t skin_overlap = (bridge_layer_nr < 1) ? mesh.settings.get<coord_t>("skin_overlap_mm") : 0;
 
     const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
 
