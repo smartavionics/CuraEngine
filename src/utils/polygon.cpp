@@ -96,7 +96,7 @@ Polygons Polygons::approxConvexHull(int extra_outset)
         Polygons offset_result;
         Clipper2Lib::ClipperOffset offsetter(1.2, 10.0);
         offsetter.AddPath(path, Clipper2Lib::JoinType::Round, Clipper2Lib::EndType::Polygon);
-        offsetter.Execute(offset_result.paths, overshoot);
+        offset_result.paths = offsetter.Execute(overshoot);
         convex_hull.add(offset_result);
     }
     return convex_hull.unionPolygons().offset(-overshoot + extra_outset, Clipper2Lib::JoinType::Round);
@@ -241,11 +241,11 @@ unsigned int Polygons::findInside(Point p, bool border_result)
 
 Polygons Polygons::intersectionPolyLines(const Polygons& polylines) const
 {
-    ClipperLib::PolyTree result;
-    ClipperLib::Clipper clipper(clipper_init);
-    clipper.AddPaths(polylines.paths, ClipperLib::ptSubject, false);
-    clipper.AddPaths(paths, ClipperLib::ptClip, true);
-    clipper.Execute(ClipperLib::ctIntersection, result);
+    Clipper2Lib::PolyTree64 result;
+    Clipper2Lib::Clipper64 clipper;
+    clipper.AddSubject(polylines.paths);
+    clipper.AddClip(paths);
+    clipper.Execute(Clipper2Lib::ClipType::Intersection, Clipper2Lib::FillRule::EvenOdd, result);
     Polygons ret;
     ret.addPolyTreeNodeRecursive(result);
     return ret;
@@ -253,12 +253,10 @@ Polygons Polygons::intersectionPolyLines(const Polygons& polylines) const
 
 Polygons& Polygons::cut(const Polygons& tool)
 {
-    ClipperLib::PolyTree interior_segments_tree;
-    tool.lineSegmentIntersection(*this, interior_segments_tree);
-    ClipperLib::Paths interior_segments;
-    ClipperLib::OpenPathsFromPolyTree(interior_segments_tree, interior_segments);
+    Clipper2Lib::Paths64 interior_segments;
+    tool.lineSegmentIntersection(*this, interior_segments);
     this->clear();
-    for (const std::vector<ClipperLib::IntPoint>& interior_segment : interior_segments)
+    for (auto interior_segment : interior_segments)
     {
         this->addLine(interior_segment[0], interior_segment[1]);
     }
@@ -281,21 +279,21 @@ coord_t Polygons::polyLineLength() const
     return length;
 }
 
-Polygons Polygons::offset(int distance, ClipperLib::JoinType join_type, double miter_limit) const
+Polygons Polygons::offset(int distance, Clipper2Lib::JoinType join_type, double miter_limit) const
 {
     if (distance == 0)
     {
         return *this;
     }
     Polygons ret;
-    ClipperLib::ClipperOffset clipper(miter_limit, 10.0);
-    clipper.AddPaths(unionPolygons().paths, join_type, ClipperLib::etClosedPolygon);
-    clipper.MiterLimit = miter_limit;
-    clipper.Execute(ret.paths, distance);
+    Clipper2Lib::ClipperOffset clipper(miter_limit, 10.0);
+    clipper.AddPaths(unionPolygons().paths, join_type, Clipper2Lib::EndType::Polygon);
+    clipper.MiterLimit(miter_limit);
+    ret.paths = clipper.Execute(distance);
     return ret;
 }
 
-Polygons ConstPolygonRef::offset(int distance, ClipperLib::JoinType join_type, double miter_limit) const
+Polygons ConstPolygonRef::offset(int distance, Clipper2Lib::JoinType join_type, double miter_limit) const
 {
     if (distance == 0)
     {
@@ -304,10 +302,10 @@ Polygons ConstPolygonRef::offset(int distance, ClipperLib::JoinType join_type, d
         return ret;
     }
     Polygons ret;
-    ClipperLib::ClipperOffset clipper(miter_limit, 10.0);
-    clipper.AddPath(*path, join_type, ClipperLib::etClosedPolygon);
-    clipper.MiterLimit = miter_limit;
-    clipper.Execute(ret.paths, distance);
+    Clipper2Lib::ClipperOffset clipper(miter_limit, 10.0);
+    clipper.AddPath(*path, join_type, Clipper2Lib::EndType::Polygon);
+    clipper.MiterLimit(miter_limit);
+    ret.paths = clipper.Execute(distance);
     return ret;
 }
 
@@ -323,7 +321,7 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
         return;
     }
 
-    ClipperLib::Path new_path;
+    Clipper2Lib::Path64 new_path;
     Point previous = path->at(0);
     Point current = path->at(1);
     /* When removing a vertex, we'll check if the delta area of the polygon
@@ -333,7 +331,7 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
      * those vertices results in too much area being removed. So we accumulate
      * the area that is going to be removed by a streak of consecutive vertices
      * and don't allow that to exceed allowed_error_distance_squared. */
-    coord_t accumulated_area_removed = previous.X * current.Y - previous.Y * current.X; //Shoelace formula for area of polygon per line segment.
+    coord_t accumulated_area_removed = previous.x * current.y - previous.y * current.x; //Shoelace formula for area of polygon per line segment.
 
     new_path.push_back(previous);
 
@@ -355,9 +353,9 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
         }
 
         //Check if the accumulated area doesn't exceed the maximum.
-        accumulated_area_removed += current.X * next.Y - current.Y * next.X; //Shoelace formula for area of polygon per line segment.
+        accumulated_area_removed += current.x * next.y - current.y * next.x; //Shoelace formula for area of polygon per line segment.
 
-        const double area_removed_so_far = accumulated_area_removed + next.X * previous.Y - next.Y * previous.X; //Close the polygon.
+        const double area_removed_so_far = accumulated_area_removed + next.x * previous.y - next.y * previous.x; //Close the polygon.
         const double base_length_2 = vSize2(next - previous);
         if (base_length_2 == 0) //Two line segments form a line back and forth with no area.
         {
@@ -386,7 +384,7 @@ void PolygonRef::simplify(const coord_t smallest_line_segment_squared, const coo
         }
         //Don't remove the vertex.
 
-        accumulated_area_removed = current.X * next.Y - current.Y * next.X;
+        accumulated_area_removed = current.x * next.y - current.y * next.x;
         previous = current; //Note that "previous" is only updated if we don't remove the vertex.
         new_path.push_back(current);
     }
@@ -438,16 +436,14 @@ void PolygonRef::applyMatrix(const Point3Matrix& matrix)
 Polygons Polygons::getOutsidePolygons() const
 {
     Polygons ret;
-    ClipperLib::Clipper clipper(clipper_init);
-    ClipperLib::PolyTree poly_tree;
-    constexpr bool paths_are_closed_polys = true;
-    clipper.AddPaths(paths, ClipperLib::ptSubject, paths_are_closed_polys);
-    clipper.Execute(ClipperLib::ctUnion, poly_tree);
+    Clipper2Lib::Clipper64 clipper;
+    Clipper2Lib::PolyTree64 poly_tree;
+    clipper.AddSubject(paths);
+    clipper.Execute(Clipper2Lib::ClipType::Union, Clipper2Lib::FillRule::EvenOdd, poly_tree);
 
-    for (int outer_poly_idx = 0; outer_poly_idx < poly_tree.ChildCount(); outer_poly_idx++)
+    for (auto child : poly_tree)
     {
-        ClipperLib::PolyNode* child = poly_tree.Childs[outer_poly_idx];
-        ret.emplace_back(child->Contour);
+        ret.emplace_back(child->Polygon());
     }
     return ret;
 }
@@ -455,11 +451,10 @@ Polygons Polygons::getOutsidePolygons() const
 Polygons Polygons::removeEmptyHoles() const
 {
     Polygons ret;
-    ClipperLib::Clipper clipper(clipper_init);
-    ClipperLib::PolyTree poly_tree;
-    constexpr bool paths_are_closed_polys = true;
-    clipper.AddPaths(paths, ClipperLib::ptSubject, paths_are_closed_polys);
-    clipper.Execute(ClipperLib::ctUnion, poly_tree);
+    Clipper2Lib::Clipper64 clipper;
+    Clipper2Lib::PolyTree64 poly_tree;
+    clipper.AddSubject(paths);
+    clipper.Execute(Clipper2Lib::ClipType::Union, Clipper2Lib::FillRule::EvenOdd, poly_tree);
 
     bool remove_holes = true;
     removeEmptyHoles_processPolyTreeNode(poly_tree, remove_holes, ret);
@@ -469,33 +464,30 @@ Polygons Polygons::removeEmptyHoles() const
 Polygons Polygons::getEmptyHoles() const
 {
     Polygons ret;
-    ClipperLib::Clipper clipper(clipper_init);
-    ClipperLib::PolyTree poly_tree;
-    constexpr bool paths_are_closed_polys = true;
-    clipper.AddPaths(paths, ClipperLib::ptSubject, paths_are_closed_polys);
-    clipper.Execute(ClipperLib::ctUnion, poly_tree);
+    Clipper2Lib::Clipper64 clipper;
+    Clipper2Lib::PolyTree64 poly_tree;
+    clipper.AddSubject(paths);
+    clipper.Execute(Clipper2Lib::ClipType::Union, Clipper2Lib::FillRule::EvenOdd, poly_tree);
 
     bool remove_holes = false;
     removeEmptyHoles_processPolyTreeNode(poly_tree, remove_holes, ret);
     return ret;
 }
 
-void Polygons::removeEmptyHoles_processPolyTreeNode(const ClipperLib::PolyNode& node, const bool remove_holes, Polygons& ret) const
+void Polygons::removeEmptyHoles_processPolyTreeNode(const Clipper2Lib::PolyTree64& node, const bool remove_holes, Polygons& ret) const
 {
-    for (int outer_poly_idx = 0; outer_poly_idx < node.ChildCount(); outer_poly_idx++)
+    for (auto child : node)
     {
-        ClipperLib::PolyNode* child = node.Childs[outer_poly_idx];
         if (remove_holes)
         {
-            ret.emplace_back(child->Contour);
+            ret.emplace_back(child->Polygon());
         }
-        for (int hole_node_idx = 0; hole_node_idx < child->ChildCount(); hole_node_idx++)
+        for (auto hole_node : *child)
         {
-            ClipperLib::PolyNode& hole_node = *child->Childs[hole_node_idx];
-            if ((hole_node.ChildCount() > 0) == remove_holes)
+            if ((hole_node->Count() > 0) == remove_holes)
             {
-                ret.emplace_back(hole_node.Contour);
-                removeEmptyHoles_processPolyTreeNode(hole_node, remove_holes, ret);
+                ret.emplace_back(hole_node->Polygon());
+                removeEmptyHoles_processPolyTreeNode(*hole_node, remove_holes, ret);
             }
         }
     }
@@ -509,7 +501,7 @@ void Polygons::removeSmallAreas(const double min_area_size, const bool remove_ho
         for(auto it = paths.begin(); it < new_end; it++)
         {
             // All polygons smaller than target are removed by replacing them with a polygon from the back of the vector
-            if(fabs(INT2MM2(ClipperLib::Area(*it))) < min_area_size)
+            if(fabs(INT2MM2(Clipper2Lib::Area(*it))) < min_area_size)
             {
                 new_end--;
                 *it = std::move(*new_end);
@@ -522,7 +514,7 @@ void Polygons::removeSmallAreas(const double min_area_size, const bool remove_ho
         // For each polygon, computes the signed area, move small outlines at the end of the vector and keep references on small holes
         std::vector<PolygonRef> small_holes;
         for(auto it = paths.begin(); it < new_end; it++) {
-            double area = INT2MM2(ClipperLib::Area(*it));
+            double area = INT2MM2(Clipper2Lib::Area(*it));
             if (fabs(area) < min_area_size)
             {
                 if(area >= 0)
@@ -639,7 +631,7 @@ void Polygons::_removeDegenerateVerts(const bool for_polyline)
     }
 }
 
-Polygons Polygons::toPolygons(ClipperLib::PolyTree& poly_tree)
+Polygons Polygons::toPolygons(Clipper2Lib::PolyTree64& poly_tree)
 {
     Polygons ret;
     ret.addPolyTreeNodeRecursive(poly_tree);
@@ -647,12 +639,11 @@ Polygons Polygons::toPolygons(ClipperLib::PolyTree& poly_tree)
 }
 
 
-void Polygons::addPolyTreeNodeRecursive(const ClipperLib::PolyNode& node)
+void Polygons::addPolyTreeNodeRecursive(const Clipper2Lib::PolyTree64& node)
 {
-    for (int outer_poly_idx = 0; outer_poly_idx < node.ChildCount(); outer_poly_idx++)
+    for (auto child : node)
     {
-        ClipperLib::PolyNode* child = node.Childs[outer_poly_idx];
-        paths.push_back(child->Contour);
+        paths.push_back(child->Polygon());
         addPolyTreeNodeRecursive(*child);
     }
 }
@@ -1105,7 +1096,7 @@ void ConstPolygonRef::smooth(int remove_length, PolygonRef result) const
 //          |
 //          0
     const ConstPolygonRef& thiss = *path;
-    ClipperLib::Path* poly = result.path;
+    Clipper2Lib::Path64* poly = result.path;
     if (size() > 0)
     {
         poly->push_back(thiss[0]);
@@ -1201,7 +1192,7 @@ Polygons Polygons::smooth(int remove_length) const
 void ConstPolygonRef::smooth2(int remove_length, PolygonRef result) const
 {
     const ConstPolygonRef& thiss = *this;
-    ClipperLib::Path* poly = result.path;
+    Clipper2Lib::Path64* poly = result.path;
     if (thiss.size() > 0)
     {
         poly->push_back(thiss[0]);
@@ -1267,29 +1258,25 @@ double Polygons::area() const
 std::vector<PolygonsPart> Polygons::splitIntoParts(bool unionAll) const
 {
     std::vector<PolygonsPart> ret;
-    ClipperLib::Clipper clipper(clipper_init);
-    ClipperLib::PolyTree resultPolyTree;
-    clipper.AddPaths(paths, ClipperLib::ptSubject, true);
-    if (unionAll)
-        clipper.Execute(ClipperLib::ctUnion, resultPolyTree, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
-    else
-        clipper.Execute(ClipperLib::ctUnion, resultPolyTree);
+    Clipper2Lib::Clipper64 clipper;
+    Clipper2Lib::PolyTree64 resultPolyTree;
+    clipper.AddSubject(paths);
+    clipper.Execute(Clipper2Lib::ClipType::Union, (unionAll) ? Clipper2Lib::FillRule::NonZero : Clipper2Lib::FillRule::EvenOdd, resultPolyTree);
 
     splitIntoParts_processPolyTreeNode(&resultPolyTree, ret);
     return ret;
 }
 
-void Polygons::splitIntoParts_processPolyTreeNode(ClipperLib::PolyNode* node, std::vector<PolygonsPart>& ret) const
+void Polygons::splitIntoParts_processPolyTreeNode(Clipper2Lib::PolyTree64* node, std::vector<PolygonsPart>& ret) const
 {
-    for(int n=0; n<node->ChildCount(); n++)
+    for (auto child : *node)
     {
-        ClipperLib::PolyNode* child = node->Childs[n];
         PolygonsPart part;
-        part.add(child->Contour);
-        for(int i=0; i<child->ChildCount(); i++)
+        part.add(child->Polygon());
+        for (auto grandchild : *child)
         {
-            part.add(child->Childs[i]->Contour);
-            splitIntoParts_processPolyTreeNode(child->Childs[i], ret);
+            part.add(grandchild->Polygon());
+            splitIntoParts_processPolyTreeNode(grandchild, ret);
         }
         ret.push_back(part);
     }
@@ -1346,13 +1333,10 @@ PartsView Polygons::splitIntoPartsView(bool unionAll)
 {
     Polygons reordered;
     PartsView partsView(*this);
-    ClipperLib::Clipper clipper(clipper_init);
-    ClipperLib::PolyTree resultPolyTree;
-    clipper.AddPaths(paths, ClipperLib::ptSubject, true);
-    if (unionAll)
-        clipper.Execute(ClipperLib::ctUnion, resultPolyTree, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
-    else
-        clipper.Execute(ClipperLib::ctUnion, resultPolyTree);
+    Clipper2Lib::Clipper64 clipper;
+    Clipper2Lib::PolyTree64 resultPolyTree;
+    clipper.AddSubject(paths);
+    clipper.Execute(Clipper2Lib::ClipType::Union, (unionAll) ? Clipper2Lib::FillRule::NonZero : Clipper2Lib::FillRule::EvenOdd, resultPolyTree);
 
     splitIntoPartsView_processPolyTreeNode(partsView, reordered, &resultPolyTree);
 
@@ -1360,20 +1344,19 @@ PartsView Polygons::splitIntoPartsView(bool unionAll)
     return partsView;
 }
 
-void Polygons::splitIntoPartsView_processPolyTreeNode(PartsView& partsView, Polygons& reordered, ClipperLib::PolyNode* node) const
+void Polygons::splitIntoPartsView_processPolyTreeNode(PartsView& partsView, Polygons& reordered, Clipper2Lib::PolyPath64* node) const
 {
-    for(int n=0; n<node->ChildCount(); n++)
+    for (auto child : *node)
     {
-        ClipperLib::PolyNode* child = node->Childs[n];
         partsView.emplace_back();
         unsigned int pos = partsView.size() - 1;
         partsView[pos].push_back(reordered.size());
-        reordered.add(child->Contour); //TODO: should this steal the internal representation for speed?
-        for(int i = 0; i < child->ChildCount(); i++)
+        reordered.add(child->Polygon()); //TODO: should this steal the internal representation for speed?
+        for (auto grandchild : *child)
         {
             partsView[pos].push_back(reordered.size());
-            reordered.add(child->Childs[i]->Contour);
-            splitIntoPartsView_processPolyTreeNode(partsView, reordered, child->Childs[i]);
+            reordered.add(grandchild->Polygon());
+            splitIntoPartsView_processPolyTreeNode(partsView, reordered, grandchild);
         }
     }
 }

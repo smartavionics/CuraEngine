@@ -771,9 +771,14 @@ public:
      * \param other Input line segments to be cropped
      * \param segment_tree the resulting interior line segments
      */
-    void lineSegmentIntersection(const Polygons& other, Clipper2Lib::Paths64& segment_tree) const
+    void lineSegmentIntersection(const Polygons& other, Clipper2Lib::Paths64& open_paths) const
     {
-        segment_tree = Clipper2Lib::Intersect(other.paths, paths, Clipper2Lib::FillRule::NonZero);
+        Clipper2Lib::Clipper64 clipper;
+        Clipper2Lib::PolyTree64 poly_tree;
+        clipper.AddSubject(other.paths);
+        clipper.AddClip(paths);
+        Clipper2Lib::Paths64 closed_paths;
+        clipper.Execute(Clipper2Lib::ClipType::Intersection, Clipper2Lib::FillRule::EvenOdd, closed_paths, open_paths);
     }
 
     /*!
