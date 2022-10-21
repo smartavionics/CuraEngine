@@ -35,7 +35,15 @@ protected:
     const coord_t min_line_len2 = 100; //!< minimum squared length of generated lines, don't output any shorter than 10um
     rapidjson::Document* json_document;
 
-    Point rotate_around_origin(const Point& point, const double rads);
+    Point rotate_around(const Point& point, const Point& origin, const double rads)
+    {
+        return (rads != 0) ? origin + rotate(point - origin, rads) : point;
+    }
+
+    Point rotate_around_origin(const Point& point, const double rads)
+    {
+        return rotate_around(point, infill_origin, rads);
+    }
 
 private:
     std::vector<Point> chains[2]; // [start_points[], end_points[]]

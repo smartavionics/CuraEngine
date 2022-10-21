@@ -2558,7 +2558,7 @@ void FffGcodeWriter::processRoofing(const SliceDataStorage& storage, LayerPlan& 
     }
 
     const Ratio skin_density = 1.0;
-    const coord_t skin_overlap = mesh.settings.get<coord_t>("skin_overlap_mm");
+    const coord_t skin_overlap = 0; // skinfill already expanded over the roofing areas; don't overlap with perimeters
     Polygons* perimeter_gaps_output = (fill_perimeter_gaps) ? &concentric_perimeter_gaps : nullptr;
     const bool monotonic = mesh.settings.get<bool>("roofing_monotonic");
     processSkinPrintFeature(storage, gcode_layer, mesh, extruder_nr, skin_part.roofing_fill, mesh_config.roofing_config, pattern, roofing_angle, skin_overlap, skin_density, monotonic, perimeter_gaps_output, added_something);
@@ -2827,7 +2827,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     const GCodePathConfig* skin_config = &mesh_config.skin_config;
     Ratio skin_density = 1.0;
     // for bridge skins, overlap has already been applied
-    const coord_t skin_overlap = (bridge_layer_nr == 0) ? mesh.settings.get<coord_t>("skin_overlap_mm") : 0;
+    const coord_t skin_overlap = (bridge_layer_nr < 1) ? mesh.settings.get<coord_t>("skin_overlap_mm") : 0;
 
     const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
 

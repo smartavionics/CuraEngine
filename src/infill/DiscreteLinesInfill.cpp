@@ -130,11 +130,6 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
 DiscreteLinesInfill::~DiscreteLinesInfill() {
 }
 
-Point DiscreteLinesInfill::rotate_around_origin(const Point& point, const double rads)
-{
-    return (rads != 0) ? infill_origin + rotate(point - infill_origin, rads) : point;
-}
-
 void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outline)
 {
     clipped_outline = outline;
@@ -413,12 +408,13 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         if (xpitch > 0)
         {
-            coord_t x_min = infill_origin.x + std::ceil((float)(infill_origin.x - aabb.min.x) / xpitch + 1) * -xpitch;
-            coord_t x_max = infill_origin.x + std::ceil((float)(aabb.max.x - infill_origin.x) / xpitch + 1) * xpitch;
-
             if (scattered)
             {
-                coord_t max = xpitch - infill_line_width;
+                const Point middle = aabb.getMiddle();
+                const int max_gaps = std::ceil((float)std::max(aabb.max.x - aabb.min.x, aabb.max.y - aabb.min.y) / xpitch) + 1;
+                const coord_t x_min = middle.x - max_gaps * xpitch;
+                const coord_t x_max = middle.x + max_gaps * xpitch;
+                const coord_t max = xpitch - infill_line_width;
                 for (coord_t x = x_min; x < x_max; x += xpitch)
                 {
                     x_vals.push_back(x + rand() % max - max/2);
@@ -426,6 +422,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             }
             else
             {
+                const coord_t x_min = infill_origin.x + std::ceil((float)(infill_origin.x - aabb.min.x) / xpitch + 1) * -xpitch;
+                const coord_t x_max = infill_origin.x + std::ceil((float)(aabb.max.x - infill_origin.x) / xpitch + 1) * xpitch;
                 for (coord_t x = x_min; x < x_max; x += xpitch)
                 {
                     if (x >= clip_x_min && x <= clip_x_max)
@@ -475,12 +473,13 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         if (ypitch > 0)
         {
-            coord_t y_min = infill_origin.y + std::ceil((float)(infill_origin.y - aabb.min.y) / ypitch + 1) * -ypitch;
-            coord_t y_max = infill_origin.y + std::ceil((float)(aabb.max.y - infill_origin.y) / ypitch + 1) * ypitch;
-
             if (scattered)
             {
-                coord_t max = ypitch - infill_line_width;
+                const Point middle = aabb.getMiddle();
+                const int max_gaps = std::ceil((float)std::max(aabb.max.x - aabb.min.x, aabb.max.y - aabb.min.y) / ypitch) + 1;
+                const coord_t y_min = middle.y - max_gaps * ypitch;
+                const coord_t y_max = middle.y + max_gaps * ypitch;
+                const coord_t max = ypitch - infill_line_width;
                 for (coord_t y = y_min; y < y_max; y += ypitch)
                 {
                     y_vals.push_back(y + rand() % max - max/2);
@@ -488,6 +487,8 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             }
             else
             {
+                const coord_t y_min = infill_origin.y + std::ceil((float)(infill_origin.y - aabb.min.y) / ypitch + 1) * -ypitch;
+                const coord_t y_max = infill_origin.y + std::ceil((float)(aabb.max.y - infill_origin.y) / ypitch + 1) * ypitch;
                 for (coord_t y = y_min; y < y_max; y += ypitch)
                 {
                     if (y >= clip_y_min && y <= clip_y_max)
@@ -798,15 +799,17 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         // straight lines
         for (coord_t x : x_vals)
         {
-            Point line_start = rotate_around_origin(Point(x, std::min(aabb.min.y, aabb.min.x)), rot_rads);
-            Point line_end = rotate_around_origin(Point(x, std::max(aabb.max.y, aabb.max.x)), rot_rads);
+            const coord_t maxy = std::numeric_limits<int32_t>::max();
+            Point line_start = rotate_around(Point(x, -maxy), (scattered) ? aabb.getMiddle() : infill_origin, rot_rads);
+            Point line_end = rotate_around(Point(x, maxy), (scattered) ? aabb.getMiddle() : infill_origin, rot_rads);
             addClippedLine(line_start, line_end, num_lines++);
         }
 
         for (coord_t y : y_vals)
         {
-            Point line_start = rotate_around_origin(Point(std::min(aabb.min.x, aabb.min.y), y), rot_rads);
-            Point line_end = rotate_around_origin(Point(std::max(aabb.max.x, aabb.max.y), y), rot_rads);
+            const coord_t maxx = std::numeric_limits<int32_t>::max();
+            Point line_start = rotate_around(Point(-maxx, y), (scattered) ? aabb.getMiddle() : infill_origin, rot_rads);
+            Point line_end = rotate_around(Point(maxx, y), (scattered) ? aabb.getMiddle() : infill_origin, rot_rads);
             addClippedLine(line_start, line_end, num_lines++);
         }
 
