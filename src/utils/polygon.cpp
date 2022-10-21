@@ -241,13 +241,12 @@ unsigned int Polygons::findInside(Point p, bool border_result)
 
 Polygons Polygons::intersectionPolyLines(const Polygons& polylines) const
 {
-    Clipper2Lib::PolyTree64 result;
     Clipper2Lib::Clipper64 clipper;
     clipper.AddSubject(polylines.paths);
     clipper.AddClip(paths);
-    clipper.Execute(Clipper2Lib::ClipType::Intersection, Clipper2Lib::FillRule::EvenOdd, result);
+    Clipper2Lib::Paths64 closed_paths;
     Polygons ret;
-    ret.addPolyTreeNodeRecursive(result);
+    clipper.Execute(Clipper2Lib::ClipType::Intersection, Clipper2Lib::FillRule::EvenOdd, closed_paths, ret.paths);
     return ret;
 }
 
