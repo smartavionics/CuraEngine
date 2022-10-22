@@ -132,24 +132,27 @@ DiscreteLinesInfill::~DiscreteLinesInfill() {
 
 void DiscreteLinesInfill::generate(Polygons& result_lines, const Polygons& outline)
 {
-    clipped_outline = outline;
-
-    if (json_document->IsArray())
+    if (!outline.empty())
     {
-        for (rapidjson::Value::ValueIterator def_iter = json_document->Begin(); def_iter != json_document->End(); def_iter++)
+        clipped_outline = outline;
+
+        if (json_document->IsArray())
         {
-            if (def_iter->IsObject())
+            for (rapidjson::Value::ValueIterator def_iter = json_document->Begin(); def_iter != json_document->End(); def_iter++)
             {
-                generateCoordinates(result_lines, outline, def_iter);
+                if (def_iter->IsObject())
+                {
+                    generateCoordinates(result_lines, outline, def_iter);
+                }
             }
         }
-    }
-    else if(json_document->IsObject())
-    {
-        generateCoordinates(result_lines, outline, json_document);
-    }
+        else if(json_document->IsObject())
+        {
+            generateCoordinates(result_lines, outline, json_document);
+        }
 
-    generateConnections(result_lines, connections_outline);
+        generateConnections(result_lines, connections_outline);
+    }
 }
 
 void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def)
