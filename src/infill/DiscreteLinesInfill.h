@@ -51,7 +51,7 @@ private:
     std::vector<int> line_numbers; // which row/column line a chain is part of
 
     Polygons clipped_outline; // next infill pattern (including connecting wall lines if enabled) is clipped to this outline
-    Polygons connections_outline; // if connections are enabled, the connection line secgments follow this outline
+    Polygons connections_outline; // if connections are enabled, the connection line segments follow this outline
 
     void generateCoordinates(Polygons& result, const Polygons& outline, rapidjson::Value* one_def);
 
