@@ -242,7 +242,7 @@ unsigned int Polygons::findInside(Point p, bool border_result)
 Polygons Polygons::intersectionPolyLines(const Polygons& polylines) const
 {
     Clipper2Lib::Clipper64 clipper;
-    clipper.AddSubject(polylines.paths);
+    clipper.AddOpenSubject(polylines.paths);
     clipper.AddClip(paths);
     Clipper2Lib::Paths64 closed_paths;
     Polygons ret;

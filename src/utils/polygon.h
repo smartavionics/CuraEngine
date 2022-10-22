@@ -775,7 +775,7 @@ public:
     {
         Clipper2Lib::Clipper64 clipper;
         Clipper2Lib::PolyTree64 poly_tree;
-        clipper.AddSubject(other.paths);
+        clipper.AddOpenSubject(other.paths);
         clipper.AddClip(paths);
         Clipper2Lib::Paths64 closed_paths;
         clipper.Execute(Clipper2Lib::ClipType::Intersection, Clipper2Lib::FillRule::EvenOdd, closed_paths, open_paths);
