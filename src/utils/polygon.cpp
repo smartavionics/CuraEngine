@@ -94,7 +94,7 @@ Polygons Polygons::approxConvexHull(int extra_outset)
     for (const Clipper2Lib::Path64& path : paths)
     {
         Polygons offset_result;
-        Clipper2Lib::ClipperOffset offsetter(1.2, 10.0);
+        Clipper2Lib::ClipperOffset offsetter(1.2);
         offsetter.AddPath(path, Clipper2Lib::JoinType::Round, Clipper2Lib::EndType::Polygon);
         offset_result.paths = offsetter.Execute(overshoot);
         convex_hull.add(offset_result);
@@ -285,7 +285,7 @@ Polygons Polygons::offset(int distance, Clipper2Lib::JoinType join_type, double 
         return *this;
     }
     Polygons ret;
-    Clipper2Lib::ClipperOffset clipper(miter_limit, 10.0);
+    Clipper2Lib::ClipperOffset clipper(miter_limit);
     clipper.AddPaths(unionPolygons().paths, join_type, Clipper2Lib::EndType::Polygon);
     ret.paths = clipper.Execute(distance);
     return ret;
@@ -300,7 +300,7 @@ Polygons ConstPolygonRef::offset(int distance, Clipper2Lib::JoinType join_type, 
         return ret;
     }
     Polygons ret;
-    Clipper2Lib::ClipperOffset clipper(miter_limit, 10.0);
+    Clipper2Lib::ClipperOffset clipper(miter_limit);
     clipper.AddPath(*path, join_type, Clipper2Lib::EndType::Polygon);
     ret.paths = clipper.Execute(distance);
     return ret;
