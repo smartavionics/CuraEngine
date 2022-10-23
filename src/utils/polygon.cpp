@@ -287,7 +287,6 @@ Polygons Polygons::offset(int distance, Clipper2Lib::JoinType join_type, double 
     Polygons ret;
     Clipper2Lib::ClipperOffset clipper(miter_limit, 10.0);
     clipper.AddPaths(unionPolygons().paths, join_type, Clipper2Lib::EndType::Polygon);
-    clipper.MiterLimit(miter_limit);
     ret.paths = clipper.Execute(distance);
     return ret;
 }
@@ -303,7 +302,6 @@ Polygons ConstPolygonRef::offset(int distance, Clipper2Lib::JoinType join_type, 
     Polygons ret;
     Clipper2Lib::ClipperOffset clipper(miter_limit, 10.0);
     clipper.AddPath(*path, join_type, Clipper2Lib::EndType::Polygon);
-    clipper.MiterLimit(miter_limit);
     ret.paths = clipper.Execute(distance);
     return ret;
 }
