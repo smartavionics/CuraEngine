@@ -467,7 +467,8 @@ void SkinInfillAreaComputation::generateRoofing(SliceLayerPart& part)
     for (SkinPart& skin_part : part.skin_parts)
     {
         Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
-        skin_part.roofing_fill = skin_part.inner_infill.difference(no_air_above);
+        // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce the size of the roofing fill so they meet but not overlap
+        skin_part.roofing_fill = skin_part.inner_infill.difference(no_air_above.offset(mesh.settings.get<coord_t>("skin_overlap_mm") * 2));
         skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above);
 
         // Insets are NOT generated for any layer if the top/bottom pattern is concentric.
@@ -578,7 +579,8 @@ void SkinInfillAreaComputation::regenerateRoofingFillAndInnerInfill(SliceLayerPa
 
     generateInnerSkinInfill(skin_part);
     Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
-    skin_part.roofing_fill = skin_part.inner_infill.difference(no_air_above);
+    // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce the size of the roofing fill so they meet but not overlap
+    skin_part.roofing_fill = skin_part.inner_infill.difference(no_air_above.offset(mesh.settings.get<coord_t>("skin_overlap_mm") * 2));
     skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above);
 }
 
