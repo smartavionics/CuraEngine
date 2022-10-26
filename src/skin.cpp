@@ -467,9 +467,10 @@ void SkinInfillAreaComputation::generateRoofing(SliceLayerPart& part)
     for (SkinPart& skin_part : part.skin_parts)
     {
         Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
-        // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce the size of the roofing fill so they meet but not overlap
-        skin_part.roofing_fill = skin_part.inner_infill.difference(no_air_above.offset(mesh.settings.get<coord_t>("skin_overlap_mm") * 2));
-        skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above);
+        // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce their size so they meet but not overlap
+        Polygons basic_roofing_fill = skin_part.inner_infill.difference(no_air_above);
+        skin_part.roofing_fill = basic_roofing_fill.difference(no_air_above.offset(mesh.settings.get<coord_t>("roofing_overlap_mm")));
+        skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above).difference(basic_roofing_fill.offset(mesh.settings.get<coord_t>("skin_overlap_mm")));
 
         // Insets are NOT generated for any layer if the top/bottom pattern is concentric.
         // In this case, we still want to generate insets for the roofing layers based on the extra skin wall count,
@@ -579,9 +580,11 @@ void SkinInfillAreaComputation::regenerateRoofingFillAndInnerInfill(SliceLayerPa
 
     generateInnerSkinInfill(skin_part);
     Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
-    // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce the size of the roofing fill so they meet but not overlap
-    skin_part.roofing_fill = skin_part.inner_infill.difference(no_air_above.offset(mesh.settings.get<coord_t>("skin_overlap_mm") * 2));
-    skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above);
+    // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce their size so they meet but not overlap
+    Polygons basic_roofing_fill = skin_part.inner_infill.difference(no_air_above);
+    skin_part.roofing_fill = basic_roofing_fill.difference(no_air_above.offset(mesh.settings.get<coord_t>("roofing_overlap_mm")));
+    skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above).difference(basic_roofing_fill.offset(mesh.settings.get<coord_t>("skin_overlap_mm")));
+
 }
 
 void SkinInfillAreaComputation::generateInfillSupport(SliceMeshStorage& mesh)
