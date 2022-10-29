@@ -466,11 +466,21 @@ void SkinInfillAreaComputation::generateRoofing(SliceLayerPart& part)
 
     for (SkinPart& skin_part : part.skin_parts)
     {
-        Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
-        // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce their size so they meet but not overlap
-        Polygons basic_roofing_fill = skin_part.inner_infill.difference(no_air_above);
-        skin_part.roofing_fill = basic_roofing_fill.difference(no_air_above.offset(mesh.settings.get<coord_t>("roofing_overlap_mm")));
-        skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above).difference(basic_roofing_fill.offset(mesh.settings.get<coord_t>("skin_overlap_mm")));
+        if (mesh.settings.get<bool>("only_one_wall_top") && mesh.settings.get<size_t>("wall_line_count") > 1)
+        {
+            // all of the skin that is between the outer wall and the 2nd wall of the current layer will be roofing_fill
+            const Polygons wall2 = getWalls(part, layer_nr, 2);
+            skin_part.roofing_fill = skin_part.inner_infill.difference(wall2);
+            skin_part.inner_infill = skin_part.inner_infill.intersection(wall2);
+        }
+        else
+        {
+            Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
+            // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce their size so they meet but not overlap
+            Polygons basic_roofing_fill = skin_part.inner_infill.difference(no_air_above);
+            skin_part.roofing_fill = basic_roofing_fill.difference(no_air_above.offset(mesh.settings.get<coord_t>("roofing_overlap_mm")));
+            skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above).difference(basic_roofing_fill.offset(mesh.settings.get<coord_t>("skin_overlap_mm")));
+        }
 
         // Insets are NOT generated for any layer if the top/bottom pattern is concentric.
         // In this case, we still want to generate insets for the roofing layers based on the extra skin wall count,
@@ -579,12 +589,21 @@ void SkinInfillAreaComputation::regenerateRoofingFillAndInnerInfill(SliceLayerPa
     const size_t roofing_layer_count = std::min(mesh.settings.get<size_t>("roofing_layer_count"), mesh.settings.get<size_t>("top_layers"));
 
     generateInnerSkinInfill(skin_part);
-    Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
-    // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce their size so they meet but not overlap
-    Polygons basic_roofing_fill = skin_part.inner_infill.difference(no_air_above);
-    skin_part.roofing_fill = basic_roofing_fill.difference(no_air_above.offset(mesh.settings.get<coord_t>("roofing_overlap_mm")));
-    skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above).difference(basic_roofing_fill.offset(mesh.settings.get<coord_t>("skin_overlap_mm")));
-
+    if (mesh.settings.get<bool>("only_one_wall_top") && mesh.settings.get<size_t>("wall_line_count") > 1)
+    {
+        // all of the skin that is between the outer wall and the 2nd wall of the current layer will be roofing_fill
+        const Polygons wall2 = getWalls(part, layer_nr, 2);
+        skin_part.roofing_fill = skin_part.inner_infill.difference(wall2);
+        skin_part.inner_infill = skin_part.inner_infill.intersection(wall2);
+    }
+    else
+    {
+        Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
+        // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce their size so they meet but not overlap
+        Polygons basic_roofing_fill = skin_part.inner_infill.difference(no_air_above);
+        skin_part.roofing_fill = basic_roofing_fill.difference(no_air_above.offset(mesh.settings.get<coord_t>("roofing_overlap_mm")));
+        skin_part.inner_infill = skin_part.inner_infill.intersection(no_air_above).difference(basic_roofing_fill.offset(mesh.settings.get<coord_t>("skin_overlap_mm")));
+    }
 }
 
 void SkinInfillAreaComputation::generateInfillSupport(SliceMeshStorage& mesh)
