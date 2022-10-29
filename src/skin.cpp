@@ -509,8 +509,7 @@ void SkinInfillAreaComputation::generateRoofing(SliceLayerPart& part)
  */
 Polygons SkinInfillAreaComputation::generateNoAirAbove(SliceLayerPart& part, size_t roofing_layer_count)
 {
-    // when only_one_wall_top is set, use the shape of the outer wall rather than the 2nd wall as the latter may possibly be inset so that it isn't visible
-    const size_t wall_idx = std::min(size_t(mesh.settings.get<bool>("only_one_wall_top") ? 1 : 2), mesh.settings.get<size_t>("wall_line_count"));
+    const size_t wall_idx = std::min(size_t(2), mesh.settings.get<size_t>("wall_line_count"));
 
     Polygons no_air_above = getWalls(part, layer_nr + roofing_layer_count, wall_idx);
     if (!no_small_gaps_heuristic)
