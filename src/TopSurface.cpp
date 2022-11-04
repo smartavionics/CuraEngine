@@ -149,20 +149,24 @@ bool TopSurface::ironing(const SliceMeshStorage& mesh, const GCodePathConfig& li
             }
         }
 
+        const double fan_speed = mesh.settings.get<bool>("ironing_fan_enable") ? (double)mesh.settings.get<Ratio>("ironing_fan_speed") * 100.0 : GCodePathConfig::FAN_SPEED_DEFAULT;
+
         if(!mesh.settings.get<bool>("ironing_monotonic"))
         {
             constexpr bool enable_travel_optimization = false;
             constexpr coord_t wipe_dist = 0;
             constexpr float flow = 1.0;
             std::optional<Point> start_location;
-            constexpr double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
             const float avoid_freq = (pattern == EFillMethod::LINES || pattern == EFillMethod::ZIG_ZAG) ? mesh.settings.get<double>("avoid_frequency") : 0.0;
             layer.addLinesByOptimizer(ironing_lines, line_config, SpaceFillType::PolyLines, enable_travel_optimization, wipe_dist, flow, start_location, fan_speed, avoid_freq, &mesh, pattern);
         }
         else
         {
             const coord_t max_adjacent_distance = line_spacing * 1.1; //Lines are considered adjacent - meaning they need to be printed in monotonic order - if spaced 1 line apart, with 10% extra play.
-            layer.addLinesMonotonic(Polygons(), ironing_lines, line_config, SpaceFillType::PolyLines, AngleRadians(direction), max_adjacent_distance);
+            const coord_t exclude_distance = 0;
+            const coord_t wipe_dist = 0;
+            const Ratio flow_ratio = 1.0_r;
+            layer.addLinesMonotonic(Polygons(), ironing_lines, line_config, SpaceFillType::PolyLines, AngleRadians(direction), max_adjacent_distance, exclude_distance, wipe_dist, flow_ratio, fan_speed);
         }
         added = true;
     }
