@@ -106,16 +106,18 @@ bool TopSurface::ironing(const SliceMeshStorage& mesh, const GCodePathConfig& li
     const coord_t min_ironed_line_len = std::max(10.0, line_config.getLineWidth() * line_config.getFlowRatio() / 4);
     const coord_t min_ironed_line_len2 = min_ironed_line_len * min_ironed_line_len;
 
-    for (auto it = ironing_lines.begin(); it < ironing_lines.end();)
+    Polygons good_ironing_lines;
+    for (auto line : ironing_lines)
     {
-        if (vSize2((*it)[0] - (*it)[1]) < min_ironed_line_len2)
+        if (vSize2(line[0] - line[1]) >= min_ironed_line_len2)
         {
-            ironing_lines.erase(it, it + 1);
+            good_ironing_lines.addLine(line[0], line[1]);
         }
-        else
-        {
-            ++it;
-        }
+    }
+
+    if (good_ironing_lines.size() != ironing_lines.size())
+    {
+        ironing_lines = good_ironing_lines;
     }
 
     if (ironing_polygons.empty() && ironing_lines.empty())
