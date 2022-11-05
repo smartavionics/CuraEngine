@@ -102,10 +102,13 @@ bool TopSurface::ironing(const SliceMeshStorage& mesh, const GCodePathConfig& li
     Polygons ironing_lines;
     infill_generator.generate(ironing_polygons, ironing_lines);
 
-    // remove lines shorter than 10 uM
+    // remove lines shorter than 1/4 of the ironing line width or 10uM, if larger
+    const coord_t min_ironed_line_len = std::max(10.0, line_config.getLineWidth() * line_config.getFlowRatio() / 4);
+    const coord_t min_ironed_line_len2 = min_ironed_line_len * min_ironed_line_len;
+
     for (auto it = ironing_lines.begin(); it < ironing_lines.end();)
     {
-        if (vSize2((*it)[0] - (*it)[1]) < 100)
+        if (vSize2((*it)[0] - (*it)[1]) < min_ironed_line_len2)
         {
             ironing_lines.erase(it, it + 1);
         }
