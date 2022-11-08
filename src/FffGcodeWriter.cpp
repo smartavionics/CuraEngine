@@ -3397,7 +3397,7 @@ bool FffGcodeWriter::addSupportRoofsToGCode(const SliceDataStorage& storage, Lay
     constexpr size_t infill_multiplier = 1;
     constexpr coord_t outline_offset =  0;
     constexpr coord_t extra_infill_shift = 0;
-    constexpr size_t wall_line_count = 0;
+    const size_t wall_line_count = roof_extruder.settings.get<coord_t>("support_roof_wall_count");
     const Point infill_origin;
     constexpr Polygons* perimeter_gaps = nullptr;
     constexpr bool use_endpieces = true;
@@ -3541,7 +3541,7 @@ bool FffGcodeWriter::addSupportBottomsToGCode(const SliceDataStorage& storage, L
     constexpr size_t infill_multiplier = 1;
     constexpr coord_t outline_offset =  0;
     constexpr coord_t extra_infill_shift = 0;
-    constexpr size_t wall_line_count = 0;
+    const size_t wall_line_count = bottom_extruder.settings.get<coord_t>("support_bottom_wall_count");
     const Point infill_origin;
     constexpr Polygons* perimeter_gaps = nullptr;
     constexpr bool use_endpieces = true;
