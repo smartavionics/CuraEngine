@@ -37,7 +37,7 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
     {
         inset_count += 5;
     }
-    if (settings.get<bool>("alternate_extra_perimeter"))
+    if (settings.get<bool>("alternate_extra_perimeter") && !(single_inset_top && is_top_layer))
     {
         inset_count += ((layer_nr % 2) + 2) % 2;
     }
