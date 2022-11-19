@@ -30,8 +30,8 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
     const AABB& part_bb = part->boundaryBox;
     const bool single_inset_top = mesh.settings.get<bool>("only_one_wall_top");
     const bool single_inset_bottom = mesh.settings.get<bool>("only_one_wall_bottom");
-    const bool is_top_layer = (unsigned)(layer_nr + 1) >= mesh.layers.size() || mesh.partLayerIsTopmost(*part, layer_nr);
-    size_t inset_count = (settings.get<size_t>("wall_line_count") > 0) && ((single_inset_top && is_top_layer) || (single_inset_bottom && layer_nr == 0)) ? 1 : settings.get<size_t>("wall_line_count");
+    const bool single_inset_topmost_layer = single_inset_top && ((unsigned)(layer_nr + 1) >= mesh.layers.size() || mesh.partLayerIsTopmost(*part, layer_nr));
+    size_t inset_count = (settings.get<size_t>("wall_line_count") > 0) && (single_inset_topmost_layer || (single_inset_bottom && layer_nr == 0)) ? 1 : settings.get<size_t>("wall_line_count");
     const bool spiralize = settings.get<bool>("magic_spiralize");
     if (spiralize && layer_nr < LayerIndex(settings.get<size_t>("initial_bottom_layers")) && ((layer_nr % 2) + 2) % 2 == 1) //Add extra insets every 2 layers when spiralizing. This makes bottoms of cups watertight.
     {
