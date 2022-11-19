@@ -33,13 +33,16 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
     const bool single_inset_topmost_layer = single_inset_top && ((unsigned)(layer_nr + 1) >= mesh.layers.size() || mesh.partLayerIsTopmost(*part, layer_nr));
     size_t inset_count = (settings.get<size_t>("wall_line_count") > 0) && (single_inset_topmost_layer || (single_inset_bottom && layer_nr == 0)) ? 1 : settings.get<size_t>("wall_line_count");
     const bool spiralize = settings.get<bool>("magic_spiralize");
-    if (spiralize && layer_nr < LayerIndex(settings.get<size_t>("initial_bottom_layers")) && ((layer_nr % 2) + 2) % 2 == 1) //Add extra insets every 2 layers when spiralizing. This makes bottoms of cups watertight.
+    if (!single_inset_topmost_layer)
     {
-        inset_count += 5;
-    }
-    if (settings.get<bool>("alternate_extra_perimeter") && !(single_inset_top && is_top_layer))
-    {
-        inset_count += ((layer_nr % 2) + 2) % 2;
+        if (spiralize && layer_nr < LayerIndex(settings.get<size_t>("initial_bottom_layers")) && ((layer_nr % 2) + 2) % 2 == 1) //Add extra insets every 2 layers when spiralizing. This makes bottoms of cups watertight.
+        {
+            inset_count += 5;
+        }
+        if (settings.get<bool>("alternate_extra_perimeter"))
+        {
+            inset_count += ((layer_nr % 2) + 2) % 2;
+        }
     }
 
     if (inset_count == 0)
