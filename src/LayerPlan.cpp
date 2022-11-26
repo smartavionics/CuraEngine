@@ -2835,6 +2835,13 @@ bool LayerPlan::writePathWithCoasting(GCodeExport& gcode, const size_t extruder_
 
     
     double extrude_speed = path.config->getSpeed() * extruder_plan.getExtrudeSpeedFactor() * path.speed_factor; // travel speed
+
+    const double max_mm3_per_sec = extruder.settings.get<double>("material_max_mm3_per_sec");
+    const double mm3_per_sec = path.getExtrusionMM3perMM() * extrude_speed;
+    if (max_mm3_per_sec > 0 && mm3_per_sec > max_mm3_per_sec)
+    {
+        extrude_speed *= max_mm3_per_sec / mm3_per_sec;
+    }
     
     const coord_t coasting_dist = MM2INT(MM2_2INT(coasting_volume) / layer_thickness) / path.config->getLineWidth(); // closing brackets of MM2INT at weird places for precision issues
     const double coasting_min_volume = extruder.settings.get<double>("coasting_min_volume");
