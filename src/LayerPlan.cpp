@@ -2541,7 +2541,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 speed *= extruder_plan.getExtrudeSpeedFactor();
             }
 
-            const double mm3_per_sec = path.config->getExtrusionMM3perMM() * speed;
+            const double mm3_per_sec = path.getExtrusionMM3perMM() * speed;
             if (max_mm3_per_sec > 0 && mm3_per_sec > max_mm3_per_sec)
             {
                 speed *= max_mm3_per_sec / mm3_per_sec;
