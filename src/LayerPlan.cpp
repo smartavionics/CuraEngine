@@ -2379,6 +2379,8 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
 
         double elapsed_time = 0;
 
+        const double max_mm3_per_sec = extruder.settings.get<double>("material_max_mm3_per_sec");
+
         double prime_tower_total_volume = 0; // the volume of all of the prime tower paths
         double prime_tower_used_volume = 0;  // the volume of the prime tower paths used so far
         double prime_tower_min_volume = extruder.settings.get<double>("prime_tower_min_volume");
@@ -2538,6 +2540,13 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             {
                 speed *= extruder_plan.getExtrudeSpeedFactor();
             }
+
+            const double mm3_per_sec = path.config->getExtrusionMM3perMM() * speed;
+            if (max_mm3_per_sec > 0 && mm3_per_sec > max_mm3_per_sec)
+            {
+                speed *= max_mm3_per_sec / mm3_per_sec;
+            }
+
             //This seems to be the best location to place this, but still not ideal.
             if (path.mesh_id != current_mesh)
             {
