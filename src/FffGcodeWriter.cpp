@@ -2676,9 +2676,12 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
     const coord_t outline_shrink = (num_walls > 1) ? mesh.settings.get<coord_t>("wall_line_width_0") + mesh.settings.get<coord_t>("wall_line_width_x") * (num_walls - 2) : 0;
     const Polygons shrunk_layer_outline = mesh.layers[layer_nr].getOutlines().offset(-outline_shrink);
 
+    // collect the bridge skins so they can be printed after the non-bridge skins
+    std::vector<std::vector<Polygons>> bridge_skins(bridge_regions.size());
+
     for (unsigned n = 0; n < bridge_regions.size(); ++n)
     {
-        // print the bridge skin regions
+        // determine the bridge skin regions
 
         // apply bridge_skin_overlap_mm
         const coord_t bridge_skin_expansion = mesh.settings.get<coord_t>((n > 1) ? "bridge_skin_overlap_mm_3" : (n > 0) ? "bridge_skin_overlap_mm_2" : "bridge_skin_overlap_mm");
@@ -2694,96 +2697,111 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         // useful diagnostic aid, please don't remove
         //gcode_layer.addPolygonsByOptimizer(bridge_skin, mesh_config.infill_config[0], nullptr, ZSeamConfig(), 0, false, 0.25);
 
-        for (const PolygonsPart& bridge_skin_part : bridge_skin.splitIntoParts())
+        if (!bridge_skin.empty())
         {
-            SkinPart sp;
-            sp.outline = bridge_skin_part;
-            sp.inner_infill = sp.outline;
+            // save this bridge skin region to be printed after the non-bridge skin regions have been printed
+            bridge_skins[n].emplace_back(bridge_skin);
 
-            // determine the best angle for the skin lines - the current heuristic is that the skin lines should be parallel to the
-            // direction of the skin area's longest unsupported edge
-
-            Polygons line_polys;
-            for (ConstPolygonRef poly : bridge_skin_part)
-            {
-                if (poly.area() < 0)
-                {
-                    // ignore holes
-                    continue;
-                }
-                Point p0 = poly.back();
-                for (const Point p1 : poly)
-                {
-                    line_polys.addLine(p0, p1);
-                    p0 = p1;
-                }
-            }
-
-            Polygons unsupported_line_polys = bridge_regions[n].intersectionPolyLines(line_polys);
-            double max_dist2 = 1000 * 1000; // ignore lines less than 1mm long
-            AngleDegrees line_angle = 0;
-            bool found_line_angle = false;
-            for (ConstPolygonRef line_poly : unsupported_line_polys)
-            {
-                double dist2 = vSize2(line_poly[0] - line_poly[1]);
-                if (dist2 > max_dist2)
-                {
-                    max_dist2 = dist2;
-                    line_angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + 360;
-                    found_line_angle = true;
-                }
-            }
-            if (found_line_angle && line_polys.size() == unsupported_line_polys.size())
-            {
-                // all edges are unsupported, orientate skin lines to be at 90 deg to the longest edge
-                line_angle += 90;
-            }
-
-            if (!found_line_angle)
-            {
-                // there were no unsupported edges longer than 1mm so find the longest supported edge and use an angle 90 degrees to that
-                line_polys.clear();
-                for (ConstPolygonRef poly : bridge_regions[n])
-                {
-                    Point p0 = poly.back();
-                    for (const Point p1 : poly)
-                    {
-                        line_polys.addLine(p0, p1);
-                        p0 = p1;
-                    }
-                }
-
-                Polygons supported_line_polys = bridge_skin_part.intersectionPolyLines(line_polys);
-                for (ConstPolygonRef line_poly : supported_line_polys)
-                {
-                    double dist2 = vSize2(line_poly[0] - line_poly[1]);
-                    if (dist2 > max_dist2)
-                    {
-                        max_dist2 = dist2;
-                        line_angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + (360 + 90);
-                        found_line_angle = true;
-                    }
-                }
-            }
-
-            Polygons ignored_perimeter_gaps;
-            processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something, n + 1, (found_line_angle) ? &line_angle : nullptr);
+            // grow the size of the bridge region by the amount that non-bridge skins are expanded so that the bridge and non-bridge skins don't overlap
+            all_bridge_regions.add(bridge_skin.offset(mesh.settings.get<coord_t>("skin_overlap_mm")));
         }
-        // increase the size of the bridge region by the amount that non-bridge skins are expanded so that the bridge and non-bridge skins don't overlap
-        all_bridge_regions.add(bridge_skin.offset(mesh.settings.get<coord_t>("skin_overlap_mm")));
     }
 
     all_bridge_regions = all_bridge_regions.unionPolygons();
 
-    if (all_bridge_regions.size())
+    if (!all_bridge_regions.empty())
     {
-        // print the non-bridge skin regions
+        // print the non-bridge skin regions first so the bridge skin lines will have
+        // something to adhere to wherever the non-bridge and bridge skin areas meet
         for (const PolygonsPart& non_bridge_skin_part : skin_part.outline.difference(all_bridge_regions).splitIntoParts())
         {
             SkinPart sp;
             sp.outline = non_bridge_skin_part;
             sp.inner_infill = skin_part.inner_infill.intersection(sp.outline);
             processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, concentric_perimeter_gaps, added_something, 0);
+        }
+
+        // now print the bridge skin regions
+        for (unsigned n = 0; n < bridge_skins.size(); ++n)
+        {
+            for (const Polygons& bridge_skin : bridge_skins[n])
+            {
+                for (const PolygonsPart& bridge_skin_part : bridge_skin.splitIntoParts())
+                {
+                    SkinPart sp;
+                    sp.outline = bridge_skin_part;
+                    sp.inner_infill = sp.outline;
+
+                    // determine the best angle for the skin lines - the current heuristic is that the skin lines should be parallel to the
+                    // direction of the skin area's longest unsupported edge
+
+                    Polygons line_polys;
+                    for (ConstPolygonRef poly : bridge_skin_part)
+                    {
+                        if (poly.area() < 0)
+                        {
+                            // ignore holes
+                            continue;
+                        }
+                        Point p0 = poly.back();
+                        for (const Point p1 : poly)
+                        {
+                            line_polys.addLine(p0, p1);
+                            p0 = p1;
+                        }
+                    }
+
+                    Polygons unsupported_line_polys = bridge_regions[n].intersectionPolyLines(line_polys);
+                    double max_dist2 = 1000 * 1000; // ignore lines less than 1mm long
+                    AngleDegrees line_angle = 0;
+                    bool found_line_angle = false;
+                    for (ConstPolygonRef line_poly : unsupported_line_polys)
+                    {
+                        double dist2 = vSize2(line_poly[0] - line_poly[1]);
+                        if (dist2 > max_dist2)
+                        {
+                            max_dist2 = dist2;
+                            line_angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + 360;
+                            found_line_angle = true;
+                        }
+                    }
+                    if (found_line_angle && line_polys.size() == unsupported_line_polys.size())
+                    {
+                        // all edges are unsupported, orientate skin lines to be at 90 deg to the longest edge
+                        line_angle += 90;
+                    }
+
+                    if (!found_line_angle)
+                    {
+                        // there were no unsupported edges longer than 1mm so find the longest supported edge and use an angle 90 degrees to that
+                        line_polys.clear();
+                        for (ConstPolygonRef poly : bridge_regions[n])
+                        {
+                            Point p0 = poly.back();
+                            for (const Point p1 : poly)
+                            {
+                                line_polys.addLine(p0, p1);
+                                p0 = p1;
+                            }
+                        }
+
+                        Polygons supported_line_polys = bridge_skin_part.intersectionPolyLines(line_polys);
+                        for (ConstPolygonRef line_poly : supported_line_polys)
+                        {
+                            double dist2 = vSize2(line_poly[0] - line_poly[1]);
+                            if (dist2 > max_dist2)
+                            {
+                                max_dist2 = dist2;
+                                line_angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + (360 + 90);
+                                found_line_angle = true;
+                            }
+                        }
+                    }
+
+                    Polygons ignored_perimeter_gaps;
+                    processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something, n + 1, (found_line_angle) ? &line_angle : nullptr);
+                }
+            }
         }
     }
     else
