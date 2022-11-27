@@ -1646,7 +1646,7 @@ void LayerPlan::addLinesByOptimizer
     float compensated_travel_scaling = 1.0;
     coord_t max_compensated_travel_len = config.getLineWidth() * 3;
 
-    if(config.type == PrintFeatureType::Skin && mesh != nullptr && mesh->settings.get<bool>("skin_lines_boost_flow"))
+    if(config.type == PrintFeatureType::Skin && !config.isBridgePath() && mesh != nullptr && mesh->settings.get<bool>("skin_lines_boost_flow"))
     {
         max_flow_boost = mesh->settings.get<Ratio>((layer_nr == 0) ? "skin_lines_max_flow_boost_0" : "skin_lines_max_flow_boost");
         compensated_travel_scaling = mesh->settings.get<Ratio>("skin_lines_boost_flow_scaling");
