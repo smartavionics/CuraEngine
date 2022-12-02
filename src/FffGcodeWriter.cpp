@@ -1856,7 +1856,6 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
 
 bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Polygons& infill_not_below_skin, const LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const SliceLayerPart& part, coord_t infill_line_width)
 {
-    constexpr coord_t tiny_infill_offset = 20;
     const auto skin_edge_support_layers = mesh.settings.get<size_t>("skin_edge_support_layers");
     Polygons skin_above_combined;  // skin regions on the layers above combined with small gaps between
 
@@ -1879,7 +1878,7 @@ bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Pol
             }
         }
         // add the portion of the skin_part_outlines that don't overlap the slightly expanded current skin_above_combined
-        Polygons upper_skin_region = skin_part_outlines.difference(skin_above_combined.offset(tiny_infill_offset));
+        Polygons upper_skin_region = skin_part_outlines.difference(skin_above_combined.offset(50));
         if (!upper_skin_region.empty())
         {
             skin_above_combined.add(upper_skin_region);
