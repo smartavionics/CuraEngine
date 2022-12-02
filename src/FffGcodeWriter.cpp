@@ -1870,17 +1870,19 @@ bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Pol
             break;
         }
 
+        Polygons skin_part_outlines;
         for (const SliceLayerPart& part : mesh.layers[skin_layer_nr].parts)
         {
             for (const SkinPart& skin_part : part.skin_parts)
             {
-                // add the portion of the skin part outline that doesn't overlap the slightly expanded current skin_above_combined
-                Polygons upper_skin_region = skin_part.outline.difference(skin_above_combined.offset(tiny_infill_offset));
-                if (!upper_skin_region.empty())
-                {
-                    skin_above_combined.add(upper_skin_region);
-                }
+                skin_part_outlines.add(skin_part.outline);
             }
+        }
+        // add the portion of the skin_part_outlines that don't overlap the slightly expanded current skin_above_combined
+        Polygons upper_skin_region = skin_part_outlines.difference(skin_above_combined.offset(tiny_infill_offset));
+        if (!upper_skin_region.empty())
+        {
+            skin_above_combined.add(upper_skin_region);
         }
     }
 
