@@ -1890,7 +1890,7 @@ bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Pol
     infill_below_skin = skin_above_combined.intersection(part.infill_area_per_combine_per_density.back().front()).offset(-infill_line_width).offset(infill_line_width);
 
     constexpr bool remove_small_holes_from_infill_below_skin = true;
-    constexpr double min_area_multiplier = 25;
+    constexpr double min_area_multiplier = 9;
     const double min_area = INT2MM(infill_line_width) * INT2MM(infill_line_width) * min_area_multiplier;
     infill_below_skin.removeSmallAreas(min_area, remove_small_holes_from_infill_below_skin);
 
