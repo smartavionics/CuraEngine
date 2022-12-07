@@ -21,7 +21,7 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
 
     // when testing to see if a line's ends are both inside the outline, use an outline that has been shrunk to ensure we
     // catch the situation where both ends are inside the area but between the ends the line hits/crosses the boundary
-    const Polygons shrunk_outline = outline.offset(-step);
+    const Polygons shrunk_outline = outline.offset(-step*0.6);
 
     if (std::abs(sin_z) <= std::abs(cos_z))
     {
