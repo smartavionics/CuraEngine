@@ -22,6 +22,27 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
     unsigned chain_end_index = 0;
     Point chain_end[2];
 
+    // a line segment that is shorter than max_unclipped_len and whose end points are within outline, doesn't need to be clipped
+    // because it can't possible cross an even number of boundaries
+    coord_t max_unclipped_len = 0;
+    if (mesh)
+    {
+        size_t num_walls = mesh->settings.get<size_t>("wall_line_count");
+        if (num_walls > 0)
+        {
+            max_unclipped_len += mesh->settings.get<coord_t>("wall_line_width_0") * 2;
+        }
+        if (num_walls > 1)
+        {
+            max_unclipped_len += mesh->settings.get<coord_t>("wall_line_width_x") * (num_walls - 1) * 2;
+        }
+        if (zig_zaggify)
+        {
+            max_unclipped_len += mesh->settings.get<coord_t>("infill_line_width") * 2;
+        }
+    }
+    const coord_t max_unclipped_len2 = max_unclipped_len * max_unclipped_len;
+
     auto addClippedLine = [&](const Point& p0, const Point& p1, unsigned line_number) {
         // add the parts of the line that are inside the boundary
         Polygons lines;
@@ -95,17 +116,27 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
         {
             bool is_first_point = true;
             Point last;
+            bool last_inside = false;
             for (coord_t y = y_min; y < y_max; y += pitch)
             {
                 for (unsigned i = 0; i < num_coords; ++i)
                 {
                     Point current(x + ((num_columns & 1) ? odd_line_coords[i] : even_line_coords[i])/2 + pitch, y + (coord_t)(i * step));
                     current = rotate_around_origin(current, fill_angle_rads);
+                    bool current_inside = outline.inside(current, false);
                     if (!is_first_point)
                     {
-                        addClippedLine(last, current, num_columns);
+                        if (last_inside && current_inside && vSize2(current - last) < max_unclipped_len2)
+                        {
+                            result.addLine(last, current);
+                        }
+                        else
+                        {
+                            addClippedLine(last, current, num_columns);
+                        }
                     }
                     last = current;
+                    last_inside = current_inside;
                     is_first_point = false;
                 }
             }
@@ -136,17 +167,27 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
         {
             bool is_first_point = true;
             Point last;
+            bool last_inside = false;
             for (coord_t x = x_min; x < x_max; x += pitch)
             {
                 for (unsigned i = 0; i < num_coords; ++i)
                 {
                     Point current(x + (coord_t)(i * step), y + ((num_rows & 1) ? odd_line_coords[i] : even_line_coords[i])/2);
                     current = rotate_around_origin(current, fill_angle_rads);
+                    bool current_inside = outline.inside(current, false);
                     if (!is_first_point)
                     {
-                        addClippedLine(last, current, num_rows);
+                        if (last_inside && current_inside && vSize2(current - last) < max_unclipped_len2)
+                        {
+                            result.addLine(last, current);
+                        }
+                        else
+                        {
+                            addClippedLine(last, current, num_rows);
+                        }
                     }
                     last = current;
+                    last_inside = current_inside;
                     is_first_point = false;
                 }
             }
