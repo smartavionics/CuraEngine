@@ -1471,6 +1471,25 @@ void FffGcodeWriter::addMeshPartToGCode(const SliceDataStorage& storage, const S
         Polygons bridge_regions;
         Polygons overhang_regions;
         getBridgeAndOverhangRegions(storage, gcode_layer.getLayerNr(), mesh, extruder_nr, mesh_config, part.outline, &bridge_regions, &overhang_regions);
+        if (mesh.settings.get<bool>("bridge_settings_enabled"))
+        {
+            size_t bridge_wall_layers = mesh.settings.get<size_t>("bridge_wall_layers");
+            if (bridge_wall_layers > 1)
+            {
+                // calculate the bridge regions for the 2nd and subsequent layers and include them in the bridge wall mask
+                while (bridge_wall_layers-- > 1)
+                {
+                    LayerIndex layer_nr = gcode_layer.getLayerNr() - bridge_wall_layers;
+                    if (layer_nr > 0)
+                    {
+                        Polygons bridge_regions2;
+                        getBridgeAndOverhangRegions(storage, layer_nr, mesh, extruder_nr, mesh_config, part.outline, &bridge_regions2);
+                        bridge_regions.add(bridge_regions2);
+                    }
+                }
+                bridge_regions = bridge_regions.unionPolygons();
+            }
+        }
         gcode_layer.setBridgeWallMask(bridge_regions);
         gcode_layer.setOverhangMask(overhang_regions);
     }
