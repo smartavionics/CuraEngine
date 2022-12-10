@@ -36,6 +36,11 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
         {
             max_unclipped_len += mesh->settings.get<coord_t>("wall_line_width_x") * (num_walls - 1) * 2;
         }
+        num_walls = mesh->settings.get<size_t>("infill_wall_line_count");
+        if (num_walls > 0)
+        {
+            max_unclipped_len += mesh->settings.get<coord_t>("infill_line_width") * num_walls * 2;
+        }
         if (zig_zaggify)
         {
             max_unclipped_len += mesh->settings.get<coord_t>("infill_line_width") * 2;
