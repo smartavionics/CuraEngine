@@ -1482,9 +1482,7 @@ void FffGcodeWriter::addMeshPartToGCode(const SliceDataStorage& storage, const S
                     LayerIndex layer_nr = gcode_layer.getLayerNr() - bridge_wall_layers;
                     if (layer_nr > 0)
                     {
-                        Polygons bridge_regions2;
-                        getBridgeAndOverhangRegions(storage, layer_nr, mesh, extruder_nr, mesh_config, part.outline, &bridge_regions2);
-                        bridge_regions.add(bridge_regions2);
+                        getBridgeAndOverhangRegions(storage, layer_nr, mesh, extruder_nr, mesh_config, part.outline, &bridge_regions);
                     }
                 }
                 bridge_regions = bridge_regions.unionPolygons();
