@@ -19,6 +19,85 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
     std::vector<coord_t> odd_line_coords;
     std::vector<coord_t> even_line_coords;
 
+    unsigned chain_end_index = 0;
+    Point chain_end[2];
+
+    // a line segment that is shorter than max_unclipped_len and whose end points are within outline, doesn't need to be clipped
+    // because it can't possible cross an even number of boundaries
+    coord_t max_unclipped_len = 0;
+    if (mesh)
+    {
+        size_t num_walls = mesh->settings.get<size_t>("wall_line_count");
+        if (num_walls > 0)
+        {
+            max_unclipped_len += mesh->settings.get<coord_t>("wall_line_width_0") * 2;
+        }
+        if (num_walls > 1)
+        {
+            max_unclipped_len += mesh->settings.get<coord_t>("wall_line_width_x") * (num_walls - 1) * 2;
+        }
+        num_walls = mesh->settings.get<size_t>("infill_wall_line_count");
+        if (num_walls > 0)
+        {
+            max_unclipped_len += mesh->settings.get<coord_t>("infill_line_width") * num_walls * 2;
+        }
+        if (zig_zaggify)
+        {
+            max_unclipped_len += mesh->settings.get<coord_t>("infill_line_width") * 2;
+        }
+    }
+    const coord_t max_unclipped_len2 = max_unclipped_len * max_unclipped_len;
+
+    auto addClippedLine = [&](const Point& p0, const Point& p1, unsigned line_number) {
+        // add the parts of the line that are inside the boundary
+        Polygons lines;
+        lines.addLine(p0, p1);
+        lines = outline.intersectionPolyLines(lines);
+        // sort line segments by increasing distance from p0
+        for (unsigned i = 0; i < lines.size(); ++i)
+        {
+            for (unsigned j = i + 1; j < lines.size(); ++j)
+            {
+                if (vSize2(p0 - lines[j][0]) < vSize2(p0 - lines[i][0]))
+                {
+                    Point i0 = lines[i][0];
+                    Point i1 = lines[i][1];
+                    lines[i][0] = lines[j][0];
+                    lines[i][1] = lines[j][1];
+                    lines[j][0] = i0;
+                    lines[j][1] = i1;
+                }
+            }
+        }
+        for (ConstPolygonRef line_seg : lines)
+        {
+            // some of the line is inside the boundary, add it if it's not too small
+            if (vSize2(line_seg[0] - line_seg[1]) >= min_line_len2)
+            {
+                result.addLine(line_seg[0], line_seg[1]);
+            }
+            if (zig_zaggify)
+            {
+                for (const Point& pt : line_seg)
+                {
+                    if ((pt != p0 && pt != p1) || !outline.inside(pt, false))
+                    {
+                        chain_end[chain_end_index] = pt;
+                        if (++chain_end_index == 2)
+                        {
+                            chains[0].push_back(chain_end[0]);
+                            chains[1].push_back(chain_end[1]);
+                            chain_end_index = 0;
+                            connected_to[0].push_back(std::numeric_limits<unsigned>::max());
+                            connected_to[1].push_back(std::numeric_limits<unsigned>::max());
+                            line_numbers.push_back(line_number);
+                        }
+                    }
+                }
+            }
+        }
+    };
+
     if (std::abs(sin_z) <= std::abs(cos_z))
     {
         // "vertical" lines
@@ -43,67 +122,22 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
             bool is_first_point = true;
             Point last;
             bool last_inside = false;
-            unsigned chain_end_index = 0;
-            Point chain_end[2];
             for (coord_t y = y_min; y < y_max; y += pitch)
             {
                 for (unsigned i = 0; i < num_coords; ++i)
                 {
                     Point current(x + ((num_columns & 1) ? odd_line_coords[i] : even_line_coords[i])/2 + pitch, y + (coord_t)(i * step));
                     current = rotate_around_origin(current, fill_angle_rads);
-                    bool current_inside = outline.inside(current, true);
+                    bool current_inside = outline.inside(current, false);
                     if (!is_first_point)
                     {
-                        if (last_inside && current_inside)
+                        if (last_inside && current_inside && vSize2(current - last) < max_unclipped_len2)
                         {
-                            // line doesn't hit the boundary, add the whole line
                             result.addLine(last, current);
                         }
-                        else if (last_inside != current_inside)
+                        else
                         {
-                            // line hits the boundary, add the part that's inside the boundary
-                            Polygons line;
-                            line.addLine(last, current);
-                            line = outline.intersectionPolyLines(line);
-                            if (line.size() > 0)
-                            {
-                                // some of the line is inside the boundary, add it if it's not too small
-                                if (vSize2(line[0][0] - line[0][1]) >= min_line_len2)
-                                {
-                                    result.addLine(line[0][0], line[0][1]);
-                                }
-                                if (zig_zaggify)
-                                {
-                                    chain_end[chain_end_index] = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
-                                    if (++chain_end_index == 2)
-                                    {
-                                        chains[0].push_back(chain_end[0]);
-                                        chains[1].push_back(chain_end[1]);
-                                        chain_end_index = 0;
-                                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                        line_numbers.push_back(num_columns);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // none of the line is inside the boundary so the point that's actually on the boundary
-                                // is the chain end
-                                if (zig_zaggify)
-                                {
-                                    chain_end[chain_end_index] = (last_inside) ? last : current;
-                                    if (++chain_end_index == 2)
-                                    {
-                                        chains[0].push_back(chain_end[0]);
-                                        chains[1].push_back(chain_end[1]);
-                                        chain_end_index = 0;
-                                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                        line_numbers.push_back(num_columns);
-                                    }
-                                }
-                            }
+                            addClippedLine(last, current, num_columns);
                         }
                     }
                     last = current;
@@ -112,6 +146,7 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
                 }
             }
             ++num_columns;
+            chain_end_index = 0;
         }
     }
     else
@@ -138,67 +173,22 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
             bool is_first_point = true;
             Point last;
             bool last_inside = false;
-            unsigned chain_end_index = 0;
-            Point chain_end[2];
             for (coord_t x = x_min; x < x_max; x += pitch)
             {
                 for (unsigned i = 0; i < num_coords; ++i)
                 {
                     Point current(x + (coord_t)(i * step), y + ((num_rows & 1) ? odd_line_coords[i] : even_line_coords[i])/2);
                     current = rotate_around_origin(current, fill_angle_rads);
-                    bool current_inside = outline.inside(current, true);
+                    bool current_inside = outline.inside(current, false);
                     if (!is_first_point)
                     {
-                        if (last_inside && current_inside)
+                        if (last_inside && current_inside && vSize2(current - last) < max_unclipped_len2)
                         {
-                            // line doesn't hit the boundary, add the whole line
                             result.addLine(last, current);
                         }
-                        else if (last_inside != current_inside)
+                        else
                         {
-                            // line hits the boundary, add the part that's inside the boundary
-                            Polygons line;
-                            line.addLine(last, current);
-                            line = outline.intersectionPolyLines(line);
-                            if (line.size() > 0)
-                            {
-                                // some of the line is inside the boundary, add it if it's not too small
-                                if (vSize2(line[0][0] - line[0][1]) >= min_line_len2)
-                                {
-                                    result.addLine(line[0][0], line[0][1]);
-                                }
-                                if (zig_zaggify)
-                                {
-                                    chain_end[chain_end_index] = line[0][(line[0][0] != last && line[0][0] != current) ? 0 : 1];
-                                    if (++chain_end_index == 2)
-                                    {
-                                        chains[0].push_back(chain_end[0]);
-                                        chains[1].push_back(chain_end[1]);
-                                        chain_end_index = 0;
-                                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                        line_numbers.push_back(num_rows);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // none of the line is inside the boundary so the point that's actually on the boundary
-                                // is the chain end
-                                if (zig_zaggify)
-                                {
-                                    chain_end[chain_end_index] = (last_inside) ? last : current;
-                                    if (++chain_end_index == 2)
-                                    {
-                                        chains[0].push_back(chain_end[0]);
-                                        chains[1].push_back(chain_end[1]);
-                                        chain_end_index = 0;
-                                        connected_to[0].push_back(std::numeric_limits<unsigned>::max());
-                                        connected_to[1].push_back(std::numeric_limits<unsigned>::max());
-                                        line_numbers.push_back(num_rows);
-                                    }
-                                }
-                            }
+                            addClippedLine(last, current, num_rows);
                         }
                     }
                     last = current;
@@ -207,6 +197,7 @@ void TPMSInfillGyroid::generateCoordinates(Polygons& result, const Polygons& out
                 }
             }
             ++num_rows;
+            chain_end_index = 0;
         }
     }
 }
