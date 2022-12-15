@@ -600,9 +600,11 @@ public:
      * \param non_bridge_line_volume A pseudo-volume that is derived from the print speed and flow of the non-bridge lines that have preceeded this line
      * \param speed_factor This modifies the print speed when accelerating after a bridge line
      * \param distance_to_bridge_start The distance along the wall from p0 to the first bridge segment
+     * \param bridge_len_so_far The total distance of the current bridge region
+     * \param bridge_points The end points of the segments of the current bridge region
      */
 
-    void addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, coord_t& distance_to_bridge_start);
+    void addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, coord_t& distance_to_bridge_start, coord_t& bridge_len_so_far, std::vector<Point>& bridge_points);
 
     /*!
      * Add a wall (a polygon) to the gcode starting at vertex \p startIdx

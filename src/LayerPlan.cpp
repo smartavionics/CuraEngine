@@ -712,17 +712,18 @@ void LayerPlan::addPolygonsByOptimizer(const Polygons& polygons, const GCodePath
 
 static constexpr float max_non_bridge_line_volume = MM2INT(100); // limit to accumulated "volume" of non-bridge lines which is proportional to distance x extrusion rate
 
-void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, coord_t& distance_to_bridge_start)
+void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, coord_t& distance_to_bridge_start, coord_t& bridge_len_so_far, std::vector<Point>& bridge_points)
 {
     const coord_t min_line_len = 5; // we ignore lines less than 5um long
     const double acceleration_segment_len = MM2INT(1); // accelerate using segments of this length
     const double acceleration_factor = 0.75; // must be < 1, the larger the value, the slower the acceleration
     const bool spiralize = false;
 
-    const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
+    const coord_t min_bridge_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
     const Ratio bridge_wall_coast = mesh.settings.get<Ratio>("bridge_wall_coast");
     const Ratio bridge_wall_end_boost = mesh.settings.get<Ratio>("bridge_wall_end_boost");
     Ratio overhang_speed_factor = mesh.settings.get<Ratio>("wall_overhang_speed_factor");
+    const Ratio post_bridge_speed_factor = std::max(std::min(Ratio(bridge_config.getSpeed() / non_bridge_config.getSpeed()), 1.0_r), 0.5_r);
     const Point mid(p0 + (p1 - p0)/2);
     const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(mid, true) && (overhang_mask.inside(p0, true) || overhang_mask.inside(p1, true)));
     double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
@@ -760,7 +761,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
         overhang_speed_factor = std::max((double)overhang_speed_factor, (double)(min_speed / non_bridge_config.getSpeed()));
     }
 
-    Point cur_point = p0;
+    Point cur_point = last_planned_position.value_or(p0);
 
     // helper function to add a single non-bridge line
 
@@ -843,6 +844,8 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
     }
     else
     {
+        bool bridge_segments_found = false;
+
         // bridges may be required
         if (PolygonUtils::polygonCollidesWithLineSegment(bridge_wall_mask, p0, p1))
         {
@@ -859,8 +862,10 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
 
             // line_polys now contains the wall lines that need to be printed using bridge_config
 
-            while (line_polys.size() > 0)
+            while (!line_polys.empty())
             {
+                bridge_segments_found = true;
+
                 // find the bridge line segment that's nearest to the current point
                 int nearest = 0;
                 float smallest_dist2 = vSize2f(cur_point - line_polys[0][0]);
@@ -886,53 +891,144 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                     b1 = bridge[0];
                 }
 
-                const double bridge_line_len = vSize(b1 - b0);
-
-                if (bridge_line_len >= min_bridge_line_len)
+                if (vSize(b0 - p0) > min_line_len)
                 {
-                    // extrude using non_bridge_config to the start of the next bridge segment
+                    // bridge segment not at start of line
+                    if (!bridge_points.empty())
+                    {
+                        // process any accumulated bridge points
+                        for (auto bridge_point : bridge_points)
+                        {
+                            if (bridge_len_so_far >= min_bridge_len)
+                            {
+                                addExtrusionMove(bridge_point, bridge_config, SpaceFillType::Polygons, flow);
+                            }
+                            else
+                            {
+                                addNonBridgeLine(bridge_point);
+                            }
+                            cur_point = bridge_point;
+                        }
 
+                        if (bridge_len_so_far >= min_bridge_len)
+                        {
+                            non_bridge_line_volume = 0;
+                            // after a bridge segment, start slow and accelerate to avoid under-extrusion due to extruder lag
+                            speed_factor = post_bridge_speed_factor;
+                            // user can control amount of boost
+                            speed_factor = 1 - (1 - speed_factor) * bridge_wall_end_boost;
+                            distance_to_bridge_start = 0;
+                        }
+                        bridge_len_so_far = 0;
+                        bridge_points.clear();
+                    }
+
+                    // extrude using non_bridge_config to the start of the bridge segment
                     distance_to_bridge_start = vSize(cur_point - b0);
                     addNonBridgeLine(b0);
+                }
 
-                    // extrude using bridge_config to the end of the next bridge segment
+                if (vSize(b1 - p1) < min_line_len)
+                {
+                    // bridge region includes end of line segment
 
-                    if (bridge_line_len > min_line_len)
+                    // store the bridge segment end location
+                    bridge_len_so_far += vSize(b1 - b0);
+                    bridge_points.emplace_back(b1);
+                }
+                else
+                {
+                    // bridge region ends within the line segment
+                    const double bridge_len = vSize(b1 - b0) + bridge_len_so_far;
+
+                    if (bridge_len >= min_bridge_len)
                     {
+                        // bridge region is long enough to print using bridge settings
+                        for (auto bridge_point : bridge_points)
+                        {
+                            addExtrusionMove(bridge_point, bridge_config, SpaceFillType::Polygons, flow);
+                        }
                         addExtrusionMove(b1, bridge_config, SpaceFillType::Polygons, flow);
                         non_bridge_line_volume = 0;
                         cur_point = b1;
                         // after a bridge segment, start slow and accelerate to avoid under-extrusion due to extruder lag
-                        speed_factor = std::max(std::min(Ratio(bridge_config.getSpeed() / non_bridge_config.getSpeed()), 1.0_r), 0.5_r);
+                        speed_factor = post_bridge_speed_factor;
                         // user can control amount of boost
                         speed_factor = 1 - (1 - speed_factor) * bridge_wall_end_boost;
+                        distance_to_bridge_start = 0;
                     }
-                    distance_to_bridge_start = 0;
-                }
-                else
-                {
-                    // treat the short bridge line just like a normal line
+                    else
+                    {
+                        // treat the short bridge line just like a normal line
 
-                    addNonBridgeLine(b1);
+                        for (auto bridge_point : bridge_points)
+                        {
+                            addNonBridgeLine(bridge_point);
+                        }
+
+                        addNonBridgeLine(b1);
+                    }
+
+                    // forget any accumulated bridge segments
+                    bridge_len_so_far = 0;
+                    bridge_points.clear();
                 }
 
                 // finished with this segment
                 line_polys.remove(nearest);
             }
 
-            // if we haven't yet reached p1, fill the gap with non_bridge_config line
-            addNonBridgeLine(p1);
+            if (bridge_points.empty())
+            {
+                // we haven't yet reached p1, fill the gap with non bridge line
+                addNonBridgeLine(p1);
+            }
         }
-        else if (bridge_wall_mask.inside(p0, true) && vSize(p0 - p1) >= min_bridge_line_len)
+
+        if (!bridge_segments_found)
         {
-            // both p0 and p1 must be above air (the result will be ugly!)
-            addExtrusionMove(p1, bridge_config, SpaceFillType::Polygons, flow);
-            non_bridge_line_volume = 0;
-        }
-        else
-        {
-            // no part of the line is above air or the line is too short to print as a bridge line
-            addNonBridgeLine(p1);
+            if (bridge_wall_mask.inside(p0, false))
+            {
+                // both p0 and p1 must be above air (the result will be ugly!)
+
+                // store the bridge segment end location
+                bridge_len_so_far += vSize(p0 - p1);
+                bridge_points.emplace_back(p1);
+                non_bridge_line_volume = 0;
+            }
+            else
+            {
+                // no part of the line is above air
+
+                if (!bridge_points.empty())
+                {
+                    // process accumulated bridge points
+                    for (auto bridge_point : bridge_points)
+                    {
+                        if (bridge_len_so_far >= min_bridge_len)
+                        {
+                            addExtrusionMove(bridge_point, bridge_config, SpaceFillType::Polygons, flow);
+                        }
+                        else
+                        {
+                            addNonBridgeLine(bridge_point);
+                        }
+                        cur_point = bridge_point;
+                    }
+                    if (bridge_len_so_far >= min_bridge_len)
+                    {
+                        non_bridge_line_volume = 0;
+                        // after a bridge segment, start slow and accelerate to avoid under-extrusion due to extruder lag
+                        speed_factor = post_bridge_speed_factor;
+                        // user can control amount of boost
+                        speed_factor = 1 - (1 - speed_factor) * bridge_wall_end_boost;
+                        distance_to_bridge_start = 0;
+                    }
+                    bridge_len_so_far = 0;
+                    bridge_points.clear();
+                }
+                addNonBridgeLine(p1);
+            }
         }
     }
 }
@@ -1056,6 +1152,8 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     float non_bridge_line_volume = max_non_bridge_line_volume; // assume extruder is fully pressurised before first non-bridge line is output
     double speed_factor = 1.0; // start first line at normal speed
     coord_t distance_to_bridge_start = 0; // will be updated before each line is processed
+    coord_t bridge_len_so_far = 0;
+    std::vector<Point> bridge_points;
 
     const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
     const Ratio wall_min_flow = mesh.settings.get<Ratio>("wall_min_flow");
@@ -1220,7 +1318,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                 {
                     addTravel_simple(_p0).retract = use_retraction && (vSize(p0 - _p0) >= retraction_config.retraction_min_travel_distance);
                 }
-                addWallLine(_p0, _p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, distance_to_bridge_start);
+                addWallLine(_p0, _p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, distance_to_bridge_start, bridge_len_so_far, bridge_points);
                 if (_p1 != p1)
                 {
                     addTravel_simple(p1).retract = use_retraction && (vSize(p1 - _p1) >= retraction_config.retraction_min_travel_distance);
@@ -1228,7 +1326,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             }
             else
             {
-                addWallLine(p0, p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, distance_to_bridge_start);
+                addWallLine(p0, p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, distance_to_bridge_start, bridge_len_so_far, bridge_points);
             }
         }
         else
@@ -1258,7 +1356,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             }
             else
             {
-                addWallLine(wall[start_idx], z_seam_point, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, distance_to_bridge_start);
+                addWallLine(wall[start_idx], z_seam_point, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, distance_to_bridge_start, bridge_len_so_far, bridge_points);
             }
         }
         else
