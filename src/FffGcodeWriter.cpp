@@ -2155,7 +2155,7 @@ void FffGcodeWriter::getBridgeAndOverhangRegions(const SliceDataStorage& storage
             // which is required because when the walls are being generated, the vertices do not fall on the part's outline
             // but, instead, are 1/2 a line width inset from the outline
 
-            bridge_regions->add(compressed_air.offset(max_air_gap + half_outer_wall_width));
+            bridge_regions->add(compressed_air.offset(max_air_gap + half_outer_wall_width - 10));
         }
 
         if (wall_overhang_detection_enabled)
