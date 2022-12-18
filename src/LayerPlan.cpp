@@ -1151,8 +1151,6 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     float non_bridge_line_volume = max_non_bridge_line_volume; // assume extruder is fully pressurised before first non-bridge line is output
     double speed_factor = 1.0; // start first line at normal speed
     coord_t distance_to_bridge_start = 0; // will be updated before each line is processed
-    coord_t bridge_len_so_far = 0;
-    std::vector<Point> bridge_points;
 
     const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
     const Ratio wall_min_flow = mesh.settings.get<Ratio>("wall_min_flow");
@@ -1241,6 +1239,8 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         }
     };
 
+    coord_t bridge_len_so_far = 0;
+    std::vector<Point> bridge_points;
     bool travel_required = false; // true when a wall has been omitted due to its flow being less than the minimum required
 
     bool first_line = true;
