@@ -1152,6 +1152,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     double speed_factor = 1.0; // start first line at normal speed
     coord_t distance_to_bridge_start = 0; // will be updated before each line is processed
 
+    const coord_t min_line_len = 5; // we ignore lines less than 5um long
     const coord_t min_bridge_line_len = mesh.settings.get<coord_t>("bridge_wall_min_length");
     const Ratio wall_min_flow = mesh.settings.get<Ratio>("wall_min_flow");
     const bool wall_min_flow_retract = mesh.settings.get<bool>("wall_min_flow_retract");
@@ -1167,11 +1168,14 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     {
         if (!bridge_wall_mask.empty())
         {
+            coord_t bridge_len_so_far = 0;
+
             // there is air below the part so iterate through the lines that have not yet been output accumulating the total distance to the first bridge segment
             for (unsigned line_idx = 0; line_idx < num_lines; ++line_idx)
             {
                 const Point& p0 = wall[(current_line_index + line_idx) % wall.size()];
                 const Point& p1 = wall[(current_line_index + line_idx + 1) % wall.size()];
+                bool bridge_segments_found = false;
 
                 if (PolygonUtils::polygonCollidesWithLineSegment(bridge_wall_mask, p0, p1))
                 {
@@ -1188,6 +1192,8 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
 
                     while (line_polys.size() > 0)
                     {
+                        bridge_segments_found = true;
+
                         // find the bridge line segment that's nearest to p0
                         int nearest = 0;
                         float smallest_dist2 = vSize2f(p0 - line_polys[0][0]);
@@ -1213,23 +1219,56 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                             b1 = bridge[0];
                         }
 
-                        if (vSize(b1 - b0) >= min_bridge_line_len)
+                        if (vSize(b0 - p0) > min_line_len)
+                        {
+                            distance_to_bridge_start += bridge_len_so_far;
+                            bridge_len_so_far = 0;
+                        }
+                        bridge_len_so_far += vSize(b1 - b0);
+                        if (bridge_len_so_far >= min_bridge_line_len)
                         {
                             // job done, we have found the first bridge line
                             distance_to_bridge_start += vSize(b0 - p0);
                             return;
                         }
-
+                        if (vSize(b1 - p1) > min_line_len)
+                        {
+                            // bridge segment doesn't reach end of line so it's too short to be printed as a bridge
+                            bridge_len_so_far = 0;
+                        }
+                        else
+                        {
+                            // bridge segment extends to end of line so it could still be printed as a bridge
+                            distance_to_bridge_start += vSize(b0 - p0);
+                        }
                         // finished with this segment
                         line_polys.remove(nearest);
                     }
-                    // none of the unsupported line segments were long enough to bridge
-                    distance_to_bridge_start += vSize(p1 - p0);
+
+                    if (bridge_segments_found && bridge_len_so_far == 0)
+                    {
+                        // none of the unsupported line segments were long enough to bridge
+                        distance_to_bridge_start += vSize(p1 - p0);
+                    }
                 }
-                else if (!bridge_wall_mask.inside(p0, true))
+
+                if (!bridge_segments_found)
                 {
-                    // none of the line is over air
-                    distance_to_bridge_start += vSize(p1 - p0);
+                    if (bridge_wall_mask.inside(p0, false))
+                    {
+                        // all of the line is over air
+                        bridge_len_so_far += vSize(p1 - p0);
+                        if (bridge_len_so_far >= min_bridge_line_len)
+                        {
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        // none of the line is over air
+                        distance_to_bridge_start += bridge_len_so_far + vSize(p1 - p0);
+                        bridge_len_so_far = 0;
+                    }
                 }
             }
 
@@ -1241,6 +1280,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
 
     coord_t bridge_len_so_far = 0;
     std::vector<Point> bridge_points;
+
     bool travel_required = false; // true when a wall has been omitted due to its flow being less than the minimum required
 
     bool first_line = true;
