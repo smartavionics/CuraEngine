@@ -924,7 +924,6 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                     }
 
                     // extrude using non_bridge_config to the start of the bridge segment
-                    distance_to_bridge_start = vSize(cur_point - b0);
                     addNonBridgeLine(b0);
                 }
 
