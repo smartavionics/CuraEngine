@@ -923,6 +923,16 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                         bridge_points.clear();
                     }
 
+                    if (distance_to_bridge_start <= 0 && vSize(b1 - b0) >= min_bridge_len)
+                    {
+                        // we must have already printed a bridge segment from this line and now we have another bridge
+                        // segment in the same line that is going to be printed so we can update distance_to_bridge_start
+                        // FIXME - we also should detect the situation where this next bridge segment is too short but
+                        // would be long enough when combined with another bridge segment at the start of the next line
+
+                        distance_to_bridge_start = vSize(b0 - cur_point);
+                    }
+
                     // extrude using non_bridge_config to the start of the bridge segment
                     addNonBridgeLine(b0);
                 }
