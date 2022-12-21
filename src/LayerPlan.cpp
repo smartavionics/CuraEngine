@@ -1130,8 +1130,8 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         // either the wall start point is above air or we have calculated an "exact" z-seam location
         if (z_seam_point != wall[start_idx])
         {
-            // see if the "exact" z-seam location is also above air
-            if (air_below.inside(z_seam_point, true))
+            // see if the "exact" z-seam location is also above air and there is a supported vertex
+            if (!none_supported && air_below.inside(z_seam_point, false))
             {
                 // move the start point to the location that is not above air
                 start_idx = supported_start_idx;
