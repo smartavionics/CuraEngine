@@ -759,6 +759,12 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
         // ensure the speed factor does not produce a speed less than the minimum speed allowed
         const Velocity min_speed = fan_speed_layer_time_settings_per_extruder[getExtruder()].cool_min_speed;
         overhang_speed_factor = std::max((double)overhang_speed_factor, (double)(min_speed / non_bridge_config.getSpeed()));
+        flow *= mesh.settings.get<Ratio>("wall_overhang_material_flow");
+        if (flow < mesh.settings.get<Ratio>("wall_min_flow"))
+        {
+            addTravel(p1, mesh.settings.get<bool>("wall_min_flow_retract"));
+            return;
+        }
     }
 
     Point cur_point = last_planned_position.value_or(p0);
