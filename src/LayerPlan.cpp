@@ -847,7 +847,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
         }
     };
 
-    if (bridge_wall_mask.empty())
+    if (bridge_start_offsets.empty() && speed_factor == 1)
     {
         // no bridges required
         addExtrusionMove(p1, non_bridge_config, SpaceFillType::Polygons, flow, spiralize, (is_overhang) ? overhang_speed_factor : 1.0_r, fan_speed);
