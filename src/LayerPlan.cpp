@@ -712,7 +712,7 @@ void LayerPlan::addPolygonsByOptimizer(const Polygons& polygons, const GCodePath
 
 static constexpr float max_non_bridge_line_volume = MM2INT(100); // limit to accumulated "volume" of non-bridge lines which is proportional to distance x extrusion rate
 
-void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, coord_t wall_length, std::vector<coord_t>& bridge_start_offsets, std::vector<coord_t>& bridge_lengths)
+void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, const coord_t line_start_offset, std::vector<coord_t>& bridge_start_offsets, std::vector<coord_t>& bridge_lengths)
 {
     const coord_t min_line_len = 5; // we ignore lines less than 5um long
     const double acceleration_segment_len = MM2INT(1); // accelerate using segments of this length
@@ -768,7 +768,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
 
     Point cur_point = last_planned_position.value_or(p0);
 
-    coord_t distance_to_bridge_start = (bridge_start_offsets.empty()) ? 0 : (bridge_start_offsets.front() - wall_length); // will be -ve when bridge started on earlier line
+    coord_t distance_to_bridge_start = (bridge_start_offsets.empty()) ? 0 : (bridge_start_offsets.front() - line_start_offset); // will be -ve when bridge started on earlier line
 
     // helper function to add a single non-bridge line
 
@@ -881,7 +881,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                 bridge_start_offsets.erase(bridge_start_offsets.begin());
                 bridge_lengths.erase(bridge_lengths.begin());
 
-                distance_to_bridge_start = (bridge_start_offsets.empty()) ? 0 : (bridge_start_offsets.front() - (wall_length + vSize(cur_point - p0)));
+                distance_to_bridge_start = (bridge_start_offsets.empty()) ? 0 : (bridge_start_offsets.front() - (line_start_offset + vSize(cur_point - p0)));
 
                 // after a bridge segment, start slow and accelerate to avoid under-extrusion due to extruder lag
                 speed_factor = post_bridge_speed_factor;
@@ -1056,7 +1056,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     {
         // determine start offsets and lengths of bridge regions
         Point p0 = z_seam_point;
-        coord_t wall_length = vSize(z_seam_point - wall[start_idx]);
+        coord_t line_start_offset = vSize(z_seam_point - wall[start_idx]);
         bool on_bridge = false;
 
         for (unsigned int point_idx = 1; point_idx <= wall.size(); point_idx++)
@@ -1115,7 +1115,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                 {
                     if (!on_bridge)
                     {
-                        bridge_start_offsets.push_back(wall_length + vSize(b0 - p0));
+                        bridge_start_offsets.push_back(line_start_offset + vSize(b0 - p0));
                         bridge_lengths.push_back(0);
                         on_bridge = true;
                     }
@@ -1144,7 +1144,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                     // all of the line is over air
                     if (!on_bridge)
                     {
-                        bridge_start_offsets.push_back(wall_length);
+                        bridge_start_offsets.push_back(line_start_offset);
                         bridge_lengths.push_back(0);
                         on_bridge = true;
                     }
@@ -1164,14 +1164,14 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                     }
                 }
             }
-            wall_length += vSize(p1 - p0);
+            line_start_offset += vSize(p1 - p0);
             p0 = p1;
         }
     }
 
     Point p0 = z_seam_point;
 
-    coord_t wall_length = vSize(z_seam_point - wall[start_idx]);
+    coord_t line_start_offset = vSize(z_seam_point - wall[start_idx]);
 
     for (unsigned int point_idx = 1; point_idx <= wall.size(); point_idx++)
     {
@@ -1224,7 +1224,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                 {
                     addTravel_simple(_p0).retract = use_retraction && (vSize(p0 - _p0) >= retraction_config.retraction_min_travel_distance);
                 }
-                addWallLine(_p0, _p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, wall_length, bridge_start_offsets, bridge_lengths);
+                addWallLine(_p0, _p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, line_start_offset, bridge_start_offsets, bridge_lengths);
                 if (_p1 != p1)
                 {
                     addTravel_simple(p1).retract = use_retraction && (vSize(p1 - _p1) >= retraction_config.retraction_min_travel_distance);
@@ -1232,7 +1232,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             }
             else
             {
-                addWallLine(p0, p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, wall_length, bridge_start_offsets, bridge_lengths);
+                addWallLine(p0, p1, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, line_start_offset, bridge_start_offsets, bridge_lengths);
             }
         }
         else
@@ -1240,7 +1240,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             travel_required = true;
         }
 
-        wall_length += vSize(p1 - p0);
+        line_start_offset += vSize(p1 - p0);
         p0 = p1;
     }
 
@@ -1263,7 +1263,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             }
             else
             {
-                addWallLine(wall[start_idx], z_seam_point, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, wall_length, bridge_start_offsets, bridge_lengths);
+                addWallLine(wall[start_idx], z_seam_point, mesh, non_bridge_config, bridge_config, flow, non_bridge_line_volume, speed_factor, line_start_offset, bridge_start_offsets, bridge_lengths);
             }
         }
         else
