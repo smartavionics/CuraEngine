@@ -712,7 +712,7 @@ void LayerPlan::addPolygonsByOptimizer(const Polygons& polygons, const GCodePath
 
 static constexpr float max_non_bridge_line_volume = MM2INT(100); // limit to accumulated "volume" of non-bridge lines which is proportional to distance x extrusion rate
 
-void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, const coord_t line_start_offset, std::vector<coord_t>& bridge_start_offsets, std::vector<coord_t>& bridge_lengths)
+void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio& speed_factor, const coord_t line_start_offset, std::vector<coord_t>& bridge_start_offsets, std::vector<coord_t>& bridge_lengths)
 {
     const coord_t min_line_len = 5; // we ignore lines less than 5um long
     const double acceleration_segment_len = MM2INT(1); // accelerate using segments of this length
@@ -1020,7 +1020,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     }
 
     float non_bridge_line_volume = max_non_bridge_line_volume; // assume extruder is fully pressurised before first non-bridge line is output
-    double speed_factor = 1.0; // start first line at normal speed
+    Ratio speed_factor = 1.0; // start first line at normal speed
     coord_t distance_to_bridge_start = 0; // will be updated before each line is processed
 
     const coord_t min_line_len = 5; // we ignore lines less than 5um long

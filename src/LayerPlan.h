@@ -604,7 +604,7 @@ public:
      * \param bridge_lengths The lengths of the bridges in the current wall
      */
 
-    void addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio speed_factor, const coord_t line_start_offset, std::vector<coord_t>& bridge_start_offsets, std::vector<coord_t>& bridge_lengths);
+    void addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio& speed_factor, const coord_t line_start_offset, std::vector<coord_t>& bridge_start_offsets, std::vector<coord_t>& bridge_lengths);
 
     /*!
      * Add a wall (a polygon) to the gcode starting at vertex \p startIdx
