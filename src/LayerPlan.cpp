@@ -1052,8 +1052,8 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         use_retraction = getLastPlannedExtruderTrain()->settings.get<bool>("retraction_enable");
     }
 
-    std::vector<coord_t> bridge_start_offsets;
-    std::vector<coord_t> bridge_lengths;
+    std::vector<coord_t> bridge_start_offsets;  // distance along wall to the start of each bridge region
+    std::vector<coord_t> bridge_lengths;        // length of each bridge region
 
     if (!bridge_wall_mask.empty())
     {
