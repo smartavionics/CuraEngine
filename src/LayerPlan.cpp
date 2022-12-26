@@ -1181,6 +1181,32 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             p0 = z_seam_point;
         }
 
+        if (on_bridge)
+        {
+            // wall ends on a bridge
+            if (bridge_start_offsets.size() == 1)
+            {
+                // either the whole wall is a bridge or the wall has a single bridge at the end
+                if (bridge_lengths.back() < min_bridge_len || (max_bridge_len > 0 && bridge_lengths.back() > max_bridge_len))
+                {
+                    bridge_start_offsets.pop_back();
+                    bridge_lengths.pop_back();
+                }
+            }
+            else if (bridge_start_offsets.front() == vSize(z_seam_point - wall[start_idx]))
+            {
+                // wall starts with a bridge
+                const coord_t combined_length = bridge_lengths.front() + bridge_lengths.back();
+                if (combined_length < min_bridge_len || (max_bridge_len > 0 && combined_length > max_bridge_len))
+                {
+                    // remove both bridge segments
+                    bridge_start_offsets.erase(bridge_start_offsets.begin());
+                    bridge_lengths.erase(bridge_lengths.begin());
+                    bridge_start_offsets.pop_back();
+                    bridge_lengths.pop_back();
+                }
+            }
+        }
     }
 
     Point p0 = z_seam_point;
