@@ -1178,7 +1178,6 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         {
             // locate the bridges between the wall start vertex and z_seam_point
             locateBridges(z_seam_point);
-            p0 = z_seam_point;
         }
 
         if (on_bridge)
