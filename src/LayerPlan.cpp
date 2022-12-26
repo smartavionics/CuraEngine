@@ -1062,12 +1062,8 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
         coord_t line_start_offset = vSize(z_seam_point - wall[start_idx]);
         bool on_bridge = false;
 
-        for (unsigned int point_idx = 1; point_idx <= wall.size(); point_idx++)
-        {
-            const Point& p1 = wall[(start_idx + point_idx) % wall.size()];
-
-            // determine if any parts of the line are bridges
-
+        auto locateBridges = [&](const Point& p1) {
+            // determine if any parts of the line p0-p1 are bridges
             Polygon line_poly;
             line_poly.add(p0);
             line_poly.add(p1);
@@ -1167,9 +1163,24 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                     }
                 }
             }
+        };
+
+        // locate the bridges between z_seam_point and the wall start vertex
+        for (unsigned int point_idx = 1; point_idx <= wall.size(); point_idx++)
+        {
+            const Point& p1 = wall[(start_idx + point_idx) % wall.size()];
+            locateBridges(p1);
             line_start_offset += vSize(p1 - p0);
             p0 = p1;
         }
+
+        if (z_seam_point != wall[start_idx])
+        {
+            // locate the bridges between the wall start vertex and z_seam_point
+            locateBridges(z_seam_point);
+            p0 = z_seam_point;
+        }
+
     }
 
     Point p0 = z_seam_point;
