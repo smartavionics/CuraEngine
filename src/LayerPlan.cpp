@@ -198,6 +198,7 @@ Polygons LayerPlan::computeCombBoundaryInside(const size_t max_inset)
                 // we need to include the walls in the comb boundary otherwise it's not possible to tell if a travel move crosses a skin region
 
                 const coord_t line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
+                const coord_t line_width_x = mesh.settings.get<coord_t>("wall_line_width_x");
 
                 for (const SliceLayerPart& part : layer.parts)
                 {
@@ -205,13 +206,33 @@ Polygons LayerPlan::computeCombBoundaryInside(const size_t max_inset)
                     Polygons outer = part.outline; // outer boundary of wall combing region
                     coord_t outer_to_outline_dist = 0; // distance from outer to the part's outline
 
-                    if (num_insets > 1 && part.insets[1].size() == part.outline.size())
+                    if (num_insets > 1)
                     {
-                        // part's wall has multiple lines and the 2nd wall line is complete
-                        // set the outer boundary to the inside edge of the outer wall
+                        // part's wall has multiple lines
 
-                        outer = part.insets[0].offset(-line_width_0/2);
-                        outer_to_outline_dist = line_width_0;
+                        if (num_insets > 2)
+                        {
+                            // set the outer boundary to the inside of the 2nd wall
+                            outer = part.insets[1].offset(-line_width_x/2);
+                            outer_to_outline_dist = line_width_0 + line_width_x;
+                        }
+                        else
+                        {
+                            // set the outer boundary to the middle of the 2nd wall
+                            outer = part.insets[1];
+                            outer_to_outline_dist = line_width_0 + line_width_x/2;
+                        }
+
+                        // where any inner walls are missing, we create an area that is bounded by the middle of
+                        // the outer wall and merge it with outer (which is bounded by the inside or middle of the 2nd wall)
+                        const coord_t outer_to_outer_wall_dist = (outer_to_outline_dist - line_width_0/2);
+                        Polygons inner_walls_missing_region = part.insets[0].difference(outer.offset(outer_to_outer_wall_dist + 10));
+                        if (!inner_walls_missing_region.empty())
+                        {
+                            outer.add(inner_walls_missing_region);
+                            // merge by expanding and contracting sufficiently
+                            outer = outer.offset(outer_to_outer_wall_dist/2 + 20).offset(-outer_to_outer_wall_dist/2 - 20);
+                        }
                     }
                     else if (num_insets > 0)
                     {
