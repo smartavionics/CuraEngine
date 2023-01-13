@@ -169,6 +169,50 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
             break;
         }
     }
+    if (layer_nr > 0)
+    {
+        Polygons outline_below;
+        for (const SliceLayerPart& mesh_part : mesh.layers[layer_nr - 1].parts)
+        {
+            outline_below.add(mesh_part.outline);
+        }
+        Polygons outers;
+        Polygons holes;
+        for (PolygonRef p : outline_below)
+        {
+            if (p.orientation())
+            {
+                outers.add(p);
+            }
+            else
+            {
+                holes.add(p);
+            }
+        }
+        outline_below = outers;
+        outline_below.add(holes.offset(line_width_x));
+
+        for(int i = part->insets.size() - 1; i > 0; --i)
+        {
+            for (int j = part->insets[i].size() - 1; j >= 0; --j)
+            {
+                bool found_supported_vertex = false;
+                for (const Point& vertex : part->insets[i][j])
+                {
+                    if (outline_below.inside(vertex, true))
+                    {
+                        found_supported_vertex = true;
+                        break;
+                    }
+                }
+                if (!found_supported_vertex)
+                {
+                    part->insets.erase(part->insets.begin() + i);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /*

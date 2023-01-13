@@ -176,7 +176,9 @@ void SkinInfillAreaComputation::generateSkinAndInfillAreas()
     {
         SliceLayerPart& part = layer.parts[part_nr];
 
-        if (part.insets.size() < wall_line_count && !mesh.settings.get<bool>("only_one_wall_top"))
+        // FIXME - this needs to be disabled when insets are dropped because they are not supported at all,
+        // but is it still required anyway?
+        if (false && part.insets.size() < wall_line_count && !mesh.settings.get<bool>("only_one_wall_top"))
         {
             continue; // the last wall is not present, the part should only get inter perimeter gaps, but no skin or infill.
         }
