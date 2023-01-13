@@ -171,27 +171,27 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
     }
     if (layer_nr > 0)
     {
+        // determine the outline of the layer below with the holes expanded by line_width_x
+        // this is then used to determine if any insets are totally unsupported
         Polygons outline_below;
+        Polygons holes;
         for (const SliceLayerPart& mesh_part : mesh.layers[layer_nr - 1].parts)
         {
-            outline_below.add(mesh_part.outline);
-        }
-        Polygons outers;
-        Polygons holes;
-        for (PolygonRef p : outline_below)
-        {
-            if (p.orientation())
+            for (ConstPolygonRef p : mesh_part.outline)
             {
-                outers.add(p);
-            }
-            else
-            {
-                holes.add(p);
+                if (p.orientation())
+                {
+                    outline_below.add(p);
+                }
+                else
+                {
+                    holes.add(p);
+                }
             }
         }
-        outline_below = outers;
         outline_below.add(holes.offset(line_width_x));
 
+        // check all the inner insets, any that have no supported vertices are deleted
         for(int i = part->insets.size() - 1; i > 0; --i)
         {
             for (int j = part->insets[i].size() - 1; j >= 0; --j)
@@ -207,6 +207,7 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
                 }
                 if (!found_supported_vertex)
                 {
+                    // no vertices are supported so trash the whole inset
                     part->insets.erase(part->insets.begin() + i);
                     break;
                 }
