@@ -189,8 +189,9 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
                     holes.add(p);
                 }
             }
-            outline_below.add(outline.offset(-line_width_0));
-            outline_below.add(holes.offset(line_width_x));
+            const coord_t margin = mesh.settings.get<coord_t>("remove_floating_inner_walls_margin");
+            outline_below.add(outline.offset(-margin));
+            outline_below.add(holes.offset(margin));
         }
 
         // check all the inner insets, any that have no supported vertices are deleted
