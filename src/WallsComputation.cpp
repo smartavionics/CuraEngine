@@ -169,7 +169,7 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
             break;
         }
     }
-    if (layer_nr > 0)
+    if (layer_nr > 0 && mesh.settings.get<bool>("remove_floating_inner_walls"))
     {
         // determine the outline of the layer below with the holes expanded by line_width_x
         // this is then used to determine if any insets are totally unsupported
