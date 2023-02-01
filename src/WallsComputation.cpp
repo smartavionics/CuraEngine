@@ -169,6 +169,54 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
             break;
         }
     }
+    if (layer_nr > 0 && mesh.settings.get<bool>("remove_floating_inner_walls"))
+    {
+        // determine the outline of the layer below with the holes expanded by line_width_x
+        // this is then used to determine if any insets are totally unsupported
+        Polygons outline_below;
+        for (const SliceLayerPart& mesh_part : mesh.layers[layer_nr - 1].parts)
+        {
+            Polygons outline;
+            Polygons holes;
+            for (ConstPolygonRef p : mesh_part.outline)
+            {
+                if (p.orientation())
+                {
+                    outline.add(p);
+                }
+                else
+                {
+                    holes.add(p);
+                }
+            }
+            const coord_t margin = mesh.settings.get<coord_t>("remove_floating_inner_walls_margin");
+            outline_below.add(outline.offset(-margin));
+            outline_below.add(holes.offset(margin));
+        }
+
+        // check all the inner insets, any that have no supported vertices are deleted
+        for(int i = part->insets.size() - 1; i > 0; --i)
+        {
+            for (int j = part->insets[i].size() - 1; j >= 0; --j)
+            {
+                bool found_supported_vertex = false;
+                for (const Point& vertex : part->insets[i][j])
+                {
+                    if (outline_below.inside(vertex, true))
+                    {
+                        found_supported_vertex = true;
+                        break;
+                    }
+                }
+                if (!found_supported_vertex)
+                {
+                    // no vertices are supported so trash the whole inset
+                    part->insets.erase(part->insets.begin() + i);
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /*
