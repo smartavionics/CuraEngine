@@ -63,21 +63,23 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
                 FILE* file = fopen(pathname.c_str(), "rb");
                 if (!file)
                 {
-                    std::string dir = mesh->settings.get<std::string>("project_file_dir");
-                    if (dir.size() > 0)
+                    const auto paths = mesh->settings.get<std::string>("dli_dirs");
+                    size_t start;
+                    size_t end = 0;
+                    const char delim = ';';
+                    while ((start = paths.find_first_not_of(delim, end)) != std::string::npos)
                     {
-                        pathname = dir + slash + json_filename;
-                        file = fopen(pathname.c_str(), "rb");
-                    }
-                }
-
-                if (!file)
-                {
-                    std::string dir = mesh->settings.get<std::string>("home_dir");
-                    if (dir.size() > 0)
-                    {
-                        pathname = dir + slash + json_filename;
-                        file = fopen(pathname.c_str(), "rb");
+                        end = paths.find(delim, start);
+                        std::string dir(paths.substr(start, end - start));
+                        if (dir.size() > 0)
+                        {
+                            pathname = dir + slash + json_filename;
+                            file = fopen(pathname.c_str(), "rb");
+                            if (file)
+                            {
+                                break;
+                            }
+                        }
                     }
                 }
 
