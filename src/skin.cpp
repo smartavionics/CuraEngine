@@ -225,6 +225,15 @@ void SkinInfillAreaComputation::generateSkinAndInfillAreas(SliceLayerPart& part)
     // now combine the resized upskin and downskin
     Polygons skin = upskin.unionPolygons(downskin);
 
+    if ((layer_nr & 1) &&
+        mesh.settings.get<bool>("top_bottom_overlap_concentric") &&
+        mesh.settings.get<FillPerimeterGapMode>("fill_perimeter_gaps") != FillPerimeterGapMode::NOWHERE &&
+        ((layer_nr == 0 && mesh.settings.get<EFillMethod>("top_bottom_pattern_0") == EFillMethod::CONCENTRIC) ||
+         (layer_nr > 0 && mesh.settings.get<EFillMethod>("top_bottom_pattern") == EFillMethod::CONCENTRIC)))
+    {
+        skin = skin.offset(-skin_line_width/2);
+    }
+
     skin.removeSmallAreas(MIN_AREA_SIZE);
 
     if (process_infill)
