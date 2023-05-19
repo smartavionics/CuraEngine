@@ -224,6 +224,7 @@ Polygons LayerPlan::computeCombBoundaryInside(const size_t max_inset)
                             outer.add(inner_walls_missing_region);
                             // merge by expanding and contracting sufficiently
                             outer = outer.offset(outer_to_outer_wall_dist/2 + 20).offset(-outer_to_outer_wall_dist/2 - 20);
+                            outer_to_outline_dist = line_width_0/2;
                         }
                     }
                     else if (num_insets > 0)
