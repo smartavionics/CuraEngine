@@ -210,21 +210,13 @@ Polygons LayerPlan::computeCombBoundaryInside(const size_t max_inset)
                     {
                         // part's wall has multiple lines
 
-                        if (num_insets > 2)
-                        {
-                            // set the outer boundary to the inside of the 2nd wall
-                            outer = part.insets[1].offset(-line_width_x/2);
-                            outer_to_outline_dist = line_width_0 + line_width_x;
-                        }
-                        else
-                        {
-                            // set the outer boundary to the middle of the 2nd wall
-                            outer = part.insets[1];
-                            outer_to_outline_dist = line_width_0 + line_width_x/2;
-                        }
+                        // set the outer boundary to be 1/4 line width inside the centre line of the 2nd wall
+
+                        outer = part.insets[1].offset(-line_width_x/4);
+                        outer_to_outline_dist = line_width_x*3/4 + line_width_0;
 
                         // where any inner walls are missing, we create an area that is bounded by the middle of
-                        // the outer wall and merge it with outer (which is bounded by the inside or middle of the 2nd wall)
+                        // the outer wall and merge it with outer
                         const coord_t outer_to_outer_wall_dist = (outer_to_outline_dist - line_width_0/2);
                         Polygons inner_walls_missing_region = part.insets[0].difference(outer.offset(outer_to_outer_wall_dist + 10));
                         if (!inner_walls_missing_region.empty())
