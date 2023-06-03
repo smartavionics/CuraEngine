@@ -2839,6 +2839,8 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             // assign bridge skin parameters
             skin_config = config;
             skin_density = density;
+
+            pattern = mesh.settings.get<EFillMethod>("bridge_skin_pattern");
         }
         else
         {
@@ -2850,6 +2852,8 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
                 return;
             }
             angle = int_angle;
+
+            pattern = EFillMethod::LINES;
         }
 
         switch (bridge_layer_nr)
@@ -2870,15 +2874,15 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
                     // orientate second bridge skin at 90 deg to first
                     skin_angle = angle + 90;
                 }
+                pattern = mesh.settings.get<EFillMethod>("bridge_skin_pattern2");
                 break;
 
             case 3:
                 // orientate third bridge skin at 135 (same result as -45) deg to first
                 skin_angle = angle + 135;
+                pattern = mesh.settings.get<EFillMethod>("bridge_skin_pattern3");
                 break;
         }
-
-        pattern = EFillMethod::LINES; // force lines pattern when bridging
     };
 
     if (layer_nr > 0)
