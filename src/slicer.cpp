@@ -1047,7 +1047,7 @@ void Slicer::makePolygons(Mesh& mesh, SlicingTolerance slicing_tolerance, std::v
             {
                 // taper the offset from xy_offset_layer_0 to xy_offset across xy_offset_taper_layers
                 const coord_t xy_offset_layer_0 = mesh.settings.get<coord_t>("xy_offset_layer_0");
-                xy_offset = xy_offset_layer_0 + (xy_offset - xy_offset_layer_0) * (layer_nr - layer_apply_initial_xy_offset) / (xy_offset_taper_layers + 1);
+                xy_offset = xy_offset_layer_0 + (xy_offset - xy_offset_layer_0) * (layer_nr - layer_apply_initial_xy_offset) / (int)(xy_offset_taper_layers + 1);
             }
         }
 
