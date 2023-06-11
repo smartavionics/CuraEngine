@@ -333,8 +333,9 @@ public:
      * while combing.
      * \param travel_avoid_distance The distance by which to avoid other layer
      * parts when travelling through air.
+     * \param last_layer_end_position Optional last position planned on last layer
      */
-    LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord_t z, coord_t layer_height, size_t start_extruder, const std::vector<FanSpeedLayerTimeSettings>& fan_speed_layer_time_settings_per_extruder, coord_t comb_boundary_offset, coord_t comb_move_inside_distance, coord_t travel_avoid_distance);
+    LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord_t z, coord_t layer_height, size_t start_extruder, const std::vector<FanSpeedLayerTimeSettings>& fan_speed_layer_time_settings_per_extruder, coord_t comb_boundary_offset, coord_t comb_move_inside_distance, coord_t travel_avoid_distance, std::optional<Point> last_layer_end_position = std::optional<Point>());
 
     ~LayerPlan();
 

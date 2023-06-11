@@ -114,30 +114,53 @@ void FffGcodeWriter::writeGCode(SliceDataStorage& storage, TimeKeeper& time_keep
         }
     }
 
+    if (scene.current_mesh_group->settings.get<bool>("process_layers_sequentially"))
+    {
+        std::optional<Point> last_planned_position;
 
-    const std::function<LayerPlan* (int)>& produce_item =
-        [&storage, total_layers, this](int layer_nr)
+        for (int layer_nr = process_layer_starting_layer_nr; layer_nr < (int)total_layers; ++layer_nr)
         {
-            LayerPlan& gcode_layer = processLayer(storage, layer_nr, total_layers);
-            return &gcode_layer;
-        };
-    const std::function<void (LayerPlan*)>& consume_item =
-        [this, total_layers](LayerPlan* gcode_layer)
-        {
-            Progress::messageProgress(Progress::Stage::EXPORT, std::max(0, gcode_layer->getLayerNr()) + 1, total_layers);
-            layer_plan_buffer.handle(*gcode_layer, gcode);
-        };
-    const unsigned int max_task_count = OMP_MAX_ACTIVE_LAYERS_PROCESSED;
-    GcodeLayerThreader<LayerPlan> threader(
-        process_layer_starting_layer_nr
-        , static_cast<int>(total_layers)
-        , produce_item
-        , consume_item
-        , max_task_count
-    );
+            { // calculate the mesh order for each extruder
+                const size_t extruder_count = Application::getInstance().current_slice->scene.extruders.size();
+                mesh_order_per_extruder.clear(); // Might be not empty in case of sequential printing.
+                mesh_order_per_extruder.reserve(extruder_count);
+                for (size_t extruder_nr = 0; extruder_nr < extruder_count; extruder_nr++)
+                {
+                    mesh_order_per_extruder.push_back(calculateMeshOrder(storage, extruder_nr, last_planned_position));
+                }
+            }
+            LayerPlan& gcode_layer = processLayer(storage, layer_nr, total_layers, last_planned_position);
+            Progress::messageProgress(Progress::Stage::EXPORT, std::max(0, gcode_layer.getLayerNr()) + 1, total_layers);
+            last_planned_position = gcode_layer.getLastPlannedPositionOrStartingPosition();
+            layer_plan_buffer.handle(gcode_layer, gcode);
+        }
+    }
+    else
+    {
+        const std::function<LayerPlan* (int)>& produce_item =
+            [&storage, total_layers, this](int layer_nr)
+            {
+                LayerPlan& gcode_layer = processLayer(storage, layer_nr, total_layers);
+                return &gcode_layer;
+            };
+        const std::function<void (LayerPlan*)>& consume_item =
+            [this, total_layers](LayerPlan* gcode_layer)
+            {
+                Progress::messageProgress(Progress::Stage::EXPORT, std::max(0, gcode_layer->getLayerNr()) + 1, total_layers);
+                layer_plan_buffer.handle(*gcode_layer, gcode);
+            };
+        const unsigned int max_task_count = OMP_MAX_ACTIVE_LAYERS_PROCESSED;
+        GcodeLayerThreader<LayerPlan> threader(
+            process_layer_starting_layer_nr
+            , static_cast<int>(total_layers)
+            , produce_item
+            , consume_item
+            , max_task_count
+        );
 
-    // process all layers, process buffer for preheating and minimal layer time etc, write layers to gcode:
-    threader.run();
+        // process all layers, process buffer for preheating and minimal layer time etc, write layers to gcode:
+        threader.run();
+    }
 
     layer_plan_buffer.flush();
 
@@ -881,7 +904,7 @@ void FffGcodeWriter::processRaft(const SliceDataStorage& storage)
     }
 }
 
-LayerPlan& FffGcodeWriter::processLayer(const SliceDataStorage& storage, LayerIndex layer_nr, const size_t total_layers) const
+LayerPlan& FffGcodeWriter::processLayer(const SliceDataStorage& storage, LayerIndex layer_nr, const size_t total_layers, std::optional<Point> last_planned_position) const
 {
     logDebug("GcodeWriter processing layer %i of %i\n", layer_nr, total_layers);
 
@@ -966,7 +989,7 @@ LayerPlan& FffGcodeWriter::processLayer(const SliceDataStorage& storage, LayerIn
         extruder_order_per_layer[layer_nr];
 
     const coord_t first_outer_wall_line_width = scene.extruders[extruder_order.front()].settings.get<coord_t>("wall_line_width_0");
-    LayerPlan& gcode_layer = *new LayerPlan(storage, layer_nr, z, layer_thickness, extruder_order.front(), fan_speed_layer_time_settings_per_extruder, comb_offset_from_outlines, first_outer_wall_line_width, avoid_distance);
+    LayerPlan& gcode_layer = *new LayerPlan(storage, layer_nr, z, layer_thickness, extruder_order.front(), fan_speed_layer_time_settings_per_extruder, comb_offset_from_outlines, first_outer_wall_line_width, avoid_distance, last_planned_position);
 
     if (include_helper_parts && layer_nr == 0)
     { // process the skirt or the brim of the starting extruder.
@@ -1283,7 +1306,7 @@ std::vector<size_t> FffGcodeWriter::getUsedExtrudersOnLayerExcludingStartingExtr
     return ret;
 }
 
-std::vector<size_t> FffGcodeWriter::calculateMeshOrder(const SliceDataStorage& storage, const size_t extruder_nr) const
+std::vector<size_t> FffGcodeWriter::calculateMeshOrder(const SliceDataStorage& storage, const size_t extruder_nr, std::optional<Point> last_planned_position) const
 {
     OrderOptimizer<size_t> mesh_idx_order_optimizer;
 
@@ -1299,7 +1322,7 @@ std::vector<size_t> FffGcodeWriter::calculateMeshOrder(const SliceDataStorage& s
         }
     }
     const ExtruderTrain& train = Application::getInstance().current_slice->scene.extruders[extruder_nr];
-    const Point layer_start_position(train.settings.get<coord_t>("layer_start_x"), train.settings.get<coord_t>("layer_start_y"));
+    const Point layer_start_position = (last_planned_position) ? *last_planned_position : Point(train.settings.get<coord_t>("layer_start_x"), train.settings.get<coord_t>("layer_start_y"));
     std::list<size_t> mesh_indices_order = mesh_idx_order_optimizer.optimize(layer_start_position);
 
     std::vector<size_t> ret;
@@ -1405,7 +1428,7 @@ void FffGcodeWriter::addMeshLayerToGCode(const SliceDataStorage& storage, const 
     if (mesh.isPrinted())
     {
         // "normal" meshes with walls, skin, infill, etc. get the traditional part ordering based on the z-seam settings
-        ZSeamConfig z_seam_config(mesh.settings.get<EZSeamType>("z_seam_type"), mesh.getZSeamHint(), mesh.settings.get<EZSeamCornerPrefType>("z_seam_corner"));
+        ZSeamConfig z_seam_config = mesh.settings.get<bool>("process_layers_sequentially") ? ZSeamConfig() : ZSeamConfig(mesh.settings.get<EZSeamType>("z_seam_type"), mesh.getZSeamHint(), mesh.settings.get<EZSeamCornerPrefType>("z_seam_corner"));
         PathOrderOptimizer part_order_optimizer(gcode_layer.getLastPlannedPositionOrStartingPosition(), z_seam_config, &gcode_layer);
         for (unsigned int part_idx = 0; part_idx < layer.parts.size(); part_idx++)
         {

@@ -251,9 +251,10 @@ private:
      * \param[in] storage where the slice data is stored.
      * \param layer_nr The index of the layer to write the gcode of.
      * \param total_layers The total number of layers.
+     * \param last_planned_position Optional last planned position on previous layer
      * \return The layer plans
      */
-    LayerPlan& processLayer(const SliceDataStorage& storage, LayerIndex layer_nr, const size_t total_layers) const;
+    LayerPlan& processLayer(const SliceDataStorage& storage, LayerIndex layer_nr, const size_t total_layers, std::optional<Point> last_planned_position = std::optional<Point>()) const;
 
     /*!
      * This function checks whether prime blob should happen for any extruder on the first layer.
@@ -347,9 +348,10 @@ private:
      * 
      * \param[in] storage where the slice data is stored.
      * \param extruder_nr The extruder for which to determine the order
+     * \param last_planned_position Optional last planned position on previous layer
      * \return A vector of mesh indices ordered on print order for that extruder.
      */
-    std::vector<size_t> calculateMeshOrder(const SliceDataStorage& storage, const size_t extruder_nr) const;
+    std::vector<size_t> calculateMeshOrder(const SliceDataStorage& storage, const size_t extruder_nr, std::optional<Point> last_planned_position = std::optional<Point>()) const;
 
     /*!
      * Add a single layer from a single mesh-volume to the layer plan \p gcodeLayer in mesh surface mode.

@@ -106,7 +106,7 @@ void LayerPlan::forceNewPathStart()
         paths[paths.size()-1].done = true;
 }
 
-LayerPlan::LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord_t z, coord_t layer_thickness, size_t start_extruder, const std::vector<FanSpeedLayerTimeSettings>& fan_speed_layer_time_settings_per_extruder, coord_t comb_boundary_offset, coord_t comb_move_inside_distance, coord_t travel_avoid_distance)
+LayerPlan::LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord_t z, coord_t layer_thickness, size_t start_extruder, const std::vector<FanSpeedLayerTimeSettings>& fan_speed_layer_time_settings_per_extruder, coord_t comb_boundary_offset, coord_t comb_move_inside_distance, coord_t travel_avoid_distance, std::optional<Point> last_layer_end_position)
 : storage(storage)
 , configs_storage(storage, layer_nr, layer_thickness)
 , z(z)
@@ -117,6 +117,7 @@ LayerPlan::LayerPlan(const SliceDataStorage& storage, LayerIndex layer_nr, coord
 , is_raft_layer(layer_nr < 0 - static_cast<LayerIndex>(Raft::getFillerLayerCount()))
 , layer_thickness(layer_thickness)
 , has_prime_tower_planned_per_extruder(Application::getInstance().current_slice->scene.extruders.size(), false)
+, last_planned_position(last_layer_end_position)
 , current_mesh("NONMESH")
 , max_path_time(0)
 , random_engine((unsigned)layer_nr)
@@ -446,7 +447,7 @@ GCodePath& LayerPlan::addTravel(const Point p, const bool force_retract, const c
     const bool is_first_travel_of_extruder_after_switch = extruder_plans.back().paths.size() == 1 && (extruder_plans.size() > 1 || last_extruder_previous_layer != getExtruder());
     bool bypass_combing = is_first_travel_of_extruder_after_switch && extruder->settings.get<bool>("retraction_hop_after_extruder_switch");
 
-    const bool is_first_travel_of_layer = !static_cast<bool>(last_planned_position);
+    const bool is_first_travel_of_layer = !static_cast<bool>(first_travel_destination);
     const bool retraction_enable = extruder->settings.get<bool>("retraction_enable");
     if (is_first_travel_of_layer)
     {
@@ -601,7 +602,7 @@ GCodePath& LayerPlan::addTravel(const Point p, const bool force_retract, const c
 
 GCodePath& LayerPlan::addTravel_simple(Point p, GCodePath* path)
 {
-    bool is_first_travel_of_layer = !static_cast<bool>(last_planned_position);
+    bool is_first_travel_of_layer = !static_cast<bool>(first_travel_destination);
     if (is_first_travel_of_layer)
     { // spiralize calls addTravel_simple directly as the first travel move in a layer
         first_travel_destination = p;
