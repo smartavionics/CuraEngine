@@ -16,7 +16,7 @@ namespace cura {
 
 static std::map<std::string, rapidjson::Document*> definitions;
 
-DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_origin, const AngleDegrees fill_angle, const coord_t infill_line_width, const SliceMeshStorage* mesh)
+DiscreteLinesInfill::DiscreteLinesInfill(const std::string definition, const coord_t z, const Point& infill_origin, const AngleDegrees fill_angle, const coord_t infill_line_width, const SliceMeshStorage* mesh)
     : z(z)
     , infill_origin(infill_origin)
     , fill_angle_rads(fill_angle / (180 / M_PI))
@@ -32,7 +32,6 @@ DiscreteLinesInfill::DiscreteLinesInfill(const coord_t z, const Point& infill_or
         }
         return;
     }
-    const std::string definition = mesh->settings.get<std::string>("discrete_lines_infill_definition");
     const std::size_t start = definition.find_first_not_of(" \t\r\n");
     if (start != std::string::npos)
     {

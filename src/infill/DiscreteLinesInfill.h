@@ -20,7 +20,7 @@ class Polygons;
 class DiscreteLinesInfill
 {
 public:
-    DiscreteLinesInfill(const coord_t z, const Point& infill_origin, const AngleDegrees fill_angle, const coord_t infill_line_width, const SliceMeshStorage* mesh);
+    DiscreteLinesInfill(const std::string definition, const coord_t z, const Point& infill_origin, const AngleDegrees fill_angle, const coord_t infill_line_width, const SliceMeshStorage* mesh);
 
     ~DiscreteLinesInfill();
 
