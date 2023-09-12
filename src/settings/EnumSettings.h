@@ -33,6 +33,7 @@ enum class EFillMethod
     HONEYCOMB,
     HILBERT,
     DISCRETE_LINES,
+    SCATTERED_RECTILINEAR,
     NONE  // NOTE: Should remain last! (May be used in testing to enumarate the enum.)
 };
 

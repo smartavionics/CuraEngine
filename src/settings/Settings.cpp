@@ -361,6 +361,10 @@ template<> EFillMethod Settings::get<EFillMethod>(const std::string& key) const
     {
         return EFillMethod::DISCRETE_LINES;
     }
+    else if (value == "scattered_rectilinear")
+    {
+        return EFillMethod::SCATTERED_RECTILINEAR;
+    }
     else //Default.
     {
         return EFillMethod::NONE;

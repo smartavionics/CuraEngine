@@ -411,7 +411,7 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
                 mesh.infill_angles.push_back(150);
                 mesh.infill_angles.push_back(270);
             }
-            else if (infill_pattern == EFillMethod::DISCRETE_LINES)
+            else if (infill_pattern == EFillMethod::DISCRETE_LINES || infill_pattern == EFillMethod::SCATTERED_RECTILINEAR)
             {
                 mesh.infill_angles.push_back(45);
                 mesh.infill_angles.push_back(135);
@@ -1880,7 +1880,8 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
                 || pattern == EFillMethod::QUARTER_CUBIC
                 || pattern == EFillMethod::CUBICSUBDIV
                 || pattern == EFillMethod::LIGHTNING
-                || pattern == EFillMethod::DISCRETE_LINES)
+                || pattern == EFillMethod::DISCRETE_LINES
+                || pattern == EFillMethod::SCATTERED_RECTILINEAR)
         {
             gcode_layer.addLinesByOptimizer(infill_lines, mesh_config.infill_config[0], SpaceFillType::Lines, enable_travel_optimization
                 , mesh.settings.get<coord_t>("infill_wipe_dist"), /*float_ratio = */ 1.0, near_start_location, GCodePathConfig::FAN_SPEED_DEFAULT, avoid_freq, &mesh);
@@ -3052,7 +3053,8 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
                     || pattern == EFillMethod::QUARTER_CUBIC
                     || pattern == EFillMethod::CUBICSUBDIV
                     || pattern == EFillMethod::LIGHTNING
-                    || pattern == EFillMethod::DISCRETE_LINES)
+                    || pattern == EFillMethod::DISCRETE_LINES
+                    || pattern == EFillMethod::SCATTERED_RECTILINEAR)
             {
                 gcode_layer.addLinesMonotonic(area, skin_lines, config, SpaceFillType::Lines, monotonic_direction, max_adjacent_distance, exclude_distance, mesh.settings.get<coord_t>("infill_wipe_dist"), flow, fan_speed);
             }
@@ -3082,7 +3084,8 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
                     || pattern == EFillMethod::QUARTER_CUBIC
                     || pattern == EFillMethod::CUBICSUBDIV
                     || pattern == EFillMethod::LIGHTNING
-                    || pattern == EFillMethod::DISCRETE_LINES)
+                    || pattern == EFillMethod::DISCRETE_LINES
+                    || pattern == EFillMethod::SCATTERED_RECTILINEAR)
             {
                 gcode_layer.addLinesByOptimizer(skin_lines, config, SpaceFillType::Lines, enable_travel_optimization, mesh.settings.get<coord_t>("infill_wipe_dist"), flow, near_start_location, fan_speed, avoid_freq, &mesh, pattern);
             }

@@ -259,6 +259,12 @@ void Infill::_generate( Polygons& result_polygons,
             infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
         }
         break;
+    case EFillMethod::SCATTERED_RECTILINEAR:
+        {
+            DiscreteLinesInfill infill("[{ \"ypitch\": \"from-settings\",\"scattered\": true }]", z, infill_origin, fill_angle, infill_line_width, mesh);
+            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
+        }
+        break;
     default:
         logError("Fill pattern has unknown value.\n");
         break;
