@@ -2719,7 +2719,8 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
                     sp.inner_infill = sp.outline;
 
                     // determine the best angle for the skin lines - the current heuristic is that the skin lines should be parallel to the
-                    // direction of the skin area's longest unsupported edge
+                    // direction of the skin area's longest unsupported edge if that edge is longer than the longest supported edge, otherwise
+                    // the skin lines will be 90 deg to the longest supported edge
 
                     Polygons line_polys;
                     for (ConstPolygonRef poly : bridge_skin_part)
@@ -2737,51 +2738,57 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
                         }
                     }
 
-                    Polygons unsupported_line_polys = bridge_regions[n].intersectionPolyLines(line_polys);
-                    double max_dist2 = 1000 * 1000; // ignore lines less than 1mm long
                     AngleDegrees line_angle = 0;
                     bool found_line_angle = false;
+                    struct {
+                        AngleDegrees angle;
+                        coord_t dist2;
+                    } longest_unsupported_line = { 0, 1000 * 1000 }; // ignore unsuported lines less than 1mm long
+                    Polygons unsupported_line_polys = bridge_regions[n].intersectionPolyLines(line_polys);
                     for (ConstPolygonRef line_poly : unsupported_line_polys)
                     {
-                        double dist2 = vSize2(line_poly[0] - line_poly[1]);
-                        if (dist2 > max_dist2)
+                        coord_t dist2 = vSize2(line_poly[0] - line_poly[1]);
+                        if (dist2 > longest_unsupported_line.dist2)
                         {
-                            max_dist2 = dist2;
-                            line_angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + 360;
+                            longest_unsupported_line.dist2 = dist2;
+                            longest_unsupported_line.angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + 360;
                             found_line_angle = true;
                         }
                     }
-                    if (found_line_angle && line_polys.size() == unsupported_line_polys.size())
+
+                    line_angle = longest_unsupported_line.angle;
+
+                    // find the longest supported edge and use an angle 90 degrees to that
+                    line_polys.clear();
+                    for (ConstPolygonRef poly : bridge_regions[n])
                     {
-                        // all edges are unsupported, orientate skin lines to be at 90 deg to the longest edge
-                        line_angle += 90;
+                        Point p0 = poly.back();
+                        for (const Point p1 : poly)
+                        {
+                            line_polys.addLine(p0, p1);
+                            p0 = p1;
+                        }
                     }
 
-                    if (!found_line_angle)
+                    struct {
+                        AngleDegrees angle;
+                        coord_t dist2;
+                    } longest_supported_line = { 0, 0 };
+                    Polygons supported_line_polys = bridge_skin_part.intersectionPolyLines(line_polys);
+                    for (ConstPolygonRef line_poly : supported_line_polys)
                     {
-                        // there were no unsupported edges longer than 1mm so find the longest supported edge and use an angle 90 degrees to that
-                        line_polys.clear();
-                        for (ConstPolygonRef poly : bridge_regions[n])
+                        coord_t dist2 = vSize2(line_poly[0] - line_poly[1]);
+                        if (dist2 > longest_supported_line.dist2)
                         {
-                            Point p0 = poly.back();
-                            for (const Point p1 : poly)
-                            {
-                                line_polys.addLine(p0, p1);
-                                p0 = p1;
-                            }
+                            longest_supported_line.dist2 = dist2;
+                            longest_supported_line.angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + (360 + 90);
+                            found_line_angle = true;
                         }
+                    }
 
-                        Polygons supported_line_polys = bridge_skin_part.intersectionPolyLines(line_polys);
-                        for (ConstPolygonRef line_poly : supported_line_polys)
-                        {
-                            double dist2 = vSize2(line_poly[0] - line_poly[1]);
-                            if (dist2 > max_dist2)
-                            {
-                                max_dist2 = dist2;
-                                line_angle = AngleDegrees(angle(line_poly[0] - line_poly[1])) + (360 + 90);
-                                found_line_angle = true;
-                            }
-                        }
+                    if (longest_supported_line.dist2 > longest_unsupported_line.dist2)
+                    {
+                        line_angle = longest_supported_line.angle;
                     }
 
                     Polygons ignored_perimeter_gaps;
