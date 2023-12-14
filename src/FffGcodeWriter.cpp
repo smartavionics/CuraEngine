@@ -2718,9 +2718,9 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
                     sp.outline = bridge_skin_part;
                     sp.inner_infill = sp.outline;
 
-                    // determine the best angle for the skin lines - the current heuristic is that the skin lines should be parallel to the
-                    // direction of the skin area's longest unsupported edge if that edge is longer than the longest supported edge, otherwise
-                    // the skin lines will be 90 deg to the longest supported edge
+                    // determine the best angle for the skin lines - the current heuristic is that the skin lines will be 90 deg to the longest
+                    // supported edge if that edge is at least 3 times longer than the longest unsupported edge, otherwise, the skin lines will be
+                    // parallel to the longest unsupported edge.
 
                     Polygons line_polys;
                     for (ConstPolygonRef poly : bridge_skin_part)
@@ -2786,7 +2786,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
                         }
                     }
 
-                    if (longest_supported_line.dist2 > longest_unsupported_line.dist2)
+                    if (sqrt(longest_supported_line.dist2) > 3 * sqrt(longest_unsupported_line.dist2))
                     {
                         line_angle = longest_supported_line.angle;
                     }
