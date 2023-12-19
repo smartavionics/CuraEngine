@@ -30,6 +30,11 @@ Point TPMSInfill::rotate_around_origin(const Point& point, const double rads)
 
 void TPMSInfill::generate(Polygons& result_lines, const Polygons& outline)
 {
+    if (outline.empty())
+    {
+        return;
+    }
+
     Polygons rotated_outline = outline;
     if (fill_angle_rads != 0)
     {
