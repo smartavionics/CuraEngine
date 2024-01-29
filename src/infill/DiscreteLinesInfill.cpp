@@ -552,7 +552,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
         if (rpitch > 0)
         {
-            const coord_t r_max = std::max(vSize(aabb.max.X - aabb.min.X) + std::abs(infill_origin.X), vSize(aabb.max.Y - aabb.min.Y) + std::abs(infill_origin.Y)) * 0.707;
+            const coord_t r_max = std::max(vSize(aabb.max.X - aabb.min.X), vSize(aabb.max.Y - aabb.min.Y)) * 1.414;
             for (coord_t r = rpitch; r <= r_max; r += rpitch)
             {
                 vals.push_back(r);
