@@ -33,9 +33,10 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
     const bool single_inset_topmost_layer = single_inset_top && ((unsigned)(layer_nr + 1) >= mesh.layers.size() || mesh.partLayerIsTopmost(*part, layer_nr));
     size_t inset_count = (settings.get<size_t>("wall_line_count") > 0) && (single_inset_topmost_layer || (single_inset_bottom && layer_nr == 0)) ? 1 : settings.get<size_t>("wall_line_count");
     const bool spiralize = settings.get<bool>("magic_spiralize");
+    const bool spiral_bottom_layers_get_extra_walls = spiralize && settings.get<bool>("spiral_bottom_layers_get_extra_walls");
     if (!single_inset_topmost_layer)
     {
-        if (spiralize && layer_nr < LayerIndex(settings.get<size_t>("initial_bottom_layers")) && ((layer_nr % 2) + 2) % 2 == 1) //Add extra insets every 2 layers when spiralizing. This makes bottoms of cups watertight.
+        if (spiral_bottom_layers_get_extra_walls && layer_nr < LayerIndex(settings.get<size_t>("initial_bottom_layers")) && ((layer_nr % 2) + 2) % 2 == 1) //Add extra insets every 2 layers when spiralizing. This makes bottoms of cups watertight.
         {
             inset_count += 5;
         }
