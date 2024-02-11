@@ -1985,25 +1985,36 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
             abs_sine = std::abs(std::sin(corner_rads / 2));
 
             Polygons lines;
-            lines.addLine(this_point - bisector, this_point + bisector);
+            lines.addLine(this_point, this_point + bisector);
+            lines.addLine(this_point, this_point - bisector);
 #if 0
             // diagnostic - print vertex bisector lines
             gcode_layer.addTravel(lines[0][0]);
             gcode_layer.addExtrusionMove(lines[0][1], this_point == wall_outline[seam_vertex_idx] ? mesh_config.insetX_config : mesh_config.inset0_config, SpaceFillType::Lines, 0.1);
+            gcode_layer.addTravel(lines[1][0]);
+            gcode_layer.addExtrusionMove(lines[1][1], this_point == wall_outline[seam_vertex_idx] ? mesh_config.insetX_config : mesh_config.inset0_config, SpaceFillType::Lines, 0.1);
 #endif
 
             lines = part.outline.intersectionPolyLines(lines);
-            if (lines.size() > 0)
+            // find the clipped line segments that start/end close to this_point
+            coord_t total_line_width = 0;
+            for (unsigned ln = 0; ln < lines.size(); ++ln)
             {
-                // find clipped line segment that starts/ends close to poly[n]
-                unsigned ln = 0;
-                while (ln < (lines.size() - 1) && vSize2(lines[ln][0] - this_point) > 100 && vSize2(lines[ln][1] - this_point) > 100)
+                if (vSize2(lines[ln][0] - this_point) < 100 || vSize2(lines[ln][1] - this_point) < 100)
                 {
-                    ++ln;
+#if 0
+                    // diagnostic - print clipped vertex bisector line
+                    gcode_layer.addTravel(lines[ln][0]);
+                    gcode_layer.addExtrusionMove(lines[ln][1], this_point == wall_outline[seam_vertex_idx] ? mesh_config.insetX_config : mesh_config.inset0_config, SpaceFillType::Lines, 0.15);
+#endif
+                    total_line_width += vSize(lines[ln][1] - lines[ln][0]);
                 }
-
-                line_width = vSize(lines[ln][1] - lines[ln][0]) * abs_sine;
             }
+            if (total_line_width == 0)
+            {
+                total_line_width = min_line_width;
+            }
+            line_width = total_line_width * abs_sine;
         };
 
         for (unsigned n = 0; n < wall_outline.size(); ++n)
