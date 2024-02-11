@@ -1976,6 +1976,7 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
     if (min_line_width != 1.0 || max_line_width != 1.0)
     {
         // wall line width can vary
+        const bool part_is_solid = (part.outline.size() == 1);
 
         auto get_line_width = [&](const Point& prev_point, const Point& this_point, const Point& next_point, coord_t& line_width, Point& bisector, double& abs_sine)
         {
@@ -2015,6 +2016,12 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
                 total_line_width = min_line_width;
             }
             line_width = total_line_width * abs_sine;
+            if (part_is_solid)
+            {
+                // if the solid part has areas which are narrower than twice the max_line_width, the lines will overlap
+                // in those areas. We can avoid that by halving the line width here before the max/min limits are applied
+                line_width /= 2;
+            }
         };
 
         for (unsigned n = 0; n < wall_outline.size(); ++n)
