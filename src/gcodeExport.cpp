@@ -526,6 +526,26 @@ void GCodeExport::writeComment(const std::string& unsanitized_comment)
 
 void GCodeExport::writeTimeComment(const Duration time)
 {
+    // output the amount of filament used per extruder for this layer
+    // this is expected to appear before the TIME_ELAPSED comment
+    const Scene& scene = Application::getInstance().current_slice->scene;
+    *output_stream << ";FILAMENT_USED: ";
+    for (size_t i = 0; i < scene.extruders.size(); i++)
+    {
+        if (i > 0)
+        {
+            *output_stream << ", ";
+        }
+        if (flavor != EGCodeFlavor::MARLIN_VOLUMATRIC)
+        {
+            *output_stream << getTotalFilamentUsed(i) / (1000 * extruder_attr[i].filament_area) << "m";
+        }
+        else //Use volumetric filament used.
+        {
+            *output_stream << getTotalFilamentUsed(i) << "mm3";
+        }
+    }
+    *output_stream << new_line;
     *output_stream << ";TIME_ELAPSED:" << time << new_line;
 }
 
@@ -572,24 +592,6 @@ void GCodeExport::writeTypeComment(const PrintFeatureType& type)
 
 void GCodeExport::writeLayerComment(const LayerIndex layer_nr)
 {
-    const Scene& scene = Application::getInstance().current_slice->scene;
-    *output_stream << ";FILAMENT_USED: ";
-    for (size_t i = 0; i < scene.extruders.size(); i++)
-    {
-        if (i > 0)
-        {
-            *output_stream << ", ";
-        }
-        if (flavor != EGCodeFlavor::MARLIN_VOLUMATRIC)
-        {
-            *output_stream << getTotalFilamentUsed(i) / (1000 * extruder_attr[i].filament_area) << "m";
-        }
-        else //Use volumetric filament used.
-        {
-            *output_stream << getTotalFilamentUsed(i) << "mm3";
-        }
-    }
-    *output_stream << new_line;
     *output_stream << ";LAYER:" << layer_nr << new_line;
 }
 
