@@ -1268,17 +1268,21 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
     const coord_t avg_dist_between_points = mesh.settings.get<coord_t>("magic_fuzzy_skin_point_dist");
     const coord_t min_dist_between_points = avg_dist_between_points * 3 / 4; // hardcoded: the point distance may vary between 3/4 and 5/4 the supplied value
     const coord_t range_random_point_dist = avg_dist_between_points / 2;
+    const coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
+    const bool outside_only = mesh.settings.get<bool>("magic_fuzzy_skin_outside_only");
+    const int outside_only_heuristics = mesh.settings.get<int>("magic_fuzzy_skin_outside_only_heuristics");
     unsigned int start_layer_nr = (mesh.settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM)? 1 : 0; // don't make fuzzy skin on first layer if there's a brim
     for (unsigned int layer_nr = start_layer_nr; layer_nr < mesh.layers.size(); layer_nr++)
     {
         SliceLayer& layer = mesh.layers[layer_nr];
+        Polygons hull = layer.getOutlines(true).approxConvexHull(0);
         for (SliceLayerPart& part : layer.parts)
         {
             Polygons results;
             Polygons& skin = (mesh.settings.get<ESurfaceMode>("magic_mesh_surface_mode") == ESurfaceMode::SURFACE)? part.outline : part.insets[0];
             for (PolygonRef poly : skin)
             {
-                if (mesh.settings.get<bool>("magic_fuzzy_skin_outside_only") && poly.area() < 0)
+                if (outside_only && poly.area() < 0)
                 {
                     results.add(poly);
                     continue;
@@ -1288,8 +1292,24 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
 
                 int64_t dist_left_over = rand() % (min_dist_between_points / 2); // the distance to be traversed on the line before making the first new point
                 Point* p0 = &poly.back();
+                unsigned pindex = 0;
                 for (Point& p1 : poly)
                 { // 'a' is the (next) new point between p0 and p1
+                    if (outside_only)
+                    {
+                        if (outside_only_heuristics & 1)
+                        {
+                            // create a point from the vertex that should be outside of the hull if the wall is an outside wall
+                            Point outside = PolygonUtils::getBoundaryPointWithOffset(poly, pindex++, wall_line_width_0);
+                            if (hull.inside(outside))
+                            {
+                                // the point is inside the hull so assume the wall is an inside wall and so add it un-fuzzed
+                                result.add(p1);
+                                p0 = &p1;
+                                continue;
+                            }
+                        }
+                    }
                     Point p0p1 = p1 - *p0;
                     int64_t p0p1_size = vSize(p0p1);
                     int64_t p0pa_dist = dist_left_over;
