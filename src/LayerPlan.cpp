@@ -1070,7 +1070,8 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
     std::vector<coord_t> bridge_start_offsets;  // distance along wall to the start of each bridge region
     std::vector<coord_t> bridge_lengths;        // length of each bridge region
 
-    if (!bridge_wall_mask.empty())
+    // if fuzzy skin enabled, to improve the chance the fuzzy wall will stick to the inner wall, don't print the outer wall lines using bridge settings
+    if (!bridge_wall_mask.empty() && (non_bridge_config.type == PrintFeatureType::InnerWall || !mesh.settings.get<bool>("magic_fuzzy_skin_enabled")))
     {
         // determine start offsets and lengths of bridge regions
         Point p0 = z_seam_point;
