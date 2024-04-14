@@ -1272,9 +1272,47 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
     const bool outside_only = mesh.settings.get<bool>("magic_fuzzy_skin_outside_only");
     const int outside_only_heuristics = mesh.settings.get<int>("magic_fuzzy_skin_outside_only_heuristics");
     unsigned int start_layer_nr = (mesh.settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM)? 1 : 0; // don't make fuzzy skin on first layer if there's a brim
+    const std::string fuzzy_layer_ranges = mesh.settings.get<std::string>("magic_fuzzy_skin_layer_ranges");
+    std::vector<bool> fuzz_layer(mesh.layers.size(), (fuzzy_layer_ranges.length() > 0) ? false : true);
+    unsigned offset = 0;
+    while (offset < fuzzy_layer_ranges.size())
+    {
+        while (iswspace(fuzzy_layer_ranges[offset]) || fuzzy_layer_ranges[offset] == ',')
+        {
+            ++offset;
+        }
+        unsigned start;
+        unsigned end;
+        unsigned consumed;
+        const char *str = fuzzy_layer_ranges.c_str() + offset;
+        if (sscanf(str, "%u - %u%n", &start, &end, &consumed) == 2 ||
+            ((start = 1), sscanf(str, "%u%n", &end, &consumed)) == 1)
+        {
+            offset += consumed;
+            // users think layers are numbered 1 to N, rather than 0 to N-1
+            --start;
+            --end;
+            for (unsigned i = start; i <= end; ++i)
+            {
+                if (start < mesh.layers.size())
+                {
+                    fuzz_layer[i] = true;
+                }
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
     for (unsigned int layer_nr = start_layer_nr; layer_nr < mesh.layers.size(); layer_nr++)
     {
         SliceLayer& layer = mesh.layers[layer_nr];
+        if (!fuzz_layer[layer_nr])
+        {
+            continue;
+        }
         Polygons outlines = layer.getOutlines(true);
         Polygons hull = outlines.approxConvexHull(0);
         for (SliceLayerPart& part : layer.parts)
