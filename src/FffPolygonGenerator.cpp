@@ -1298,50 +1298,56 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
                 { // 'a' is the (next) new point between p0 and p1
                     if (outside_only)
                     {
-                        if (outside_only_heuristics & 1)
+                        bool fuzz_it = true;
+
+                        if (outside_only_heuristics != 0)
                         {
-                            // this heuristic considers a vertex that is (roughly) inside the model's convex hull to be inside the model
-
-                            bool fuzz_it = true;
-
                             // create a point from the vertex that should be outside of the hull if the wall is an outside wall
                             Point outside = PolygonUtils::getBoundaryPointWithOffset(poly, pindex++, wall_line_width_0 * 2);
 
-                            if (hull.inside(outside))
-                            {
-                                // the point is inside the hull so assume the wall is an inside wall and so add it un-fuzzed
-                                fuzz_it = false;
+                            fuzz_it = false;
 
-                                if (outside_only_heuristics & 2)
+                            if (outside_only_heuristics & 1)
+                            {
+                                // this heuristic considers a vertex that is (nearly) outside the model's convex hull to be associated with an outside wall
+
+                                if (!hull.inside(outside))
                                 {
-                                    // this heuristic is a sort of ray tracing thing whereby if a line that bisects a corner of the
-                                    // model polygon does not intersect the model, then the corner is considered to be associated with
-                                    // an outside wall
-                                    Point far_outside = normal(outside - p1, MM2INT(100000));
-                                    Polygons line;
-                                    line.addLine(outside, far_outside);
-                                    line = outlines.intersectionPolyLines(line);
-                                    if (line.size() == 0)
-                                    {
-                                        fuzz_it = true;
-                                    }
+                                    // the point is outside the hull so assume the wall is an outside wall and so add it fuzzed
+                                    fuzz_it = true;
                                 }
                             }
 
-                            if (!fuzz_it)
+                            if (outside_only_heuristics & 2)
                             {
-                                // ensure that the wall starts on the previous vertex
-                                if (result.size() > 0 && result.back() != *p0)
+                                // this heuristic is a sort of ray tracing thing whereby if a line that bisects a corner of the
+                                // model polygon does not intersect the model, then the corner is considered to be associated with
+                                // an outside wall
+                                Point far_outside = normal(outside - p1, MM2INT(100000));
+                                Polygons line;
+                                line.addLine(outside, far_outside);
+                                line = outlines.intersectionPolyLines(line);
+                                if (line.size() == 0)
                                 {
-                                    result.add(*p0);
+                                    fuzz_it = true;
                                 }
-                                // output the original un-fuzzed wall
-                                result.add(p1);
-                                p0 = &p1;
-                                continue;
                             }
                         }
+
+                        if (!fuzz_it)
+                        {
+                            // ensure that the wall starts close (< 10uM) to the previous vertex
+                            if (result.size() > 0 && vSize2(result.back() - *p0) > 100)
+                            {
+                                result.add(*p0);
+                            }
+                            // output the original un-fuzzed wall
+                            result.add(p1);
+                            p0 = &p1;
+                            continue;
+                        }
                     }
+
                     Point p0p1 = p1 - *p0;
                     int64_t p0p1_size = vSize(p0p1);
                     int64_t p0pa_dist = dist_left_over;
