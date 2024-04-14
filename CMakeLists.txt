@@ -38,6 +38,8 @@ if(USE_SYSTEM_LIBS)
     find_package(Polyclipping REQUIRED)
 endif()
 
+#set(CMAKE_BUILD_TYPE "DEBUG")
+
 # convert build type to upper case letters
 if(CMAKE_BUILD_TYPE)
     string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
