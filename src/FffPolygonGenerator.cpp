@@ -1363,7 +1363,7 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
                                 // this heuristic is a sort of ray tracing thing whereby if a line that bisects a corner of the
                                 // model polygon does not intersect the model, then the corner is considered to be associated with
                                 // an outside wall
-                                Point far_outside = normal(close_outside - p1, MM2INT(100000));
+                                Point far_outside = close_outside + normal(close_outside - p1, std::max(mesh.bounding_box.max.x - mesh.bounding_box.min.x, mesh.bounding_box.max.y - mesh.bounding_box.min.y) * 2);
                                 Polygons line;
                                 line.addLine(close_outside, far_outside);
                                 line = outlines.intersectionPolyLines(line);
