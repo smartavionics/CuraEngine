@@ -1332,6 +1332,9 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
                 int64_t dist_left_over = rand() % (min_dist_between_points / 2); // the distance to be traversed on the line before making the first new point
                 Point* p0 = &poly.back();
                 unsigned pindex = 0;
+                // track whether last point was outside or not
+                const coord_t close_dist = wall_line_width_0 * 2;
+                bool last_was_outside = (outside_only_heuristics != 0) && !hull.inside(PolygonUtils::getBoundaryPointWithOffset(poly, poly.size() - 1, close_dist));
                 for (Point& p1 : poly)
                 { // 'a' is the (next) new point between p0 and p1
                     if (outside_only)
@@ -1341,7 +1344,7 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
                         if (outside_only_heuristics != 0)
                         {
                             // create a point from the vertex that should be outside of the hull if the wall is an outside wall
-                            Point outside = PolygonUtils::getBoundaryPointWithOffset(poly, pindex++, wall_line_width_0 * 2);
+                            Point close_outside = PolygonUtils::getBoundaryPointWithOffset(poly, pindex++, close_dist);
 
                             fuzz_it = false;
 
@@ -1349,11 +1352,10 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
                             {
                                 // this heuristic considers a vertex that is (nearly) outside the model's convex hull to be associated with an outside wall
 
-                                if (!hull.inside(outside))
-                                {
-                                    // the point is outside the hull so assume the wall is an outside wall and so add it fuzzed
-                                    fuzz_it = true;
-                                }
+                                const bool current_is_outside = !hull.inside(close_outside);
+                                // when both the current and last points are outside the hull, assume the wall is an outside wall and so add it fuzzed
+                                fuzz_it = (current_is_outside && last_was_outside);
+                                last_was_outside = current_is_outside;
                             }
 
                             if (outside_only_heuristics & 2)
@@ -1361,9 +1363,9 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
                                 // this heuristic is a sort of ray tracing thing whereby if a line that bisects a corner of the
                                 // model polygon does not intersect the model, then the corner is considered to be associated with
                                 // an outside wall
-                                Point far_outside = normal(outside - p1, MM2INT(100000));
+                                Point far_outside = normal(close_outside - p1, MM2INT(100000));
                                 Polygons line;
-                                line.addLine(outside, far_outside);
+                                line.addLine(close_outside, far_outside);
                                 line = outlines.intersectionPolyLines(line);
                                 if (line.size() == 0)
                                 {
