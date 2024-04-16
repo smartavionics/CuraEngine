@@ -119,6 +119,11 @@ INLINE Point turn90CCW(const Point& p0)
     return Point(-p0.Y, p0.X);
 }
 
+INLINE Point turn90CW(const Point& p0)
+{
+    return Point(p0.Y, -p0.X);
+}
+
 INLINE Point rotate(const Point& p0, double angle)
 {
     const double cos_component = std::cos(angle);
