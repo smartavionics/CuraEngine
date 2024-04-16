@@ -1359,17 +1359,20 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
 
                             if (outside_only_heuristics & 2)
                             {
-                                // this heuristic is a sort of ray tracing thing whereby if a line that bisects a corner of the
-                                // model polygon does not intersect the model, then the corner is considered to be associated with
-                                // an outside wall
-                                Point far_outside = close_outside + normal(close_outside - p1, std::max(mesh.bounding_box.max.x - mesh.bounding_box.min.x, mesh.bounding_box.max.y - mesh.bounding_box.min.y) * 2);
+                                // this heuristic is a sort of ray tracing thing whereby if either of the normals of a wall's vertices
+                                // do not intersect the model, then the wall is considered to be an outside wall
+                                Point close_vec = turn90CW(normal(p1 - *p0, wall_line_width_0));
+                                Point far_vec = normal(close_vec, std::max(mesh.bounding_box.max.x - mesh.bounding_box.min.x, mesh.bounding_box.max.y - mesh.bounding_box.min.y) * 2);
                                 Polygons line;
-                                line.addLine(close_outside, far_outside);
+                                line.addLine(*p0 + close_vec, *p0 + far_vec);
                                 line = outlines.intersectionPolyLines(line);
-                                if (line.size() == 0)
+                                if (line.size() != 0)
                                 {
-                                    fuzz_it = true;
+                                    line.clear();
+                                    line.addLine(p1 + close_vec, p1 + far_vec);
+                                    line = outlines.intersectionPolyLines(line);
                                 }
+                                fuzz_it = (line.size() == 0);
                             }
                         }
 
