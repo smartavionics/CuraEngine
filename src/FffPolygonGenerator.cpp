@@ -1343,16 +1343,15 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
 
                         if (outside_only_heuristics != 0)
                         {
-                            // create a point from the vertex that should be outside of the hull if the wall is an outside wall
-                            Point close_outside = PolygonUtils::getBoundaryPointWithOffset(poly, pindex++, close_dist);
-
                             fuzz_it = false;
 
                             if (outside_only_heuristics & 1)
                             {
                                 // this heuristic considers a vertex that is (nearly) outside the model's convex hull to be associated with an outside wall
 
-                                const bool current_is_outside = !hull.inside(close_outside);
+                                // create a point from the vertex that should be outside of the hull if the wall is an outside wall
+                                Point maybe_outside = PolygonUtils::getBoundaryPointWithOffset(poly, pindex++, close_dist);
+                                const bool current_is_outside = !hull.inside(maybe_outside);
                                 // when both the current and last points are outside the hull, assume the wall is an outside wall and so add it fuzzed
                                 fuzz_it = (current_is_outside && last_was_outside);
                                 last_was_outside = current_is_outside;
