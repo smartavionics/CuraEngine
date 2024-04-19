@@ -1357,7 +1357,7 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
                                 last_was_outside = current_is_outside;
                             }
 
-                            if (outside_only_heuristics & 2)
+                            if (!fuzz_it && (outside_only_heuristics & 2))
                             {
                                 // this heuristic is a sort of ray tracing thing whereby if either of the normals of a wall's vertices
                                 // do not intersect the model, then the wall is considered to be an outside wall
