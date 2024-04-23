@@ -3040,6 +3040,9 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
     constexpr bool skip_some_zags = false;
     constexpr int zag_skip_count = 0;
     constexpr coord_t pocket_size = 0;
+    const EFillResolution resolution = EFillResolution::HIGH_RESOLUTION;
+    const coord_t wave_amplitude = (pattern == EFillMethod::WAVE_TRIANGLE) ? mesh.settings.get<coord_t>("skin_wave_amplitude") : 0;
+    const coord_t wave_wavelength = wave_amplitude * 4;
     constexpr SierpinskiFillProvider* cross_fill_provider = nullptr;
 
     const LightningLayer* lightning_layer = nullptr;
@@ -3048,7 +3051,7 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
         pattern, zig_zaggify_infill, connect_polygons, area, offset_from_inner_skin_infill, config.getLineWidth(), config.getLineWidth() / skin_density, skin_overlap, infill_multiplier, skin_angle, gcode_layer.z, extra_infill_shift
         , max_resolution, max_deviation
         , wall_line_count, infill_origin, perimeter_gaps_output,
-        connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count, pocket_size
+        connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count, pocket_size, resolution, wave_amplitude, wave_wavelength
         );
     infill_comp.generate(skin_polygons, skin_lines, cross_fill_provider, lightning_layer, &mesh);
 
