@@ -365,6 +365,14 @@ template<> EFillMethod Settings::get<EFillMethod>(const std::string& key) const
     {
         return EFillMethod::SCATTERED_RECTILINEAR;
     }
+    else if (value == "wave_triangle")
+    {
+        return EFillMethod::WAVE_TRIANGLE;
+    }
+    else if (value == "wave_sine")
+    {
+        return EFillMethod::WAVE_SINE;
+    }
     else //Default.
     {
         return EFillMethod::NONE;

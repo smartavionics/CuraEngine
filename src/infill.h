@@ -48,6 +48,8 @@ class Infill
     coord_t pocket_size; //!< The size of the pockets at the intersections of the fractal in the cross 3d pattern
     EFillResolution resolution; //!< The resolution of the infill pattern
     bool mirror_offset; //!< Indication in which offset direction the extra infill lines are made
+    coord_t wave_amplitude; //!< The zero-peak amplitude of the infill wave pattern
+    coord_t wave_wavelength; //!< The wavelength of the infill wave pattern
 
     static constexpr double one_over_sqrt_2 = 0.7071067811865475244008443621048490392848359376884740; //!< 1.0 / sqrt(2.0)
 public:
@@ -82,6 +84,8 @@ public:
         , size_t zag_skip_count = 0
         , coord_t pocket_size = 0
         , EFillResolution resolution = EFillResolution::HIGH_RESOLUTION
+        , coord_t wave_amplitude = 0
+        , coord_t wave_wavelength = 0
     );
 
     /*!

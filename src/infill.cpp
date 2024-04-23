@@ -70,6 +70,8 @@ Infill::Infill(EFillMethod pattern
         , size_t zag_skip_count
         , coord_t pocket_size
         , EFillResolution resolution
+        , coord_t wave_amplitude
+        , coord_t wave_wavelength
     )
     : pattern(pattern)
     , zig_zaggify(zig_zaggify)
@@ -95,6 +97,8 @@ Infill::Infill(EFillMethod pattern
     , pocket_size(pocket_size)
     , resolution(resolution)
     , mirror_offset(zig_zaggify)
+    , wave_amplitude(wave_amplitude)
+    , wave_wavelength(wave_wavelength)
     {
     }
 
@@ -262,6 +266,42 @@ void Infill::_generate( Polygons& result_polygons,
     case EFillMethod::SCATTERED_RECTILINEAR:
         {
             DiscreteLinesInfill infill("[{ \"ypitch\": \"from-settings\",\"scattered\": true }]", z, infill_origin, fill_angle, infill_line_width, mesh);
+            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
+        }
+        break;
+    case EFillMethod::WAVE_SINE:
+        {
+            std::string def;
+            def += "[{ \"ypitch\": ";
+            def += std::to_string(INT2MM(line_distance) * std::sqrt(2));
+            def += ",\"angle\": \"from-settings\"";
+            def += ",\"waveform\": \"sine\"";
+            def += ",\"wavelength\": ";
+            def += std::to_string(INT2MM(wave_wavelength));
+            def += ",\"amplitude\": ";
+            def += std::to_string(INT2MM(wave_amplitude));
+            def += ",\"zigzag\": ";
+            def += (zig_zaggify)? "true" : "false";
+            def += " }]";
+            DiscreteLinesInfill infill(def, z, infill_origin, fill_angle, infill_line_width, mesh);
+            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
+        }
+        break;
+    case EFillMethod::WAVE_TRIANGLE:
+        {
+            std::string def;
+            def += "[{ \"ypitch\": ";
+            def += std::to_string(INT2MM(line_distance) * std::sqrt(2));
+            def += ",\"angle\": \"from-settings\"";
+            def += ",\"waveform\": \"triangle\"";
+            def += ",\"wavelength\": ";
+            def += std::to_string(INT2MM(wave_wavelength));
+            def += ",\"amplitude\": ";
+            def += std::to_string(INT2MM(wave_amplitude));
+            def += ",\"zigzag\": ";
+            def += (zig_zaggify)? "true" : "false";
+            def += " }]";
+            DiscreteLinesInfill infill(def, z, infill_origin, fill_angle, infill_line_width, mesh);
             infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
         }
         break;

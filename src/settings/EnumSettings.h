@@ -34,6 +34,8 @@ enum class EFillMethod
     HILBERT,
     DISCRETE_LINES,
     SCATTERED_RECTILINEAR,
+    WAVE_SINE,
+    WAVE_TRIANGLE,
     NONE  // NOTE: Should remain last! (May be used in testing to enumarate the enum.)
 };
 
