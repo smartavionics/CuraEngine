@@ -384,7 +384,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         add_ring_clip(mi->value.GetDouble(), false);
     }
 
-    Polygons infill_pattern_areas(infilled_areas.offset((zig_zaggify) ? -infill_line_width / 2 : 0));
+    Polygons infill_pattern_areas(infilled_areas);
 
     if (infill_pattern_areas.empty())
     {
