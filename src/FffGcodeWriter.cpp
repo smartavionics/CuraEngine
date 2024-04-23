@@ -419,7 +419,7 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
             else
             {
                 mesh.infill_angles.push_back(45); // generally all infill patterns use 45 degrees
-                if (infill_pattern == EFillMethod::LINES || infill_pattern == EFillMethod::ZIG_ZAG)
+                if (infill_pattern == EFillMethod::LINES || infill_pattern == EFillMethod::ZIG_ZAG || infill_pattern == EFillMethod::WAVE_SINE || infill_pattern == EFillMethod::WAVE_TRIANGLE)
                 {
                     // lines and zig zag patterns default to also using 135 degrees
                     mesh.infill_angles.push_back(135);
@@ -1668,6 +1668,8 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
 
     const auto pattern = mesh.settings.get<EFillMethod>("infill_pattern");
     const auto pattern_resolution = mesh.settings.get<EFillResolution>("infill_pattern_resolution");
+    const auto infill_wave_amplitude = (pattern == EFillMethod::WAVE_SINE || pattern == EFillMethod::WAVE_TRIANGLE) ? mesh.settings.get<coord_t>("infill_wave_amplitude") : 0;
+    const auto infill_wave_wavelength = (pattern == EFillMethod::WAVE_SINE || pattern == EFillMethod::WAVE_TRIANGLE) ? mesh.settings.get<coord_t>("infill_wave_wavelength") : 0;
     const auto zig_zaggify_infill = mesh.settings.get<bool>("zig_zaggify_infill") || pattern == EFillMethod::ZIG_ZAG;
     const auto connect_polygons = mesh.settings.get<bool>("connect_infill_polygons");
     const auto infill_overlap = mesh.settings.get<coord_t>("infill_overlap_mm");
@@ -1783,7 +1785,7 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
                                    infill_line_width, infill_line_distance_here, infill_overlap, infill_multiplier,
                                    infill_angle, gcode_layer.z / mesh.settings.get<Ratio>("infill_scaling_z"), infill_shift, max_resolution, max_deviation, skin_below_wall_count, infill_origin,
                                    perimeter_gaps, connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count,
-                                   pocket_size, pattern_resolution);
+                                   pocket_size, pattern_resolution, infill_wave_amplitude, infill_wave_wavelength);
                 infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, lightning_layer, &mesh);
                 // when both lines and polygons are created, convert the polygons to chains of lines so that they all get printed together
                 if (!infill_lines_here.empty() && !infill_polygons_here.empty())
@@ -1833,7 +1835,7 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
         Infill infill_comp(pattern, zig_zaggify_infill, connect_polygons, in_outline, outline_offset, infill_line_width,
                            infill_line_distance_here, infill_overlap, infill_multiplier, infill_angle, gcode_layer.z / mesh.settings.get<Ratio>("infill_scaling_z"),
                            infill_shift, max_resolution, max_deviation, wall_line_count_here, infill_origin, perimeter_gaps, connected_zigzags,
-                           use_endpieces, skip_some_zags, zag_skip_count, pocket_size, pattern_resolution);
+                           use_endpieces, skip_some_zags, zag_skip_count, pocket_size, pattern_resolution, infill_wave_amplitude, infill_wave_wavelength);
         infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, lightning_layer, &mesh);
         if (density_idx < last_idx)
         {
