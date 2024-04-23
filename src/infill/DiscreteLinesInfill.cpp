@@ -743,7 +743,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
             }
             else if (mi->value.GetString() == std::string("sine"))
             {
-                int num_segs = 16;
+                int num_segs = 32;
                 while (num_segs > 4 && amplitude / num_segs < 100)
                 {
                     num_segs /= 2;
