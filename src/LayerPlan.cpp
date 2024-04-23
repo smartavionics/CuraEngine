@@ -650,7 +650,9 @@ void LayerPlan::addExtrusionMove(Point p, const GCodePathConfig& config, SpaceFi
 void LayerPlan::addPolygon(ConstPolygonRef polygon, int start_idx, const GCodePathConfig& config, WallOverlapComputation* wall_overlap_computation, coord_t wall_0_wipe_dist, bool spiralize, const Ratio& flow_ratio, bool always_retract)
 {
     Point p0 = polygon[start_idx];
-    addTravel(p0, always_retract);
+    // try to avoid using combing when printing concentric skin pattern
+    const coord_t min_comb_distance = (config.type == PrintFeatureType::Skin) ?  config.getLineWidth() * 3 : 0;
+    addTravel(p0, always_retract, min_comb_distance);
     for (unsigned int point_idx = 1; point_idx < polygon.size(); point_idx++)
     {
         Point p1 = polygon[(start_idx + point_idx) % polygon.size()];
