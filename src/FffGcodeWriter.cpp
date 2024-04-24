@@ -416,10 +416,14 @@ void FffGcodeWriter::setInfillAndSkinAngles(SliceMeshStorage& mesh)
                 mesh.infill_angles.push_back(45);
                 mesh.infill_angles.push_back(135);
             }
+            else if (infill_pattern == EFillMethod::WAVE_SINE || infill_pattern == EFillMethod::WAVE_TRIANGLE)
+            {
+                mesh.infill_angles.push_back(0);
+            }
             else
             {
                 mesh.infill_angles.push_back(45); // generally all infill patterns use 45 degrees
-                if (infill_pattern == EFillMethod::LINES || infill_pattern == EFillMethod::ZIG_ZAG || infill_pattern == EFillMethod::WAVE_SINE || infill_pattern == EFillMethod::WAVE_TRIANGLE)
+                if (infill_pattern == EFillMethod::LINES || infill_pattern == EFillMethod::ZIG_ZAG)
                 {
                     // lines and zig zag patterns default to also using 135 degrees
                     mesh.infill_angles.push_back(135);
