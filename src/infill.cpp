@@ -435,7 +435,7 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
     // fix to normalise against diagonal infill
     lineSpacing = lineSpacing * 1.081;
 
-    uint64_t Zscale = lineSpacing * std::sqrt(2.0);
+    uint64_t Zscale = lineSpacing * 1.85; // trial and error shows this gives reasonably uniform octagons (but why this number?)
 
     int offset = abs(posZ % ((int)Zscale) - ((int)Zscale/2)) - (Zscale/4);
 
