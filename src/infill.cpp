@@ -255,7 +255,6 @@ void Infill::_generate( Polygons& result_polygons,
         break;
     case EFillMethod::TRUNCATED_OCTAHEDRON:
         generateTroctInfill(result_polygons, fill_angle);
-        generateTroctInfill(result_polygons, fill_angle + 90);
         break;
     case EFillMethod::LIGHTNING:
         assert(lightning_trees); // "Cannot generate Lightning infill without a generator!\n"
@@ -433,8 +432,22 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
     int infillOverlap = infill_overlap;
     int posZ = z;
 
+    // fix to normalise against diagonal infill
+    lineSpacing = lineSpacing * 1.081;
+
+    uint64_t Zscale = lineSpacing * std::sqrt(2.0);
+
+    int offset = abs(posZ % ((int)Zscale) - ((int)Zscale/2)) - (Zscale/4);
+
+    double infill_angle = infill_rotation;
+
+    if ((posZ % (int)Zscale) > (int)Zscale/2)
+    {
+        infill_angle += 90;
+    }
+
     Polygons outline = in_outline.offset(extrusionWidth * infillOverlap / 100);
-    PointMatrix matrix(infill_rotation);
+    PointMatrix matrix(infill_angle);
     outline.applyMatrix(matrix);
     AABB boundary(outline);
 
@@ -444,22 +457,16 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
         return;
     }
 
-    // fix to normalise against diagonal infill
-    lineSpacing = lineSpacing * 2;
-
-    uint64_t Zscale = SQRT2MUL(lineSpacing);
-
-    int offset = abs(posZ % ((int)Zscale) - ((int)Zscale/2)) - (Zscale/4);
     boundary.min.X = ((boundary.min.X / lineSpacing) - 1) * lineSpacing;
     boundary.min.Y = ((boundary.min.Y / lineSpacing) - 1) * lineSpacing;
 
     unsigned int lineCountX = (boundary.max.X - boundary.min.X + (lineSpacing - 1)) / lineSpacing;
     unsigned int lineCountY = (boundary.max.Y - boundary.min.Y + (lineSpacing - 1)) / lineSpacing;
-    int rtMod = int(infill_rotation / 90) % 2;
+    int rtMod = int(infill_angle / 90) % 2;
     // with an odd number of lines, sides need to be swapped around
     if (rtMod == 1)
     {
-        rtMod = (lineCountX + int(infill_rotation / 90)) % 2;
+        rtMod = (lineCountX + int(infill_angle / 90)) % 2;
     }
 
     // draw non-horizontal walls of octohedrons
