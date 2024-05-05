@@ -505,6 +505,7 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
             p.add(Point(x,y));
         }
     }
+#if 0
     // Generate tops / bottoms of octohedrons
     if (abs((abs(offset) - (int)Zscale/4)) < (extrusionWidth/2))
     {
@@ -538,6 +539,7 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
             }
         }
     }
+#endif
     // intersect with outline polygon(s)
     Polygons pi = po.intersection(outline);
     // Hack to add intersection to result. There doesn't seem
