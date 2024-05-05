@@ -373,6 +373,10 @@ template<> EFillMethod Settings::get<EFillMethod>(const std::string& key) const
     {
         return EFillMethod::WAVE_SINE;
     }
+    else if (value == "truncated_octahedron")
+    {
+        return EFillMethod::TRUNCATED_OCTAHEDRON;
+    }
     else //Default.
     {
         return EFillMethod::NONE;

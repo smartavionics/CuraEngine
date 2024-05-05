@@ -219,6 +219,13 @@ private:
     std::vector<std::vector<std::vector<InfillLineSegment*>>> crossings_on_line;
 
     /*!
+     * Generate Truncated Octahedron infill pattern
+     * \param[out] result (output) The resulting lines
+     * \param[in] infill_rotation the angle the infill pattern is rotated through
+     */
+    void generateTroctInfill(Polygons& result, const double& infill_rotation);
+
+    /*!
      * Generate lightning fill aka minfill aka 'Ribbed Support Vault Infill', see Tricard,Claux,Lefebvre/'Ribbed Support Vaults for 3D Printing of Hollowed Objects'
      * see https://hal.archives-ouvertes.fr/hal-02155929/document
      * \param result (output) The resulting polygons
