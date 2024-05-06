@@ -2455,6 +2455,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
         bool suppress_accel_jerk = false;
         size_t prime_tower_paths_seen = 0;
         bool walls_detected = false;
+        bool infill_detected = false;
 
         for(unsigned int path_idx = 0; path_idx < paths.size(); path_idx++)
         {
@@ -2658,12 +2659,13 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                 }
                 gcode.writeTravel(path.points.back(), speed);
                 if (path.retract && ((path_idx < (paths.size() - 1) && paths[path_idx + 1].config->type == PrintFeatureType::Infill) ||
-                                     (is_final_travel && !walls_detected)))
+                                     (is_final_travel && infill_detected && !walls_detected)))
                 {
                     // compensate for loss of pressure during travel moves before infill
                     const double amount_per_mm = extruder.settings.get<double>("infill_extra_prime_amount_per_mm");
                     const double travel_power = extruder.settings.get<double>("infill_extra_prime_travel_power");
                     gcode.addExtraPrimeAmount(std::pow(INT2MM(path.length), travel_power) * amount_per_mm);
+                    infill_detected = true;
                 }
                 continue;
             }
