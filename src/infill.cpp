@@ -419,11 +419,7 @@ void Infill::multiplyInfill(Polygons& result_polygons, Polygons& result_lines)
     }
 }
 
-// truncated octahedron code by spotrh and gringer retrieved from https://github.com/spotrh/CuraEngine/tree/master
-
-#define SQRT2MUL(x) ((30547*(x))/21600)
-#define OCTSLEN(x) ((43200*(x))/73747)
-#define OCTDLEN(x) ((21600*(x))/30547)
+// original truncated octahedron code by spotrh and gringer retrieved from https://github.com/spotrh/CuraEngine/tree/master and tweaked by burtoogle
 
 void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation)
 {
@@ -513,6 +509,8 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
         }
     }
 #if 0
+#define OCTSLEN(x) ((43200*(x))/73747)
+#define OCTDLEN(x) ((21600*(x))/30547)
     // Generate tops / bottoms of octohedrons
     if (abs((abs(offset) - (int)Zscale/4)) < (extrusionWidth/2))
     {
