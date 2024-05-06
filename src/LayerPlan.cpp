@@ -537,6 +537,7 @@ GCodePath& LayerPlan::addTravel(const Point p, const bool force_retract, const c
                     }
                 }
                 distance += vSize(last_point - p);
+                path->length = distance;
                 const coord_t retract_threshold = extruder->settings.get<coord_t>("retraction_combing_max_distance");
                 path->retract = retract || (retract_threshold > 0 && distance > retract_threshold && retraction_enable);
                 // don't perform a z-hop
@@ -549,6 +550,7 @@ GCodePath& LayerPlan::addTravel(const Point p, const bool force_retract, const c
                     {
                         // the combed travel distance is too long, use a direct line travel move instead
                         path->points.clear();
+                        path->length = 0;
                         // retract and z-hop as per a normal non-combed travel move
                         path->retract = retraction_enable && (direct_distance >= retraction_config.retraction_min_travel_distance);
                         if (path->retract)
@@ -613,6 +615,7 @@ GCodePath& LayerPlan::addTravel_simple(Point p, GCodePath* path)
         path = getLatestPathWithConfig(configs_storage.travel_config_per_extruder[getExtruder()], SpaceFillType::None);
     }
     path->points.push_back(p);
+    path->length = vSize(p - ((last_planned_position) ? *last_planned_position : Point(0, 0)));
     last_planned_position = p;
     return *path;
 }
@@ -2451,6 +2454,7 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
         bool prime_tower_coasting = false; // true when ignoring prime tower lines
         bool suppress_accel_jerk = false;
         size_t prime_tower_paths_seen = 0;
+        bool walls_detected = false;
 
         for(unsigned int path_idx = 0; path_idx < paths.size(); path_idx++)
         {
@@ -2653,8 +2657,18 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     gcode.writeUnretractionAndPrime();
                 }
                 gcode.writeTravel(path.points.back(), speed);
+                if (path.retract && ((path_idx < (paths.size() - 1) && paths[path_idx + 1].config->type == PrintFeatureType::Infill) ||
+                                     (is_final_travel && !walls_detected)))
+                {
+                    // compensate for loss of pressure during travel moves before infill
+                    const double amount_per_mm = extruder.settings.get<double>("infill_extra_prime_amount_per_mm");
+                    const double travel_power = extruder.settings.get<double>("infill_extra_prime_travel_power");
+                    gcode.addExtraPrimeAmount(std::pow(INT2MM(path.length), travel_power) * amount_per_mm);
+                }
                 continue;
             }
+
+            walls_detected = walls_detected || (path.config->type == PrintFeatureType::InnerWall || path.config->type == PrintFeatureType::OuterWall);
 
             bool spiralize = path.spiralize;
             if (!spiralize) // normal (extrusion) move (with coasting)
