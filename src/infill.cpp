@@ -423,15 +423,13 @@ void Infill::multiplyInfill(Polygons& result_polygons, Polygons& result_lines)
 
 void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation)
 {
-    int lineSpacing = line_distance;
-    int posZ = z;
-
     // fix to normalise against diagonal infill
-    lineSpacing = lineSpacing * 1.081;
+    const coord_t lineSpacing = line_distance * 1.081;
+    const coord_t posZ = z;
 
-    uint64_t Zscale = lineSpacing * 1.85; // trial and error shows this gives reasonably uniform octagons (but why this number?)
+    const uint64_t Zscale = lineSpacing * 1.85; // trial and error shows this gives reasonably uniform octagons (but why this number?)
 
-    int offset = abs(posZ % ((int)Zscale) - ((int)Zscale/2)) - (Zscale/4);
+    const int offset = abs(posZ % ((int)Zscale) - ((int)Zscale/2)) - (Zscale/4);
 
     double infill_angle = infill_rotation;
 
@@ -441,7 +439,7 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
     }
 
     Polygons outline = in_outline.offset(outline_offset + infill_overlap - infill_line_width/2);
-    PointMatrix matrix(infill_angle);
+    const PointMatrix matrix(infill_angle);
     outline.applyMatrix(matrix);
     AABB boundary(outline);
 
@@ -454,8 +452,9 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
     boundary.min.X = ((boundary.min.X / lineSpacing) - 1) * lineSpacing;
     boundary.min.Y = ((boundary.min.Y / lineSpacing) - 1) * lineSpacing;
 
-    unsigned int lineCountX = (boundary.max.X - boundary.min.X + (lineSpacing - 1)) / lineSpacing;
-    unsigned int lineCountY = (boundary.max.Y - boundary.min.Y + (lineSpacing - 1)) / lineSpacing;
+    const unsigned int lineCountX = (boundary.max.X - boundary.min.X + (lineSpacing - 1)) / lineSpacing;
+    const unsigned int lineCountY = (boundary.max.Y - boundary.min.Y + (lineSpacing - 1)) / lineSpacing;
+
     int rtMod = int(infill_angle / 90) % 2;
     // with an odd number of lines, sides need to be swapped around
     if (rtMod == 1)
@@ -471,8 +470,8 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
         for (size_t it = 0; it < 2; ly++, it++)
         {
             int side = (2*((ly + it + rtMod) % 2) - 1);
-            int y = (ly * lineSpacing) + boundary.min.Y + lineSpacing / 2 - (offset/2 * side);
-            int x = boundary.min.X-(offset/2);
+            coord_t y = (ly * lineSpacing) + boundary.min.Y + lineSpacing / 2 - (offset/2 * side);
+            coord_t x = boundary.min.X-(offset/2);
             if (it == 1)
             {
                 x = (lineCountX * (lineSpacing)) + boundary.min.X + lineSpacing / 2 - (offset/2);
@@ -547,13 +546,12 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
     Polygons pi = po.intersection(outline);
     // Hack to add intersection to result. There doesn't seem
     // to be a direct way to do this
-    for (unsigned int polyNr=0; polyNr < pi.size(); polyNr++)
+    for (const auto poly : pi)
     {
         PolygonRef p = result.newPoly(); //  = result.newPoly()
-        for (unsigned int i=0; i < pi[polyNr].size(); i++)
+        for (const auto p0 : poly)
         {
-            Point p0 = pi[polyNr][i];
-            p.add(matrix.unapply(Point(p0.X,p0.Y)));
+            p.add(matrix.unapply(Point(p0.X, p0.Y)));
         }
     }
 }
