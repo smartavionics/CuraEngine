@@ -423,9 +423,7 @@ void Infill::multiplyInfill(Polygons& result_polygons, Polygons& result_lines)
 
 void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation)
 {
-    int extrusionWidth = infill_line_width;
     int lineSpacing = line_distance;
-    int infillOverlap = infill_overlap;
     int posZ = z;
 
     // fix to normalise against diagonal infill
@@ -442,7 +440,7 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
         infill_angle += 90;
     }
 
-    Polygons outline = in_outline.offset(extrusionWidth * infillOverlap / 100);
+    Polygons outline = in_outline.offset(outline_offset + infill_overlap - infill_line_width/2);
     PointMatrix matrix(infill_angle);
     outline.applyMatrix(matrix);
     AABB boundary(outline);
