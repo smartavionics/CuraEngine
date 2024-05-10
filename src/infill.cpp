@@ -254,7 +254,7 @@ void Infill::_generate( Polygons& result_polygons,
         }
         break;
     case EFillMethod::TRUNCATED_OCTAHEDRON:
-        generateTroctInfill(result_polygons, fill_angle);
+        generateTroctInfill(result_polygons, fill_angle, mesh);
         break;
     case EFillMethod::LIGHTNING:
         assert(lightning_trees); // "Cannot generate Lightning infill without a generator!\n"
@@ -421,7 +421,7 @@ void Infill::multiplyInfill(Polygons& result_polygons, Polygons& result_lines)
 
 // original truncated octahedron code by spotrh and gringer retrieved from https://github.com/spotrh/CuraEngine/tree/master and tweaked by burtoogle
 
-void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation)
+void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation, const SliceMeshStorage* mesh)
 {
     // fix to normalise against diagonal infill
     const coord_t lineSpacing = line_distance * 1.081;
@@ -441,7 +441,15 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
     Polygons outline = in_outline.offset(outline_offset + infill_overlap - infill_line_width/2);
     const PointMatrix matrix(infill_angle);
     outline.applyMatrix(matrix);
-    AABB boundary(outline);
+    // use the mesh bounding box as the area to generate infill over rather than the outline of the current layer as
+    // this stops the pattern shifting when the infill area changes shape as z changes - slow but necessary
+    Polygons rotated_mesh_bb;
+    if (mesh)
+    {
+        rotated_mesh_bb.add(mesh->bounding_box.flatten().toPolygon());
+        rotated_mesh_bb.applyMatrix(matrix);
+    }
+    AABB boundary = AABB((rotated_mesh_bb.size() > 0) ? rotated_mesh_bb : outline);
 
     // ignore infill for areas smaller than line spacing
     if ((abs(boundary.min.X - boundary.max.X) + abs(boundary.min.Y - boundary.max.Y)) < lineSpacing)

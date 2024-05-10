@@ -222,8 +222,9 @@ private:
      * Generate Truncated Octahedron infill pattern
      * \param[out] result (output) The resulting lines
      * \param[in] infill_rotation the angle the infill pattern is rotated through
+     * \param[in] mesh being filled
      */
-    void generateTroctInfill(Polygons& result, const double& infill_rotation);
+    void generateTroctInfill(Polygons& result, const double& infill_rotation, const SliceMeshStorage* mesh = nullptr);
 
     /*!
      * Generate lightning fill aka minfill aka 'Ribbed Support Vault Infill', see Tricard,Claux,Lefebvre/'Ribbed Support Vaults for 3D Printing of Hollowed Objects'
