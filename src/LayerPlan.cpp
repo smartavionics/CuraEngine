@@ -615,7 +615,7 @@ GCodePath& LayerPlan::addTravel_simple(Point p, GCodePath* path)
         path = getLatestPathWithConfig(configs_storage.travel_config_per_extruder[getExtruder()], SpaceFillType::None);
     }
     path->points.push_back(p);
-    path->length = vSize(p - ((last_planned_position) ? *last_planned_position : Point(0, 0)));
+    path->length += vSize(p - ((last_planned_position) ? *last_planned_position : Point(0, 0)));
     last_planned_position = p;
     return *path;
 }
