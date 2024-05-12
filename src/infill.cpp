@@ -277,7 +277,18 @@ void Infill::_generate( Polygons& result_polygons,
             std::string def;
             def += "[{ \"ypitch\": ";
             def += std::to_string(INT2MM(line_distance) * std::sqrt(2));
-            def += ",\"angle\": \"from-settings\"";
+            if (mesh && mesh->infill_angles.size() == 2)
+            {
+                def += ",\"angle\": [";
+                def += std::to_string(mesh->infill_angles[0]);
+                def += ",";
+                def += std::to_string(mesh->infill_angles[1]);
+                def += "]";
+            }
+            else
+            {
+                def += ",\"angle\": \"from-settings\"";
+            }
             def += ",\"waveform\": \"sine\"";
             def += ",\"wavelength\": ";
             def += std::to_string(INT2MM(wave_wavelength));
@@ -295,7 +306,18 @@ void Infill::_generate( Polygons& result_polygons,
             std::string def;
             def += "[{ \"ypitch\": ";
             def += std::to_string(INT2MM(line_distance) * std::sqrt(2));
-            def += ",\"angle\": \"from-settings\"";
+            if (mesh && mesh->infill_angles.size() == 2)
+            {
+                def += ",\"angle\": [";
+                def += std::to_string(mesh->infill_angles[0]);
+                def += ",";
+                def += std::to_string(mesh->infill_angles[1]);
+                def += "]";
+            }
+            else
+            {
+                def += ",\"angle\": \"from-settings\"";
+            }
             def += ",\"waveform\": \"triangle\"";
             def += ",\"wavelength\": ";
             def += std::to_string(INT2MM(wave_wavelength));
