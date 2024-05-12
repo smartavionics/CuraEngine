@@ -273,7 +273,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         }
         else
         {
-            rot_rads = mi->value.GetDouble() / (180 / M_PI);
+            rot_rads = interpolateValue(mi->value) / (180 / M_PI);
         }
     }
 
