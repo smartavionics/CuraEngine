@@ -22,6 +22,7 @@ DiscreteLinesInfill::DiscreteLinesInfill(const std::string definition, const coo
     , fill_angle_rads(fill_angle / (180 / M_PI))
     , infill_line_width(infill_line_width)
     , mesh(mesh)
+    , rng(z)
 {
     if (!mesh)
     {
@@ -280,7 +281,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
     if (scattered)
     {
         rot_rads = fill_angle_rads;
-        rot_rads += 0.5 * M_PI * (rand() % 1024 / 1024.0 - 0.5);
+        rot_rads += 0.5 * M_PI * (rng() % 1024 / 1024.0 - 0.5);
     }
 
     Polygons rotated_outline = outline;
@@ -432,7 +433,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                 const coord_t max = xpitch - infill_line_width;
                 for (coord_t x = x_min; x < x_max; x += xpitch)
                 {
-                    x_vals.push_back(x + rand() % max - max/2);
+                    x_vals.push_back(x + rng() % max - max/2);
                 }
             }
             else
@@ -497,7 +498,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
                 const coord_t max = ypitch - infill_line_width;
                 for (coord_t y = y_min; y < y_max; y += ypitch)
                 {
-                    y_vals.push_back(y + rand() % max - max/2);
+                    y_vals.push_back(y + rng() % max - max/2);
                 }
             }
             else

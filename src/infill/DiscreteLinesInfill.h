@@ -12,6 +12,8 @@
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/document.h>
 
+#include <random>
+
 namespace cura
 {
 
@@ -32,6 +34,7 @@ protected:
     const double fill_angle_rads;      //!< infill rotation angle
     const coord_t infill_line_width;   //!< width of infill lines
     const SliceMeshStorage* mesh;      //!< mesh being filled
+    std::mt19937 rng;                  //!< random number generator that is seeded with z
     const coord_t min_line_len2 = 100; //!< minimum squared length of generated lines, don't output any shorter than 10um
     rapidjson::Document* json_document;
 
