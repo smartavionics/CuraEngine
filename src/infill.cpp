@@ -282,10 +282,13 @@ void Infill::_generate( Polygons& result_polygons,
             def += std::to_string(INT2MM(line_distance) * std::sqrt(2));
             if (mesh && mesh->infill_angles.size() == 2)
             {
+                // don't use the infill_angles in the mesh because they are limited to (0-360) and here we may want to
+                // interpolate across multiple revolutions of the infill pattern
+                std::vector<double> infill_angles = mesh->settings.get<std::vector<double>>("infill_angles"); // assumes we're filling infill and not skin!
                 def += ",\"angle\": [";
-                def += std::to_string(mesh->infill_angles[0]);
+                def += std::to_string(infill_angles[0]);
                 def += ",";
-                def += std::to_string(mesh->infill_angles[1]);
+                def += std::to_string(infill_angles[1]);
                 def += "]";
             }
             else
