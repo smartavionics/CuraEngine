@@ -273,38 +273,12 @@ void Infill::_generate( Polygons& result_polygons,
         }
         break;
     case EFillMethod::WAVE_SINE:
-        {
-            std::string def;
-            def += "[{ \"ypitch\": ";
-            def += std::to_string(INT2MM(line_distance) * std::sqrt(2));
-            if (mesh && mesh->infill_angles.size() == 2)
-            {
-                def += ",\"angle\": [";
-                def += std::to_string(mesh->infill_angles[0]);
-                def += ",";
-                def += std::to_string(mesh->infill_angles[1]);
-                def += "]";
-            }
-            else
-            {
-                def += ",\"angle\": \"from-settings\"";
-            }
-            def += ",\"waveform\": \"sine\"";
-            def += ",\"wavelength\": ";
-            def += std::to_string(INT2MM(wave_wavelength));
-            def += ",\"amplitude\": ";
-            def += std::to_string(INT2MM(wave_amplitude));
-            def += ",\"zigzag\": ";
-            def += (zig_zaggify)? "true" : "false";
-            def += " }]";
-            DiscreteLinesInfill infill(def, z, infill_origin, fill_angle, infill_line_width, mesh);
-            infill.generate(result_lines, in_outline.offset(outline_offset + infill_overlap));
-        }
-        break;
     case EFillMethod::WAVE_TRIANGLE:
         {
             std::string def;
-            def += "[{ \"ypitch\": ";
+            def += "[{ \"waveform\": ";
+            def += (pattern ==  EFillMethod::WAVE_SINE) ? "\"sine\"" : "\"triangle\"";
+            def += ", \"ypitch\": ";
             def += std::to_string(INT2MM(line_distance) * std::sqrt(2));
             if (mesh && mesh->infill_angles.size() == 2)
             {
@@ -318,7 +292,6 @@ void Infill::_generate( Polygons& result_polygons,
             {
                 def += ",\"angle\": \"from-settings\"";
             }
-            def += ",\"waveform\": \"triangle\"";
             def += ",\"wavelength\": ";
             def += std::to_string(INT2MM(wave_wavelength));
             def += ",\"amplitude\": ";
