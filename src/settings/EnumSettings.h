@@ -36,6 +36,7 @@ enum class EFillMethod
     SCATTERED_RECTILINEAR,
     WAVE_SINE,
     WAVE_TRIANGLE,
+    SKIN_WAVE_TRIANGLE,
     TRUNCATED_OCTAHEDRON,
     NONE  // NOTE: Should remain last! (May be used in testing to enumarate the enum.)
 };

@@ -365,6 +365,10 @@ template<> EFillMethod Settings::get<EFillMethod>(const std::string& key) const
     {
         return EFillMethod::SCATTERED_RECTILINEAR;
     }
+    else if (value == "skin_wave_triangle")
+    {
+        return EFillMethod::SKIN_WAVE_TRIANGLE;
+    }
     else if (value == "wave_triangle")
     {
         return EFillMethod::WAVE_TRIANGLE;

@@ -3045,7 +3045,7 @@ void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, La
     constexpr int zag_skip_count = 0;
     constexpr coord_t pocket_size = 0;
     const EFillResolution resolution = EFillResolution::HIGH_RESOLUTION;
-    const coord_t wave_amplitude = (pattern == EFillMethod::WAVE_TRIANGLE) ? mesh.settings.get<coord_t>("skin_wave_amplitude") : 0;
+    const coord_t wave_amplitude = (pattern == EFillMethod::SKIN_WAVE_TRIANGLE) ? mesh.settings.get<coord_t>("skin_wave_amplitude") : 0;
     const coord_t wave_wavelength = wave_amplitude * 4;
     constexpr SierpinskiFillProvider* cross_fill_provider = nullptr;
 

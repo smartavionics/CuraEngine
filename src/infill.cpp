@@ -274,6 +274,7 @@ void Infill::_generate( Polygons& result_polygons,
         break;
     case EFillMethod::WAVE_SINE:
     case EFillMethod::WAVE_TRIANGLE:
+    case EFillMethod::SKIN_WAVE_TRIANGLE:
         {
             std::string def;
             def += "[{ \"waveform\": ";
