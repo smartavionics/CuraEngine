@@ -280,7 +280,7 @@ void Infill::_generate( Polygons& result_polygons,
             def += (pattern ==  EFillMethod::WAVE_SINE) ? "\"sine\"" : "\"triangle\"";
             def += ", \"ypitch\": ";
             def += std::to_string(INT2MM(line_distance) * std::sqrt(2));
-            if (mesh && mesh->infill_angles.size() == 2)
+            if (mesh && mesh->infill_angles.size() == 2 && (fill_angle == mesh->infill_angles[0] || fill_angle == mesh->infill_angles[1]))
             {
                 // don't use the infill_angles in the mesh because they are limited to (0-360) and here we may want to
                 // interpolate across multiple revolutions of the infill pattern
