@@ -175,6 +175,7 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
         zig_zaggify = ((mi->value.IsBool() && mi->value.GetBool()) || (mi->value.IsNumber() && mi->value.GetDouble()));
     }
 
+#if 0
     const size_t bottom_layers = mesh->settings.get<size_t>("initial_bottom_layers");
     coord_t bottom_skin_depth = 0;
     if (bottom_layers > 0)
@@ -189,6 +190,10 @@ void DiscreteLinesInfill::generateCoordinates(Polygons& result, const Polygons& 
 
     coord_t bottom = mesh->bounding_box.min.z + bottom_skin_depth;
     coord_t top = mesh->bounding_box.max.z - top_skin_depth + 10;
+#else
+    coord_t bottom = mesh->bounding_box.min.z;
+    coord_t top = mesh->bounding_box.max.z + 10;
+#endif
 
     std::vector<coord_t> x_vals;
     std::vector<coord_t> y_vals;
