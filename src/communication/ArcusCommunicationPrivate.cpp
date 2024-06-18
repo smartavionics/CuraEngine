@@ -117,6 +117,8 @@ void ArcusCommunication::Private::readMeshGroupMessage(const proto::ObjectList& 
         ExtruderTrain& extruder = mesh.settings.get<ExtruderTrain&>("extruder_nr"); //Set the parent setting to the correct extruder.
         mesh.settings.setParent(&extruder.settings);
 
+        mesh.init();
+
         for (size_t face = 0; face < face_count; face++)
         {
             const std::string data = object.vertices().substr(face * bytes_per_face, bytes_per_face);
