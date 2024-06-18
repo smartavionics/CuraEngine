@@ -8,7 +8,7 @@
 namespace cura
 {
 
-const int vertex_meld_distance = MM2INT(0.03);
+int vertex_meld_distance = MM2INT(0.03);
 /*!
  * returns a hash for the location, but first divides by the vertex_meld_distance,
  * so that any point within a box of vertex_meld_distance by vertex_meld_distance would get mapped to the same hash.
@@ -30,6 +30,11 @@ Mesh::Mesh()
 , has_disconnected_faces(false)
 , has_overlapping_faces(false)
 {
+}
+
+void Mesh::init()
+{
+    vertex_meld_distance = settings.get<coord_t>("vertex_meld_distance");
 }
 
 void Mesh::addFace(Point3& v0, Point3& v1, Point3& v2)

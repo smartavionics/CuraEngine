@@ -73,6 +73,8 @@ public:
     Mesh(Settings& parent);
     Mesh();
 
+    void init(); //!< initialise mesh from settings
+
     void addFace(Point3& v0, Point3& v1, Point3& v2); //!< add a face to the mesh without settings it's connected_faces.
     void clear(); //!< clears all data
     void finish(); //!< complete the model : set the connected_face_index fields of the faces.
