@@ -541,6 +541,27 @@ void FffGcodeWriter::processInitialLayerTemperature(const SliceDataStorage& stor
     Scene& scene = Application::getInstance().current_slice->scene;
     const size_t num_extruders = scene.extruders.size();
 
+    // generate comments containing the print and standby temperatures (syntax as used by snapmaker plugin)
+    for (unsigned extruder_nr = 0; extruder_nr < num_extruders; extruder_nr++)
+    {
+        if (extruder_is_used[extruder_nr])
+        {
+            const ExtruderTrain& train = scene.extruders[extruder_nr];
+            const Temperature extruder_temp = train.settings.get<Temperature>("material_print_temperature");
+            gcode.writeComment(std::string("Extruder ") + std::to_string(extruder_nr) + " Print Temperature:" + std::to_string((int)extruder_temp));
+        }
+    }
+
+    for (unsigned extruder_nr = 0; extruder_nr < num_extruders; extruder_nr++)
+    {
+        if (extruder_is_used[extruder_nr])
+        {
+            const ExtruderTrain& train = scene.extruders[extruder_nr];
+            const Temperature extruder_temp = train.settings.get<Temperature>("material_standby_temperature");
+            gcode.writeComment(std::string("Extruder ") + std::to_string(extruder_nr) + " Standby Temperature:" + std::to_string((int)extruder_temp));
+        }
+    }
+
     if (gcode.getFlavor() == EGCodeFlavor::GRIFFIN)
     {
         ExtruderTrain& train = scene.extruders[start_extruder_nr];
