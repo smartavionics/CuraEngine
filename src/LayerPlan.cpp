@@ -748,6 +748,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
     const Point mid(p0 + (p1 - p0)/2);
     const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(mid, true) && (overhang_mask.inside(p0, true) || overhang_mask.inside(p1, true)));
     double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
+    const bool two_passes = (layer_nr > 0 && non_bridge_config.type == PrintFeatureType::OuterWall) && mesh.settings.get<bool>("outer_inset_first") && mesh.settings.get<bool>("two_pass_outer_inset");
 
     if (is_overhang)
     {
@@ -872,7 +873,11 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
     if (bridge_start_offsets.empty() && speed_factor == 1)
     {
         // no bridges required
-        addExtrusionMove(p1, non_bridge_config, SpaceFillType::Polygons, flow, spiralize, (is_overhang) ? overhang_speed_factor : 1.0_r, fan_speed);
+        GCodePath *path = addExtrusionMove(p1, non_bridge_config, SpaceFillType::Polygons, flow, spiralize, (is_overhang) ? overhang_speed_factor : 1.0_r, fan_speed);
+        if (path != nullptr)
+        {
+            path->two_passes = two_passes;
+        }
     }
     else
     {
@@ -2763,23 +2768,48 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                         ++prime_tower_paths_seen;
                         prime_tower_used_volume += path.estimates.getMaterial();
                     }
-                    for(unsigned int point_idx = 0; point_idx < path.points.size(); point_idx++)
+                    coord_t layer_thickness = path.config->getLayerThickness();
+                    double mm3_per_mm = path.getExtrusionMM3perMM();
+                    unsigned passes = 1;
+                    if (path.two_passes)
                     {
-                        if (fan_speed_override_at >= 0)
+                        layer_thickness /= 2;
+                        mm3_per_mm /= 2;
+                        gcode.writeComment("PASS 1");
+                        passes = 2;
+                        Point3 current_position = gcode.getPosition();
+                        current_position.z -= layer_thickness;
+                        gcode.writeTravel(current_position, extruder.settings.get<Velocity>("speed_z_hop"));
+                        gcode.setZ(current_position.z);
+                    }
+                    while (passes-- > 0)
+                    {
+                        for(unsigned int point_idx = 0; point_idx < path.points.size(); point_idx++)
                         {
-                            path_time += vSizeMM(path.points[point_idx] - last_point) / speed;
-                            last_point = path.points[point_idx];
-                            if (path_time >= fan_speed_override_at)
+                            if (fan_speed_override_at >= 0)
                             {
-                                // time for the fan override to kick in
-                                current_fan_speed = fan_override_events[0].second;
-                                gcode.writeFanCommand(current_fan_speed);
-                                fan_speed_override_at = -1;
-                                fan_speed_hold = true;
+                                path_time += vSizeMM(path.points[point_idx] - last_point) / speed;
+                                last_point = path.points[point_idx];
+                                if (path_time >= fan_speed_override_at)
+                                {
+                                    // time for the fan override to kick in
+                                    current_fan_speed = fan_override_events[0].second;
+                                    gcode.writeFanCommand(current_fan_speed);
+                                    fan_speed_override_at = -1;
+                                    fan_speed_hold = true;
+                                }
                             }
+                            communication->sendLineTo(path.config->type, path.points[point_idx], path.getLineWidthForLayerView(), layer_thickness, speed);
+                            gcode.writeExtrusion(path.points[point_idx], speed, mm3_per_mm, path.config->type, update_extrusion_offset);
                         }
-                        communication->sendLineTo(path.config->type, path.points[point_idx], path.getLineWidthForLayerView(), path.config->getLayerThickness(), speed);
-                        gcode.writeExtrusion(path.points[point_idx], speed, path.getExtrusionMM3perMM(), path.config->type, update_extrusion_offset);
+                        if (passes == 1)
+                        {
+                            gcode.writeComment("PASS 2");
+                            Point3 current_position = gcode.getPosition();
+                            current_position.z = z;
+                            gcode.writeTravel(current_position, extruder.settings.get<Velocity>("speed_z_hop"));
+                            gcode.setZ(current_position.z);
+                        }
                     }
                 }
             }
