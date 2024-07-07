@@ -630,7 +630,7 @@ void LayerPlan::planPrime(const float& prime_blob_wipe_length)
     forceNewPathStart();
 }
 
-void LayerPlan::addExtrusionMove(Point p, const GCodePathConfig& config, SpaceFillType space_fill_type, const Ratio& flow, bool spiralize, Ratio speed_factor, double fan_speed)
+GCodePath *LayerPlan::addExtrusionMove(Point p, const GCodePathConfig& config, SpaceFillType space_fill_type, const Ratio& flow, bool spiralize, Ratio speed_factor, double fan_speed)
 {
     // ignore extrusions less than 5uM long
     if(vSize2(p - *last_planned_position) >= 25)
@@ -647,7 +647,9 @@ void LayerPlan::addExtrusionMove(Point p, const GCodePathConfig& config, SpaceFi
             }
         }
         last_planned_position = p;
+        return path;
     }
+    return nullptr;
 }
 
 void LayerPlan::addPolygon(ConstPolygonRef polygon, int start_idx, const GCodePathConfig& config, WallOverlapComputation* wall_overlap_computation, coord_t wall_0_wipe_dist, bool spiralize, const Ratio& flow_ratio, bool always_retract)
