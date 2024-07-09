@@ -2771,14 +2771,17 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     coord_t layer_thickness = path.config->getLayerThickness();
                     double mm3_per_mm = path.getExtrusionMM3perMM();
                     unsigned passes = 1;
+                    Point3 start_position = gcode.getPosition();
                     if (path.two_passes)
                     {
+                        // print path twice as two half-height lines stacked vertically
                         layer_thickness /= 2;
                         mm3_per_mm /= 2;
                         gcode.writeComment("PASS 1");
                         passes = 2;
-                        Point3 current_position = gcode.getPosition();
+                        Point3 current_position = start_position;
                         current_position.z -= layer_thickness;
+                        // move nozzle down
                         gcode.writeTravel(current_position, extruder.settings.get<Velocity>("speed_z_hop"));
                         gcode.setZ(current_position.z);
                     }
@@ -2802,13 +2805,23 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                             communication->sendLineTo(path.config->type, path.points[point_idx], path.getLineWidthForLayerView(), layer_thickness, speed);
                             gcode.writeExtrusion(path.points[point_idx], speed, mm3_per_mm, path.config->type, update_extrusion_offset);
                         }
+
                         if (passes == 1)
                         {
                             gcode.writeComment("PASS 2");
+                            // move nozzle back to normal layer height
                             Point3 current_position = gcode.getPosition();
-                            current_position.z = z;
-                            gcode.writeTravel(current_position, extruder.settings.get<Velocity>("speed_z_hop"));
-                            gcode.setZ(current_position.z);
+                            if (current_position.x == start_position.x && current_position.y == start_position.y)
+                            {
+                                // only vertical travel required
+                                gcode.writeTravel(start_position, extruder.settings.get<Velocity>("speed_z_hop"));
+                            }
+                            else
+                            {
+                                // vertical and horizontal travel required
+                                gcode.writeTravel(start_position, extruder.settings.get<Velocity>("speed_travel"));
+                            }
+                            gcode.setZ(start_position.z);
                         }
                     }
                 }
