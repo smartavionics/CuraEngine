@@ -116,8 +116,9 @@ public:
      * Order the lines monotonically - used for pretty printing skins
      *
      * \param line_spacing The distance between adjacent skin lines
+     * \param zig_zagged True if skin pattern is zig-zagged
      */
-    void monotonicallyOrder(const coord_t line_spacing);
+    void monotonicallyOrder(const coord_t line_spacing, bool zig_zagged);
 
 private:
     /*!

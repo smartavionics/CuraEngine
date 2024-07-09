@@ -1682,9 +1682,9 @@ void LayerPlan::addLinesByOptimizer
         orderOptimizer.addPolygon(polygons[line_idx]);
     }
 
-    if (config.type == PrintFeatureType::Skin && pattern == EFillMethod::LINES && !config.isBridgePath() && mesh != nullptr && mesh->settings.get<bool>("monotonic_skin_lines"))
+    if (config.type == PrintFeatureType::Skin && (pattern == EFillMethod::LINES || pattern == EFillMethod::ZIG_ZAG) && !config.isBridgePath() && mesh != nullptr && mesh->settings.get<bool>("monotonic_skin_lines"))
     {
-        orderOptimizer.monotonicallyOrder(config.getLineWidth());
+        orderOptimizer.monotonicallyOrder(config.getLineWidth(), (pattern == EFillMethod::ZIG_ZAG));
 
         if (mesh->settings.get<bool>("monotonic_skin_lines_reversed"))
         {

@@ -283,7 +283,7 @@ static inline bool pointsAreCoincident(const Point& a, const Point& b)
     return vSize2(a - b) < SQUARED_COINCIDENT_POINT_DISTANCE; // points are closer than COINCIDENT_POINT_DISTANCE, consider them coincident
 }
 
-void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
+void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig_zagged)
 {
     // tolerance is used when checking if lines are "siblings", i.e. they have similar Y values or
     // if a line is adjacent to another, i.e. their Y values differ by line_spacing
@@ -305,13 +305,14 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                 }
             }
         }
-        const double angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].X - 10000, (*angle_poly)[0].Y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
-        const Point3Matrix rot_mat = LinearAlg2D::rotateAround(Point(0, 0), angle);
+        const double rot_angle = LinearAlg2D::getAngleLeft(Point((*angle_poly)[0].X - 10000, (*angle_poly)[0].Y), (*angle_poly)[0], (*angle_poly)[1]) * 180 / M_PI;
+        const Point3Matrix rot_mat = LinearAlg2D::rotateAround(Point(0, 0), rot_angle);
         struct line {
             int poly_idx; // line's index in polygons vector, set to -1 when line has been printed
             coord_t y;
             coord_t x1;
             coord_t x2;
+            //bool is_connector;
         };
         std::vector<struct line> lines(polygons.size());
         for (unsigned int i = 0; i < polygons.size(); i++)
@@ -323,6 +324,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
             lines[i].y = (p1.Y + p2.Y)/2;
             lines[i].x1 = std::min(p1.X, p2.X);
             lines[i].x2 = std::max(p1.X, p2.X);
+            //lines[i].is_connector = zig_zagged && std::abs(p1.Y - p2.Y) > std::abs(p1.X - p2.X) / 100.0;
         }
 
         // sort the lines by increasing Y
@@ -336,6 +338,14 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
         auto lines_overlap = [&lines](const unsigned i, const unsigned j) {
             // do lines i and j overlap in the X dimension?
             return lines[j].x1 < lines[i].x2 && lines[j].x2 > lines[i].x1;
+        };
+
+        auto lines_join = [&lines](const unsigned i, const unsigned j) {
+            // do lines i and j meet in the X dimension ?
+            return std::abs(lines[i].x1 - lines[j].x1) < tolerance ||
+                   std::abs(lines[i].x1 - lines[j].x2) < tolerance ||
+                   std::abs(lines[i].x2 - lines[j].x1) < tolerance ||
+                   std::abs(lines[i].x2 - lines[j].x2) < tolerance;
         };
 
         auto is_monotonic = [&](const unsigned i) {
@@ -437,9 +447,17 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                     // the gap is close to the line spacing and the lines overlap so this line could be the next to print
                     nexts.push_back(i);
                 }
+                else if (zig_zagged && gap < line_spacing && is_monotonic(i) && lines_join(current_line_idx, i))
+                {
+                    // the gap is < line spacing so this could be either..
+                    // 1 - a connecting line that follows a non-connecting line
+                    // 2 - a connecting line that follows a connecting line (i.e. hugging a curved outline)
+                    // 3 - a non-connecting line that follows a connecting line
+                    nexts.push_back(i);
+                }
             }
 
-            if (nexts.empty())
+            if (!zig_zagged && nexts.empty())
             {
                 // look forwards a few lines to find lines that haven't been printed but could be as there is a gap between them and any earlier lines
                 // these can occur when filling narrow curved regions
@@ -450,20 +468,20 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing)
                         nexts.push_back(i);
                     }
                 }
+            }
 
-                if (current_line_idx > 1)
+            if (current_line_idx > 1 && nexts.empty())
+            {
+                // looks backwards to find lines that haven't been printed but could be as the lines before them have been printed
+                for (unsigned i = current_line_idx - 1; i >= earliest_line_idx; --i)
                 {
-                    // looks backwards to find lines that haven't been printed but could be as the lines before them have been printed
-                    for (unsigned i = current_line_idx - 1; i >= earliest_line_idx; --i)
+                    if (is_monotonic(i))
                     {
-                        if (is_monotonic(i))
-                        {
-                            nexts.push_back(i);
-                        }
-                        if (i == 0)
-                        {
-                            break;
-                        }
+                        nexts.push_back(i);
+                    }
+                    if (i == 0)
+                    {
+                        break;
                     }
                 }
             }
