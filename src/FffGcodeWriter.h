@@ -791,9 +791,10 @@ private:
      * \param mesh the mesh containing the layer of interest
      * \param part \param part The part for which to create gcode
      * \param infill_line_width line width of the infill
+     * \param infill_depth_multiplier depth multiplier of the infill
      * \return true if there needs to be a skin edge support wall in this layer, otherwise false
      */
-    static bool partitionInfillBySkinAbove(Polygons& infill_below_skin, Polygons& infill_not_below_skin, const LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const SliceLayerPart& part, coord_t infill_line_width) ;
+    static bool partitionInfillBySkinAbove(Polygons& infill_below_skin, Polygons& infill_not_below_skin, const LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const SliceLayerPart& part, const coord_t infill_line_width, const unsigned infill_depth_multiplier) ;
 };
 
 }//namespace cura

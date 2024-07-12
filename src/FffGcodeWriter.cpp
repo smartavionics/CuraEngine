@@ -1615,9 +1615,35 @@ bool FffGcodeWriter::processMultiLayerInfill(const SliceDataStorage& storage, La
         const bool connect_polygons = mesh.settings.get<bool>("connect_infill_polygons");
         const size_t infill_multiplier = mesh.settings.get<size_t>("infill_multiplier");
         const size_t wall_line_count = mesh.settings.get<size_t>("infill_wall_line_count");
+        const auto pocket_size = mesh.settings.get<coord_t>("cross_infill_pocket_size");
+        const auto infill_wave_amplitude = (infill_pattern == EFillMethod::WAVE_SINE || infill_pattern == EFillMethod::WAVE_TRIANGLE) ? mesh.settings.get<coord_t>("infill_wave_amplitude") : 0;
+        const auto infill_wave_wavelength = (infill_pattern == EFillMethod::WAVE_SINE || infill_pattern == EFillMethod::WAVE_TRIANGLE) ? mesh.settings.get<coord_t>("infill_wave_wavelength") : 0;
+
+        // if infill walls are required below the boundaries of skin regions above, partition the infill along the
+        // boundary edge
+        const size_t last_idx = part.infill_area_per_combine_per_density.size() - 1;
+        Polygons infill_below_skin;
+        Polygons infill_not_below_skin;
+        Polygons sparse_in_outline = part.infill_area_per_combine_per_density[last_idx][combine_idx];
+        const unsigned infill_depth_multiplier = combine_idx + 1;
+        const bool hasSkinEdgeSupport = partitionInfillBySkinAbove(infill_below_skin, infill_not_below_skin, gcode_layer, mesh, part, infill_line_width, infill_depth_multiplier);
+
         Polygons infill_polygons;
         Polygons infill_lines;
-        for (size_t density_idx = part.infill_area_per_combine_per_density.size() - 1; (int)density_idx >= 0; density_idx--)
+
+        auto get_cut_offset = [](const bool zig_zaggify, const coord_t line_width, const size_t line_count)
+        {
+          if (zig_zaggify)
+          {
+              return - line_width / 2 - static_cast<coord_t>(line_count) * line_width - 5;
+          }
+          else
+          {
+              return - static_cast<coord_t>(line_count) * line_width;
+          }
+        };
+
+        for (size_t density_idx = last_idx; (int)density_idx >= 0; density_idx--)
         { // combine different density infill areas (for gradual infill)
             size_t density_factor = 2 << density_idx; // == pow(2, density_idx + 1)
             coord_t infill_line_distance_here = infill_line_distance * density_factor; // the highest density infill combines with the next to create a grid with density_factor 1
@@ -1632,20 +1658,80 @@ bool FffGcodeWriter::processMultiLayerInfill(const SliceDataStorage& storage, La
             constexpr bool use_endpieces = true;
             constexpr bool skip_some_zags = false;
             constexpr size_t zag_skip_count = 0;
+            constexpr coord_t outline_offset = 0;
+            Polygons infill_lines_here;
+            Polygons infill_polygons_here;
 
             const LightningLayer* lightning_layer = nullptr;
             if (mesh.lightning_generator)
             {
                 lightning_layer = &mesh.lightning_generator->getTreesForLayer(gcode_layer.getLayerNr());
             }
-            Infill infill_comp(infill_pattern, zig_zaggify_infill, connect_polygons, part.infill_area_per_combine_per_density[density_idx][combine_idx], /*outline_offset =*/ 0
+
+            Polygons in_outline = part.infill_area_per_combine_per_density[density_idx][combine_idx];
+
+            if (hasSkinEdgeSupport)
+            {
+                Polygons infill_below_skin_per_density = infill_below_skin.intersection(in_outline);
+
+                if (!infill_below_skin_per_density.empty())
+                {
+                    // infill region with skin above has to have at least one infill wall line
+                    const size_t min_skin_below_wall_count = wall_line_count > 0 ? wall_line_count : 1;
+                    const size_t skin_below_wall_count = density_idx == last_idx ? min_skin_below_wall_count : 0;
+                    Infill infill_comp(infill_pattern, zig_zaggify_infill, connect_polygons, infill_below_skin_per_density, outline_offset,
+                                       infill_line_width, infill_line_distance_here, infill_overlap, infill_multiplier,
+                                       infill_angle, gcode_layer.z / mesh.settings.get<Ratio>("infill_scaling_z"), infill_shift, max_resolution, max_deviation, skin_below_wall_count, infill_origin,
+                                       perimeter_gaps, connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count,
+                                       pocket_size, pattern_resolution, infill_wave_amplitude, infill_wave_wavelength);
+                    infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, lightning_layer, &mesh);
+                    // when both lines and polygons are created, convert the polygons to chains of lines so that they all get printed together
+                    if (!infill_lines_here.empty() && !infill_polygons_here.empty())
+                    {
+                        for (ConstPolygonRef poly : infill_polygons_here)
+                        {
+                            for (unsigned n = 1; n < poly.size(); ++n)
+                            {
+                                infill_lines_here.addLine(poly[n-1], poly[n]);
+                            }
+                            // stop the last line before it gets to the first point so that a chain is created rather than a loop
+                            const Point& last_point = poly[poly.size() - 1];
+                            infill_lines_here.addLine(last_point, last_point + normal(poly[0] - last_point, vSize(poly[0] - last_point) - 15));
+                        }
+                        infill_polygons_here.clear();
+                    }
+                    if (density_idx < last_idx)
+                    {
+                        const coord_t cut_offset =
+                            get_cut_offset(zig_zaggify_infill, infill_line_width, min_skin_below_wall_count);
+                        Polygons tool = infill_below_skin.offset(static_cast<int>(cut_offset));
+                        infill_lines_here.cut(tool);
+                    }
+                    infill_lines.add(infill_lines_here);
+                    infill_polygons.add(infill_polygons_here);
+                    infill_lines_here.clear();
+                    infill_polygons_here.clear();
+                    // normal processing for the infill that isn't below skin
+                    in_outline = infill_not_below_skin.intersection(in_outline);
+                    sparse_in_outline = infill_not_below_skin;
+                }
+            }
+
+            Infill infill_comp(infill_pattern, zig_zaggify_infill, connect_polygons, in_outline, outline_offset
                 , infill_line_width, infill_line_distance_here, infill_overlap, infill_multiplier, infill_angle, gcode_layer.z, infill_shift
                 , max_resolution, max_deviation
                 , wall_line_count, infill_origin
                 , perimeter_gaps, connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count
-                , mesh.settings.get<coord_t>("cross_infill_pocket_size")
-                , pattern_resolution);
-            infill_comp.generate(infill_polygons, infill_lines, mesh.cross_fill_provider, lightning_layer, &mesh);
+                , pocket_size, pattern_resolution, infill_wave_amplitude, infill_wave_wavelength);
+            infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, lightning_layer, &mesh);
+            if (density_idx < last_idx)
+            {
+                const coord_t cut_offset = get_cut_offset(zig_zaggify_infill, infill_line_width, wall_line_count);
+                Polygons tool = sparse_in_outline.offset(static_cast<int>(cut_offset));
+                infill_lines_here.cut(tool);
+            }
+            infill_lines.add(infill_lines_here);
+            infill_polygons.add(infill_polygons_here);
         }
         if (!infill_lines.empty() || !infill_polygons.empty())
         {
@@ -1729,7 +1815,8 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
     // boundary edge
     Polygons infill_below_skin;
     Polygons infill_not_below_skin;
-    const bool hasSkinEdgeSupport = partitionInfillBySkinAbove(infill_below_skin, infill_not_below_skin, gcode_layer, mesh, part, infill_line_width);
+    const unsigned infill_depth_multiplier = 1;
+    const bool hasSkinEdgeSupport = partitionInfillBySkinAbove(infill_below_skin, infill_not_below_skin, gcode_layer, mesh, part, infill_line_width, infill_depth_multiplier);
 
     const auto pocket_size = mesh.settings.get<coord_t>("cross_infill_pocket_size");
     constexpr coord_t outline_offset = 0;
@@ -1922,7 +2009,7 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
     return added_something;
 }
 
-bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Polygons& infill_not_below_skin, const LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const SliceLayerPart& part, coord_t infill_line_width)
+bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Polygons& infill_not_below_skin, const LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const SliceLayerPart& part, const coord_t infill_line_width, const unsigned infill_depth_multiplier)
 {
     const auto skin_edge_support_layers = mesh.settings.get<size_t>("skin_edge_support_layers");
     Polygons skin_above_combined;  // skin regions on the layers above combined with small gaps between
@@ -1953,8 +2040,19 @@ bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Pol
         }
     }
 
+    Polygons infill_area;
+    if (part.infill_area_per_combine_per_density.back().size() >= infill_depth_multiplier)
+    {
+        infill_area = part.infill_area_per_combine_per_density.back()[infill_depth_multiplier - 1];
+    }
+    else
+    {
+        // shouldn't ever get here but supply an area anyway!
+        infill_area = part.infill_area;
+    }
+
     // the shrink/expand here is to remove regions of infill below skin that are narrower than the width of the infill walls otherwise the infill walls could merge and form a bump
-    infill_below_skin = skin_above_combined.intersection(part.infill_area_per_combine_per_density.back().front()).offset(-infill_line_width).offset(infill_line_width);
+    infill_below_skin = skin_above_combined.intersection(infill_area).offset(-infill_line_width).offset(infill_line_width);
 
     constexpr bool remove_small_holes_from_infill_below_skin = true;
     constexpr double min_area_multiplier = 9;
@@ -1962,7 +2060,7 @@ bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Pol
     infill_below_skin.removeSmallAreas(min_area, remove_small_holes_from_infill_below_skin);
 
     // there is infill below skin, is there also infill that isn't below skin?
-    infill_not_below_skin = part.infill_area_per_combine_per_density.back().front().difference(infill_below_skin);
+    infill_not_below_skin = infill_area.difference(infill_below_skin);
     infill_not_below_skin.removeSmallAreas(min_area);
 
     return !infill_below_skin.empty();
