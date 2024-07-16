@@ -787,6 +787,7 @@ private:
      *
      * \param infill_below_skin [out] Polygons with infill below the skin
      * \param infill_not_below_skin [out] Polygons with infill outside of skin regions above
+     * \param layer_above_contains_skin [out] the layer above contains skin
      * \param gcode_layer The initial planning of the gcode of the layer
      * \param mesh the mesh containing the layer of interest
      * \param part \param part The part for which to create gcode
@@ -794,7 +795,7 @@ private:
      * \param infill_depth_multiplier depth multiplier of the infill
      * \return true if there needs to be a skin edge support wall in this layer, otherwise false
      */
-    static bool partitionInfillBySkinAbove(Polygons& infill_below_skin, Polygons& infill_not_below_skin, const LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const SliceLayerPart& part, const coord_t infill_line_width, const unsigned infill_depth_multiplier) ;
+    static bool partitionInfillBySkinAbove(Polygons& infill_below_skin, Polygons& infill_not_below_skin, bool &layer_above_contains_skin, const LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const SliceLayerPart& part, const coord_t infill_line_width, const unsigned infill_depth_multiplier) ;
 };
 
 }//namespace cura
