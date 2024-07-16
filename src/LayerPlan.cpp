@@ -2665,14 +2665,22 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
                     gcode.writeUnretractionAndPrime();
                 }
                 gcode.writeTravel(path.points.back(), speed);
-                if (path.retract && ((path_idx < (paths.size() - 1) && paths[path_idx + 1].config->type == PrintFeatureType::Infill) ||
-                                     (is_final_travel && infill_detected && !walls_detected)))
+                const bool before_infill = ((path_idx < (paths.size() - 1) && paths[path_idx + 1].config->type == PrintFeatureType::Infill) ||
+                                            (is_final_travel && infill_detected && !walls_detected));
+                if (path.retract)
                 {
-                    // compensate for loss of pressure during travel moves before infill
-                    const double amount_per_mm = extruder.settings.get<double>("infill_extra_prime_amount_per_mm");
-                    const double travel_power = extruder.settings.get<double>("infill_extra_prime_travel_power");
-                    gcode.addExtraPrimeAmount(std::pow(INT2MM(path.length), travel_power) * amount_per_mm);
-                    infill_detected = true;
+                    // compensate for loss of pressure during travel moves
+                    const double amount_per_mm = extruder.settings.get<double>(before_infill ? "infill_extra_prime_amount_per_mm" : "retraction_extra_prime_amount_per_mm");
+                    const double travel_power = extruder.settings.get<double>(before_infill ? "infill_extra_prime_travel_power" : "retraction_extra_prime_travel_power");
+                    const double extra_prime = std::pow(INT2MM(path.length), travel_power) * amount_per_mm;
+                    if (extra_prime != 0)
+                    {
+                        std::stringstream ss;
+                        ss << "travel = " << INT2MM(path.length) << "mm, extra prime = " << extra_prime << "mm^3";
+                        gcode.writeComment(ss.str());
+                        gcode.addExtraPrimeAmount(extra_prime);
+                    }
+                    infill_detected = before_infill;
                 }
                 continue;
             }
