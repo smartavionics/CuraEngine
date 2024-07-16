@@ -1835,7 +1835,7 @@ void LayerPlan::addLinesMonotonic
 )
 {
     const Polygons exclude_areas = area.tubeShape(exclude_distance, exclude_distance);
-    const size_t exclude_dist2 = exclude_distance * exclude_distance;
+    const coord_t exclude_dist2 = exclude_distance * exclude_distance;
     const Point last_position = getLastPlannedPositionOrStartingPosition();
 
     // First lay all adjacent lines next to each other, to have a sensible input to the monotonic part of the algorithm.
@@ -1860,7 +1860,7 @@ void LayerPlan::addLinesMonotonic
     {
         const auto& polyline = polygons[line_idx];
         const bool inside_exclusion = is_inside_exclusion(polyline);
-        const bool next_would_have_been_included = inside_exclusion && (line_idx < polygons.size() - 1 && is_inside_exclusion(polygons[line_idx + 1]));
+        const bool next_would_have_been_included = inside_exclusion && ((unsigned)line_idx < polygons.size() - 1 && is_inside_exclusion(polygons[line_idx + 1]));
         if (inside_exclusion && last_would_have_been_excluded && next_would_have_been_included)
         {
             left_over.add(polyline);
