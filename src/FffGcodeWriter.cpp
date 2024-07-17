@@ -1676,44 +1676,63 @@ bool FffGcodeWriter::processMultiLayerInfill(const SliceDataStorage& storage, La
 
                 if (!infill_below_skin_per_density.empty())
                 {
-                    // infill region with skin above has to have at least one infill wall line
-                    const size_t min_skin_below_wall_count = wall_line_count > 0 ? wall_line_count : 1;
-                    const size_t skin_below_wall_count = density_idx == last_idx ? min_skin_below_wall_count : 0;
-                    Infill infill_comp(infill_pattern, zig_zaggify_infill, connect_polygons, infill_below_skin_per_density, outline_offset,
-                                       infill_line_width, infill_line_distance_here, infill_overlap, infill_multiplier,
-                                       infill_angle, gcode_layer.z / mesh.settings.get<Ratio>("infill_scaling_z"), infill_shift, max_resolution, max_deviation, skin_below_wall_count, infill_origin,
-                                       perimeter_gaps, connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count,
-                                       pocket_size, pattern_resolution, infill_wave_amplitude, infill_wave_wavelength);
-                    infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, lightning_layer, &mesh);
-                    // when both lines and polygons are created, convert the polygons to chains of lines so that they all get printed together
-                    if (!infill_lines_here.empty() && !infill_polygons_here.empty())
+                    const auto skin_edge_support_line_distance = mesh.settings.get<coord_t>("skin_edge_support_line_distance") * infill_depth_multiplier;
+
+                    if (skin_edge_support_line_distance > 0 && mesh.settings.get<size_t>("skin_edge_support_layers") == 1 && !infill_not_below_skin.empty())
                     {
-                        for (ConstPolygonRef poly : infill_polygons_here)
+                        // print infill as if it was sparse skin
+                        const size_t wall_line_count = 0;
+                        AngleDegrees skin_angle = mesh.skin_angles.at(gcode_layer.getLayerNr() % mesh.skin_angles.size());
+                        Infill infill_comp(EFillMethod::ZIG_ZAG, true, connect_polygons, in_outline, outline_offset,
+                                           infill_line_width, skin_edge_support_line_distance, std::max(infill_overlap, (coord_t)25), infill_multiplier,
+                                           skin_angle, gcode_layer.z / mesh.settings.get<Ratio>("infill_scaling_z"),
+                                           infill_shift, max_resolution, max_deviation, wall_line_count, infill_origin,
+                                           perimeter_gaps, connected_zigzags, use_endpieces);
+                        infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, lightning_layer, &mesh);
+                        // that's all the infill we need
+                        in_outline.clear();
+                    }
+                    else
+                    {
+                        // infill region with skin above has to have at least one infill wall line
+                        const size_t min_skin_below_wall_count = wall_line_count > 0 ? wall_line_count : 1;
+                        const size_t skin_below_wall_count = density_idx == last_idx ? min_skin_below_wall_count : 0;
+                        Infill infill_comp(infill_pattern, zig_zaggify_infill, connect_polygons, infill_below_skin_per_density, outline_offset,
+                                           infill_line_width, infill_line_distance_here, infill_overlap, infill_multiplier,
+                                           infill_angle, gcode_layer.z / mesh.settings.get<Ratio>("infill_scaling_z"), infill_shift, max_resolution, max_deviation, skin_below_wall_count, infill_origin,
+                                           perimeter_gaps, connected_zigzags, use_endpieces, skip_some_zags, zag_skip_count,
+                                           pocket_size, pattern_resolution, infill_wave_amplitude, infill_wave_wavelength);
+                        infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, lightning_layer, &mesh);
+                        // when both lines and polygons are created, convert the polygons to chains of lines so that they all get printed together
+                        if (!infill_lines_here.empty() && !infill_polygons_here.empty())
                         {
-                            for (unsigned n = 1; n < poly.size(); ++n)
+                            for (ConstPolygonRef poly : infill_polygons_here)
                             {
-                                infill_lines_here.addLine(poly[n-1], poly[n]);
+                                for (unsigned n = 1; n < poly.size(); ++n)
+                                {
+                                    infill_lines_here.addLine(poly[n-1], poly[n]);
+                                }
+                                // stop the last line before it gets to the first point so that a chain is created rather than a loop
+                                const Point& last_point = poly[poly.size() - 1];
+                                infill_lines_here.addLine(last_point, last_point + normal(poly[0] - last_point, vSize(poly[0] - last_point) - 15));
                             }
-                            // stop the last line before it gets to the first point so that a chain is created rather than a loop
-                            const Point& last_point = poly[poly.size() - 1];
-                            infill_lines_here.addLine(last_point, last_point + normal(poly[0] - last_point, vSize(poly[0] - last_point) - 15));
+                            infill_polygons_here.clear();
                         }
+                        if (density_idx < last_idx)
+                        {
+                            const coord_t cut_offset =
+                                get_cut_offset(zig_zaggify_infill, infill_line_width, min_skin_below_wall_count);
+                            Polygons tool = infill_below_skin.offset(static_cast<int>(cut_offset));
+                            infill_lines_here.cut(tool);
+                        }
+                        infill_lines.add(infill_lines_here);
+                        infill_polygons.add(infill_polygons_here);
+                        infill_lines_here.clear();
                         infill_polygons_here.clear();
+                        // normal processing for the infill that isn't below skin
+                        in_outline = infill_not_below_skin.intersection(in_outline);
+                        sparse_in_outline = infill_not_below_skin;
                     }
-                    if (density_idx < last_idx)
-                    {
-                        const coord_t cut_offset =
-                            get_cut_offset(zig_zaggify_infill, infill_line_width, min_skin_below_wall_count);
-                        Polygons tool = infill_below_skin.offset(static_cast<int>(cut_offset));
-                        infill_lines_here.cut(tool);
-                    }
-                    infill_lines.add(infill_lines_here);
-                    infill_polygons.add(infill_polygons_here);
-                    infill_lines_here.clear();
-                    infill_polygons_here.clear();
-                    // normal processing for the infill that isn't below skin
-                    in_outline = infill_not_below_skin.intersection(in_outline);
-                    sparse_in_outline = infill_not_below_skin;
                 }
             }
 
@@ -1896,10 +1915,13 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
 
                 const auto skin_edge_support_line_distance = mesh.settings.get<coord_t>("skin_edge_support_line_distance");
 
-                if (skin_edge_support_line_distance > 0 && mesh.settings.get<size_t>("skin_edge_support_layers") == 1 && !infill_not_below_skin.empty())
+                const size_t combined_infill_layers = std::max(uint64_t(1), round_divide(mesh.settings.get<coord_t>("infill_sparse_thickness"), std::max(mesh.settings.get<coord_t>("layer_height"), coord_t(1))));
+                const bool layer_has_infill_not_below_skin = (combined_infill_layers > 1 || !infill_not_below_skin.empty());
+
+                if (skin_edge_support_line_distance > 0 && mesh.settings.get<size_t>("skin_edge_support_layers") == 1 && layer_has_infill_not_below_skin)
                 {
                     // print infill as if it was sparse skin
-                    const size_t wall_line_count = 0;
+                    const size_t wall_line_count = (combined_infill_layers > 1) ? 1 : 0;
                     AngleDegrees skin_angle = mesh.skin_angles.at(gcode_layer.getLayerNr() % mesh.skin_angles.size());
                     Infill infill_comp(EFillMethod::ZIG_ZAG, true, connect_polygons, in_outline, outline_offset,
                                        infill_line_width, skin_edge_support_line_distance, std::max(infill_overlap, (coord_t)25), infill_multiplier,
