@@ -1626,8 +1626,7 @@ bool FffGcodeWriter::processMultiLayerInfill(const SliceDataStorage& storage, La
         Polygons infill_not_below_skin;
         Polygons sparse_in_outline = part.infill_area_per_combine_per_density[last_idx][combine_idx];
         const unsigned infill_depth_multiplier = combine_idx + 1;
-        bool layer_above_contains_skin = false;
-        const bool hasSkinEdgeSupport = partitionInfillBySkinAbove(infill_below_skin, infill_not_below_skin, layer_above_contains_skin, gcode_layer, mesh, part, infill_line_width, infill_depth_multiplier);
+        const bool hasSkinEdgeSupport = partitionInfillBySkinAbove(infill_below_skin, infill_not_below_skin, gcode_layer, mesh, part, infill_line_width, infill_depth_multiplier);
 
         Polygons infill_polygons;
         Polygons infill_lines;
@@ -1817,8 +1816,7 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
     Polygons infill_below_skin;
     Polygons infill_not_below_skin;
     const unsigned infill_depth_multiplier = 1;
-    bool layer_above_contains_skin = false;
-    const bool hasSkinEdgeSupport = partitionInfillBySkinAbove(infill_below_skin, infill_not_below_skin, layer_above_contains_skin, gcode_layer, mesh, part, infill_line_width, infill_depth_multiplier);
+    const bool hasSkinEdgeSupport = partitionInfillBySkinAbove(infill_below_skin, infill_not_below_skin, gcode_layer, mesh, part, infill_line_width, infill_depth_multiplier);
 
     const auto pocket_size = mesh.settings.get<coord_t>("cross_infill_pocket_size");
     constexpr coord_t outline_offset = 0;
@@ -1898,7 +1896,7 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
 
                 const auto skin_edge_support_line_distance = mesh.settings.get<coord_t>("skin_edge_support_line_distance");
 
-                if (layer_above_contains_skin && !infill_not_below_skin.empty() && skin_edge_support_line_distance > 0 && mesh.settings.get<size_t>("skin_edge_support_layers") == 1)
+                if (skin_edge_support_line_distance > 0 && mesh.settings.get<size_t>("skin_edge_support_layers") == 1 && !infill_not_below_skin.empty())
                 {
                     // print infill as if it was sparse skin
                     const size_t wall_line_count = 0;
@@ -2031,12 +2029,10 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
     return added_something;
 }
 
-bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Polygons& infill_not_below_skin, bool &layer_above_contains_skin, const LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const SliceLayerPart& part, const coord_t infill_line_width, const unsigned infill_depth_multiplier)
+bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Polygons& infill_not_below_skin, const LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const SliceLayerPart& part, const coord_t infill_line_width, const unsigned infill_depth_multiplier)
 {
     const auto skin_edge_support_layers = mesh.settings.get<size_t>("skin_edge_support_layers");
     Polygons skin_above_combined;  // skin regions on the layers above combined with small gaps between
-
-    layer_above_contains_skin = false;
 
     // working upwards, starting from the layer above the current infill layer, combine the skin regions
     for (size_t i = 1; i <= skin_edge_support_layers; ++i)
@@ -2061,10 +2057,6 @@ bool FffGcodeWriter::partitionInfillBySkinAbove(Polygons& infill_below_skin, Pol
         if (!upper_skin_region.empty())
         {
             skin_above_combined.add(upper_skin_region);
-            if (i == 1)
-            {
-                layer_above_contains_skin = true;
-            }
         }
     }
 
