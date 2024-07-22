@@ -479,10 +479,6 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
                     {
                         nexts.push_back(i);
                     }
-                    if (i == 0)
-                    {
-                        break;
-                    }
                 }
             }
 
