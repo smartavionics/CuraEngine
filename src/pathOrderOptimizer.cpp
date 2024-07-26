@@ -312,7 +312,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
             coord_t y;
             coord_t x1;
             coord_t x2;
-            //bool is_connector;
+            bool is_connector;
         };
         std::vector<struct line> lines(polygons.size());
         for (unsigned int i = 0; i < polygons.size(); i++)
@@ -324,7 +324,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
             lines[i].y = (p1.Y + p2.Y)/2;
             lines[i].x1 = std::min(p1.X, p2.X);
             lines[i].x2 = std::max(p1.X, p2.X);
-            //lines[i].is_connector = zig_zagged && std::abs(p1.Y - p2.Y) > std::abs(p1.X - p2.X) / 100.0;
+            lines[i].is_connector = zig_zagged && std::abs(p1.Y - p2.Y) > std::abs(p1.X - p2.X) / 100.0;
         }
 
         // sort the lines by increasing Y
