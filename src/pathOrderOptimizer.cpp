@@ -480,13 +480,13 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
                 }
             }
 
-            if (!zig_zagged && nexts.empty())
+            if (true)
             {
                 // look forwards a few lines to find lines that haven't been printed but could be as there is a gap between them and any earlier lines
                 // these can occur when filling narrow curved regions
                 for (unsigned i = current_line_idx + 1; i < lines.size() && lines[i].y < (current_line.y + line_spacing * 2 + tolerance); ++i)
                 {
-                    if (is_monotonic(i))
+                    if (!lines[i].is_connector && is_monotonic(i))
                     {
                         nexts.push_back(i);
                     }
