@@ -468,6 +468,18 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
                 }
             }
 
+            if (zig_zagged)
+            {
+                // all unprinted connecting lines that occur before the current line are candidates
+                for (unsigned i = earliest_line_idx; i < current_line_idx; ++i)
+                {
+                    if (lines[i].poly_idx >= 0 && lines[i].is_connector)
+                    {
+                        nexts.push_back(i);
+                    }
+                }
+            }
+
             if (!zig_zagged && nexts.empty())
             {
                 // look forwards a few lines to find lines that haven't been printed but could be as there is a gap between them and any earlier lines
