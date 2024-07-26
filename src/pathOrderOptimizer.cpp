@@ -409,7 +409,11 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
                 {
                     ++earliest_line_idx;
                 }
-                ++current_line_idx;
+                if (++current_line_idx == polygons.size())
+                {
+                    assert(earliest_line_idx < polygons.size() && "Monotonic ordering goofs!");
+                    current_line_idx = earliest_line_idx;
+                }
                 continue;
             }
 
