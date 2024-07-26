@@ -468,40 +468,23 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
                 }
             }
 
-            if (zig_zagged)
+            // all unprinted lines that occur before the current line are candidates
+            for (unsigned i = earliest_line_idx; i < current_line_idx; ++i)
             {
-                // all unprinted connecting lines that occur before the current line are candidates
-                for (unsigned i = earliest_line_idx; i < current_line_idx; ++i)
+                if (is_monotonic(i))
                 {
-                    if (lines[i].poly_idx >= 0 && lines[i].is_connector)
-                    {
-                        nexts.push_back(i);
-                    }
+                    nexts.push_back(i);
                 }
             }
 
-            if (true)
+            // look forwards a few lines to find non-connector lines that haven't been printed but could be as there
+            // is a gap between them and any earlier lines
+            // these can occur when filling narrow curved regions
+            for (unsigned i = current_line_idx + 1; i < lines.size() && lines[i].y < (current_line.y + line_spacing * 2 + tolerance); ++i)
             {
-                // look forwards a few lines to find lines that haven't been printed but could be as there is a gap between them and any earlier lines
-                // these can occur when filling narrow curved regions
-                for (unsigned i = current_line_idx + 1; i < lines.size() && lines[i].y < (current_line.y + line_spacing * 2 + tolerance); ++i)
+                if (!lines[i].is_connector && is_monotonic(i))
                 {
-                    if (!lines[i].is_connector && is_monotonic(i))
-                    {
-                        nexts.push_back(i);
-                    }
-                }
-            }
-
-            if (current_line_idx > 1 && nexts.empty())
-            {
-                // looks backwards to find lines that haven't been printed but could be as the lines before them have been printed
-                for (unsigned i = current_line_idx - 1; i >= earliest_line_idx; --i)
-                {
-                    if (is_monotonic(i))
-                    {
-                        nexts.push_back(i);
-                    }
+                    nexts.push_back(i);
                 }
             }
 
