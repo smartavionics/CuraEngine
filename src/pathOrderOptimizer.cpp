@@ -399,7 +399,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
         unsigned current_line_idx = 0;
         Point last_point = startPoint;
 
-        while (polyOrder.size() < polygons.size())
+        for(;;)
         {
             struct line& current_line = lines[current_line_idx];
             // skip lines that have already been printed
@@ -420,6 +420,13 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
             polyStart[current_line.poly_idx] = point_idx;
             last_point = poly[(point_idx == 0) ? 1 : 0];
             current_line.poly_idx = -1;
+
+            if (polyOrder.size() >= polygons.size())
+            {
+                // all lines have been processed
+                break;
+            }
+
             if (current_line_idx == earliest_line_idx)
             {
                 ++earliest_line_idx;
