@@ -2539,7 +2539,15 @@ void LayerPlan::writeGCode(GCodeExport& gcode)
             if (path.retract)
             {
                 gcode.writeRetraction(retraction_config);
-                if (path.perform_z_hop)
+
+                const bool hop_over_roofing = (!path.perform_z_hop && z_hop_height > 0 &&
+                                               path_idx < (paths.size() - 1) && paths[path_idx + 1].config->isRoofingPath() &&
+                                               extruder.settings.get<bool>("retraction_hop_over_roofing"));
+                if (hop_over_roofing)
+                {
+                    gcode.writeComment("HOP OVER ROOFING");
+                }
+                if (path.perform_z_hop || hop_over_roofing)
                 {
                     gcode.writeZhopStart(z_hop_height);
                     z_hop_height = retraction_config.zHop; // back to normal z hop
