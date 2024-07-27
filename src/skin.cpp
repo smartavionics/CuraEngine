@@ -484,7 +484,9 @@ void SkinInfillAreaComputation::generateRoofing(SliceLayerPart& part)
         }
         else
         {
-            Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
+            const int extra_walls = std::max((int)mesh.settings.get<size_t>("wall_line_count") - 2, 0);
+            const coord_t no_air_above_shrink = extra_walls * wall_line_width_x;
+            Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count).offset(-no_air_above_shrink);
             // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce their size so they meet but not overlap
             Polygons basic_roofing_fill = skin_part.inner_infill.difference(no_air_above);
             skin_part.roofing_fill = basic_roofing_fill.difference(no_air_above.offset(mesh.settings.get<coord_t>("roofing_overlap_mm")));
@@ -607,7 +609,9 @@ void SkinInfillAreaComputation::regenerateRoofingFillAndInnerInfill(SliceLayerPa
     }
     else
     {
-        Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count);
+        const int extra_walls = std::max((int)mesh.settings.get<size_t>("wall_line_count") - 2, 0);
+        const coord_t no_air_above_shrink = extra_walls * wall_line_width_x;
+        Polygons no_air_above = generateNoAirAbove(part, roofing_layer_count).offset(-no_air_above_shrink);
         // both the roofing fill and the inner fill will be expanded by skin_overlap_mm so reduce their size so they meet but not overlap
         Polygons basic_roofing_fill = skin_part.inner_infill.difference(no_air_above);
         skin_part.roofing_fill = basic_roofing_fill.difference(no_air_above.offset(mesh.settings.get<coord_t>("roofing_overlap_mm")));
