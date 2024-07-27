@@ -17,12 +17,13 @@ GCodePathConfig::GCodePathConfig(const GCodePathConfig& other)
 , extrusion_mm3_per_mm(other.extrusion_mm3_per_mm)
 , is_bridge_path(other.is_bridge_path)
 , fan_speed(other.fan_speed)
+, is_roofing_path(other.is_roofing_path)
 {
 }
 
 
 
-GCodePathConfig::GCodePathConfig(const PrintFeatureType& type, const coord_t line_width, const coord_t layer_height, const Ratio& flow, const GCodePathConfig::SpeedDerivatives speed_derivatives, const bool is_bridge_path, const double fan_speed)
+GCodePathConfig::GCodePathConfig(const PrintFeatureType& type, const coord_t line_width, const coord_t layer_height, const Ratio& flow, const GCodePathConfig::SpeedDerivatives speed_derivatives, const bool is_bridge_path, const double fan_speed, const bool is_roofing_path)
 : type(type)
 , speed_derivatives(speed_derivatives)
 , line_width(line_width)
@@ -31,6 +32,7 @@ GCodePathConfig::GCodePathConfig(const PrintFeatureType& type, const coord_t lin
 , extrusion_mm3_per_mm(calculateExtrusion())
 , is_bridge_path(is_bridge_path)
 , fan_speed(fan_speed)
+, is_roofing_path(is_roofing_path)
 {
 }
 
@@ -88,6 +90,11 @@ bool GCodePathConfig::isTravelPath() const
 bool GCodePathConfig::isBridgePath() const
 {
     return is_bridge_path;
+}
+
+bool GCodePathConfig::isRoofingPath() const
+{
+    return is_roofing_path;
 }
 
 double GCodePathConfig::getFanSpeed() const

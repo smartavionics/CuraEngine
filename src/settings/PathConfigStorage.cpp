@@ -124,6 +124,9 @@ PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh
     , layer_thickness
     , mesh.settings.get<Ratio>("roofing_material_flow") * ((layer_nr == 0) ? mesh.settings.get<Ratio>("material_flow_layer_0") : Ratio(1.0))
     , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("speed_roofing"), mesh.settings.get<Acceleration>("acceleration_roofing"), mesh.settings.get<Velocity>("jerk_roofing")}
+    , false // is_bridge_path
+    , GCodePathConfig::FAN_SPEED_DEFAULT
+    , true // is_roofing_path
 )
 , ironing_config(
     PrintFeatureType::Skin
