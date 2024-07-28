@@ -313,6 +313,7 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
             coord_t x1;
             coord_t x2;
             bool is_connector;
+            Point ended_at;
         };
         std::vector<struct line> lines(polygons.size());
         for (unsigned int i = 0; i < polygons.size(); i++)
@@ -419,10 +420,40 @@ void LineOrderOptimizer::monotonicallyOrder(const coord_t line_spacing, bool zig
 
             // print the current line
             ConstPolygonRef poly = *polygons[current_line.poly_idx];
-            unsigned point_idx = (vSize2(poly[0] - last_point) <= vSize2(poly[1] - last_point))? 0 : 1;
+
+            if (zig_zagged && !current_line.is_connector && current_line_idx > 0)
+            {
+                // if we have already drawn the immediately preceding connector for this line, start from the
+                // end that is nearest to the end of that connector
+                for (unsigned i = current_line_idx - 1; i > 0 && lines[i].y > (current_line.y - line_spacing - tolerance); --i)
+                {
+                    if (lines[i].poly_idx < 0 && lines[i].is_connector)
+                    {
+                        // a preceding connector has been drawn
+
+                        if (lines[i].ended_at == last_point)
+                        {
+                            // we are already going to be starting at the nearest end
+                            break;
+                        }
+
+                        if (lines_join(current_line_idx, i))
+                        {
+                            // we have found a printed connector line that joins the current line, use its nearest end as the last point
+                            last_point = lines[i].ended_at;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // start at the end nearest to the last point
+            unsigned start_point_idx = (vSize2(poly[0] - last_point) <= vSize2(poly[1] - last_point))? 0 : 1;
+
             polyOrder.push_back(current_line.poly_idx);
-            polyStart[current_line.poly_idx] = point_idx;
-            last_point = poly[(point_idx == 0) ? 1 : 0];
+            polyStart[current_line.poly_idx] = start_point_idx;
+            current_line.ended_at = poly[(start_point_idx == 0) ? 1 : 0];
+            last_point = current_line.ended_at;
             current_line.poly_idx = -1;
 
             if (polyOrder.size() >= polygons.size())
