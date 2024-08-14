@@ -2893,7 +2893,11 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         }
 
         // now print the bridge skin regions
-        for (unsigned n = 0; n < bridge_skins.size(); ++n)
+
+        // the order is reversed so that the first bridge skin is printed last which increases the chance
+        // that it will meet up with an already printed 2nd level bridge skin
+
+        for (int n = bridge_skins.size() - 1; n >= 0; --n)
         {
             for (const Polygons& bridge_skin : bridge_skins[n])
             {
