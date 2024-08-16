@@ -2855,7 +2855,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         // determine the bridge skin regions
 
         // apply bridge_skin_overlap_mm
-        const coord_t bridge_skin_expansion = mesh.settings.get<coord_t>((n > 1) ? "bridge_skin_overlap_mm_3" : (n > 0) ? "bridge_skin_overlap_mm_2" : "bridge_skin_overlap_mm");
+        const coord_t bridge_skin_expansion = std::max(MM2INT(0.01), mesh.settings.get<coord_t>((n > 1) ? "bridge_skin_overlap_mm_3" : (n > 0) ? "bridge_skin_overlap_mm_2" : "bridge_skin_overlap_mm"));
 
         Polygons bridge_skin = bridge_regions[n].intersection(skin_part.outline).offset(std::min(max_bridge_skin_expansion, bridge_skin_expansion));
 
