@@ -149,11 +149,6 @@ bool Comb::calc(const ExtruderTrain& train, Point start_point, Point end_point, 
     // when startPoint is inside crossing_1_in is of interest
     // when it is in between inside and outside it is equal to crossing_1_mid
 
-    if (perform_z_hops && !perform_z_hops_only_when_collides) //Combing via outside makes combing fail.
-    {
-        return false;
-    }
-
     Crossing start_crossing(start_point, start_inside, start_part_idx, start_part_boundary_poly_idx, boundary_inside_optimal, inside_loc_to_line_optimal);
     Crossing end_crossing(end_point, end_inside, end_part_idx, end_part_boundary_poly_idx, boundary_inside_optimal, inside_loc_to_line_optimal);
 
@@ -173,6 +168,12 @@ bool Comb::calc(const ExtruderTrain& train, Point start_point, Point end_point, 
     for (const ExtruderTrain& train : Application::getInstance().current_slice->scene.extruders)
     {
         travel_avoid_other_parts |= extruder_is_used[train.extruder_nr] && train.settings.get<bool>("travel_avoid_other_parts");
+    }
+
+    if (perform_z_hops && !perform_z_hops_only_when_collides && !travel_avoid_other_parts)
+    {
+        // don't comb when moving between parts if z-hopping is enabled for all travel moves and we're not routing around other parts
+        return false;
     }
 
     if (travel_avoid_other_parts && !skip_avoid_other_parts_path)
