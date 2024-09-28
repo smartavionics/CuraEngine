@@ -1386,10 +1386,7 @@ std::vector<size_t> FffGcodeWriter::calculateMeshOrder(const SliceDataStorage& s
         {
             const size_t mesh_idx = mesh_idx_order_optimizer.items[i].second;
             ret.push_back(mesh_idx);
-        }
-        if (mesh_idx_order_optimizer.items.size() > 0)
-        {
-            layer_start_position = mesh_idx_order_optimizer.items.back().first;
+            layer_start_position = mesh_idx_order_optimizer.items[i].first;
         }
     }
     return ret;
