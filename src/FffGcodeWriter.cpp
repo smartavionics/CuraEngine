@@ -1335,17 +1335,26 @@ std::vector<size_t> FffGcodeWriter::calculateMeshOrder(const SliceDataStorage& s
 {
     std::vector<std::pair<int, unsigned>> prioritised_meshes;
 
+    int max_priority = 0;
     for (unsigned int mesh_idx = 0; mesh_idx < storage.meshes.size(); mesh_idx++)
     {
-        prioritised_meshes.push_back(std::make_pair(storage.meshes[mesh_idx].settings.get<int>("mesh_priority"), mesh_idx));
+        int priority = storage.meshes[mesh_idx].settings.get<int>("mesh_priority");
+        if (priority > max_priority)
+        {
+            max_priority = priority;
+        }
+        prioritised_meshes.push_back(std::make_pair(priority, mesh_idx));
     }
 
-    auto sort_by_increasing_priority = [] (std::pair<int,unsigned>& a, std::pair<int,unsigned>& b)
+    if (max_priority > 0)
     {
-        return a.first > b.first;
-    };
+        auto sort_by_increasing_priority = [] (std::pair<int,unsigned>& a, std::pair<int,unsigned>& b)
+        {
+            return a.first > b.first;
+        };
+        std::sort(prioritised_meshes.begin(), prioritised_meshes.end(), sort_by_increasing_priority);
+    }
 
-    std::sort(prioritised_meshes.begin(), prioritised_meshes.end(), sort_by_increasing_priority);
 
     const std::vector<MeshGroup>::iterator mesh_group = Application::getInstance().current_slice->scene.current_mesh_group;
     const ExtruderTrain& train = Application::getInstance().current_slice->scene.extruders[extruder_nr];
