@@ -1333,30 +1333,55 @@ std::vector<size_t> FffGcodeWriter::getUsedExtrudersOnLayerExcludingStartingExtr
 
 std::vector<size_t> FffGcodeWriter::calculateMeshOrder(const SliceDataStorage& storage, const size_t extruder_nr, std::optional<Point> last_planned_position) const
 {
-    OrderOptimizer<size_t> mesh_idx_order_optimizer;
+    std::vector<std::pair<int, unsigned>> prioritised_meshes;
 
-    std::vector<MeshGroup>::iterator mesh_group = Application::getInstance().current_slice->scene.current_mesh_group;
     for (unsigned int mesh_idx = 0; mesh_idx < storage.meshes.size(); mesh_idx++)
     {
-        const SliceMeshStorage& mesh = storage.meshes[mesh_idx];
-        if (mesh.getExtruderIsUsed(extruder_nr))
-        {
-            const Mesh& mesh_data = mesh_group->meshes[mesh_idx];
-            const Point3 middle = (mesh_data.getAABB().min + mesh_data.getAABB().max) / 2;
-            mesh_idx_order_optimizer.addItem(Point(middle.x, middle.y), mesh_idx);
-        }
+        prioritised_meshes.push_back(std::make_pair(storage.meshes[mesh_idx].settings.get<int>("mesh_priority"), mesh_idx));
     }
+
+    auto sort_by_increasing_priority = [] (std::pair<int,unsigned>& a, std::pair<int,unsigned>& b)
+    {
+        return a.first > b.first;
+    };
+
+    std::sort(prioritised_meshes.begin(), prioritised_meshes.end(), sort_by_increasing_priority);
+
+    const std::vector<MeshGroup>::iterator mesh_group = Application::getInstance().current_slice->scene.current_mesh_group;
     const ExtruderTrain& train = Application::getInstance().current_slice->scene.extruders[extruder_nr];
-    const Point layer_start_position = (last_planned_position) ? *last_planned_position : Point(train.settings.get<coord_t>("layer_start_x"), train.settings.get<coord_t>("layer_start_y"));
-    std::list<size_t> mesh_indices_order = mesh_idx_order_optimizer.optimize(layer_start_position);
+    Point layer_start_position = (last_planned_position) ? *last_planned_position : Point(train.settings.get<coord_t>("layer_start_x"), train.settings.get<coord_t>("layer_start_y"));
 
     std::vector<size_t> ret;
-    ret.reserve(mesh_indices_order.size());
 
-    for(size_t i: mesh_indices_order)
+    unsigned order_idx = 0;
+    while (order_idx < prioritised_meshes.size())
     {
-        const size_t mesh_idx = mesh_idx_order_optimizer.items[i].second;
-        ret.push_back(mesh_idx);
+        OrderOptimizer<size_t> mesh_idx_order_optimizer;
+        const int cur_priority = prioritised_meshes[order_idx].first;
+
+        while (order_idx < prioritised_meshes.size() && prioritised_meshes[order_idx].first == cur_priority)
+        {
+            unsigned mesh_idx = prioritised_meshes[order_idx].second;
+            const SliceMeshStorage& mesh = storage.meshes[mesh_idx];
+            if (mesh.getExtruderIsUsed(extruder_nr))
+            {
+                const Mesh& mesh_data = mesh_group->meshes[mesh_idx];
+                const Point3 middle = (mesh_data.getAABB().min + mesh_data.getAABB().max) / 2;
+                mesh_idx_order_optimizer.addItem(Point(middle.x, middle.y), mesh_idx);
+            }
+            ++order_idx;
+        }
+        std::list<size_t> mesh_indices_order = mesh_idx_order_optimizer.optimize(layer_start_position);
+
+        for(size_t i: mesh_indices_order)
+        {
+            const size_t mesh_idx = mesh_idx_order_optimizer.items[i].second;
+            ret.push_back(mesh_idx);
+        }
+        if (mesh_idx_order_optimizer.items.size() > 0)
+        {
+            layer_start_position = mesh_idx_order_optimizer.items.back().first;
+        }
     }
     return ret;
 }
