@@ -175,6 +175,8 @@ public:
         line_velocity_data.append(reinterpret_cast<const char*>(line_velocities.data()), line_velocities.size() * sizeof(float));
         line_velocities.clear();
         path_segment->set_line_feedrate(line_velocity_data);
+        _layer_nr = 0;
+        extruder = 0;
     }
 
     /*!
