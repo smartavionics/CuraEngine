@@ -219,7 +219,8 @@ void SkinInfillAreaComputation::generateSkinAndInfillAreas(SliceLayerPart& part)
     if (part.insets.size() > 1 && mesh.settings.get<bool>("only_one_wall_top"))
     {
         // fill in the skin between the 1st and 2nd walls
-        upskin.add(part.insets[0].offset(-wall_line_width_0/2 - 10).difference(part.insets[1].offset(wall_line_width_x/2 + 10)));
+        // shrink/expand by skin_line_width to remove areas narrower than 2 * skin_line_width
+        upskin.add(part.insets[0].offset(-(skin_line_width + wall_line_width_0/2 + 10)).difference(part.insets[1].offset(wall_line_width_x/2 + 10)).offset(skin_line_width));
     }
 
     // now combine the resized upskin and downskin
