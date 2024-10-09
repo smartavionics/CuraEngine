@@ -726,13 +726,16 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
 
                     // accumulate area of skin and infill that will be printed
                     Polygons inner;
+                    bool have_roofing = false;
                     for (const SkinPart& skin_part : part.skin_parts)
                     {
                         inner.add(skin_part.outline);
+                        have_roofing |= !skin_part.roofing_fill.empty();
                     }
                     // for some reason the zig-zag and lines patterns behave differently and a narrow region that isn't filled with zig-zag pattern can be filled with
                     // lines pattern so we only add the narrow region to the perimeter gaps when the pattern is zig-zag.
-                    if (((layer_nr == 0) ? mesh.settings.get<EFillMethod>("top_bottom_pattern_0") : mesh.settings.get<EFillMethod>("top_bottom_pattern")) == EFillMethod::ZIG_ZAG)
+                    const bool zigzag_pattern = (have_roofing ? mesh.settings.get<EFillMethod>("roofing_pattern") : (layer_nr == 0) ? mesh.settings.get<EFillMethod>("top_bottom_pattern_0") : mesh.settings.get<EFillMethod>("top_bottom_pattern")) == EFillMethod::ZIG_ZAG;
+                    if (zigzag_pattern)
                     {
                         // remove skin areas that are narrower than skin_line_width as they won't get printed unless
                         // we print them as a perimeter gap
@@ -756,7 +759,7 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
                         }
                         // for some reason the zig-zag and lines patterns behave differently and a narrow region that isn't filled with zig-zag pattern can be filled with
                         // lines pattern so we only add the narrow region to the perimeter gaps when the pattern is zig-zag.
-                        if (mesh.settings.get<EFillMethod>("top_bottom_pattern") == EFillMethod::ZIG_ZAG)
+                        if (zigzag_pattern)
                         {
                             // remove skin areas that are narrower than skin_line_width as they won't get printed unless
                             // we print them as a perimeter gap
