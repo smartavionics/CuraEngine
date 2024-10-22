@@ -860,7 +860,19 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
             cur_point = segment_end;
             if (speed_factor < 1)
             {
-                speed_factor = 1 - (1 - speed_factor) * acceleration_factor;
+                // calculate new speed_factor assuming line length was acceleration_segment_len
+                Ratio new_speed_factor = 1 - (1 - speed_factor) * acceleration_factor;
+
+                if (distance_to_line_end < acceleration_segment_len)
+                {
+                    // line was actually shorter, so scale the increase to speed_factor by the line length
+                    speed_factor = speed_factor + (new_speed_factor - speed_factor) * (distance_to_line_end / acceleration_segment_len);
+                }
+                else
+                {
+                    speed_factor = new_speed_factor;
+                }
+
                 if (speed_factor >= 0.9)
                 {
                     speed_factor = 1;
