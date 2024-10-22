@@ -824,7 +824,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
                 const double coast_dist = std::min(non_bridge_line_volume, max_non_bridge_line_volume) * (1 - speed_flow_factor) * bridge_wall_coast / 40;
                 const double distance_to_coast_start = std::max(distance_to_bridge_start - coast_dist, 0.0);
 
-                if (coast_dist > 0 && distance_to_coast_start <= distance_to_line_end)
+                if (coast_dist > 0 && distance_to_coast_start <= vSize(segment_end - cur_point))
                 {
                     segment_end = line_end;
                     if ((distance_to_line_end - distance_to_coast_start) > min_line_len)
