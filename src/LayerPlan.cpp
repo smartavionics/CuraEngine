@@ -966,6 +966,15 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
             Polygons wall_polys;
             wall_polys.add(wall);
             lines = wall_polys.intersectionPolyLines(lines);
+            if (lines.size() == 0)
+            {
+                // hint line didn't intersect with wall
+                // now try with a new line that runs between the middle of the wall's bounding box and the z-seam hint point
+                // this isn't ideal as the z-seam will move if the wall outline changes with z but at least it shouldn't wobble
+                const Point wall_middle = AABB(wall).getMiddle();
+                lines.addLine(wall_middle - hint_vec, wall_middle + hint_vec);
+                lines = wall_polys.intersectionPolyLines(lines);
+            }
             Point closest = z_seam_point;
             coord_t min_dist2 = approx_max_len * approx_max_len;
             for (ConstPolygonRef line : lines)
