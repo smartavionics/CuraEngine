@@ -438,6 +438,14 @@ Polygons SliceDataStorage::getLayerOutlines(const LayerIndex layer_nr, const boo
                 {
                     continue;
                 }
+                if (mesh.settings.get<bool>("cutting_mesh") &&
+                    mesh.settings.get<int>("wall_line_count") == 0 &&
+                    mesh.settings.get<size_t>("top_layers") == 0 &&
+                    mesh.settings.get<size_t>("bottom_layers") == 0 &&
+                    mesh.settings.get<double>("infill_line_distance") == 0)
+                {
+                    continue;
+                }
                 const SliceLayer& layer = mesh.layers[layer_nr];
                 if (for_brim)
                 {
