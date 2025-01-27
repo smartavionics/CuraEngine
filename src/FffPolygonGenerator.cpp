@@ -340,6 +340,8 @@ bool FffPolygonGenerator::sliceModel(MeshGroup* meshgroup, TimeKeeper& timeKeepe
                 meshStorage.layers[layer_nr].initial_bottom_layers = meshStorage.settings.get<size_t>("initial_bottom_layers");
             }
 
+            meshStorage.layers[layer_nr].layer_nr = layer_nr;
+
             // add the raft offset to each layer
             if (has_raft)
             {
@@ -497,9 +499,9 @@ void FffPolygonGenerator::processBasicWallsSkinInfill(SliceDataStorage& storage,
 
     if (mesh.settings.get<bool>("meshfix_remove_holes_above_air"))
     {
-        const coord_t max_allowed_width_of_wall_above_air = mesh.settings.get<coord_t>("wall_line_width_0") * 3 / 4;
         for (size_t layer_number = 1; layer_number < mesh.layers.size(); layer_number++)
         {
+            const coord_t max_allowed_width_of_wall_above_air = mesh.settings.get<coord_t>((layer_number & 1)? "wall_line_width_02" : "wall_line_width_0") * 3 / 4;
             // determine the outline of the previous layer
             Polygons prev_layer_outline;
             for (const SliceMeshStorage& a_mesh : storage.meshes)
@@ -634,7 +636,7 @@ void FffPolygonGenerator::processOutlineGaps(SliceDataStorage& storage)
         for (unsigned int layer_nr = 0; layer_nr < mesh.layers.size(); layer_nr++)
         {
             SliceLayer& layer = mesh.layers[layer_nr];
-            coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
+            coord_t wall_line_width_0 = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0");
             if (layer_nr == 0)
             {
                 const ExtruderTrain& train = mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr");
@@ -685,7 +687,7 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
                     && (mesh.settings.get<bool>("alternate_extra_perimeter") || (layer_nr == 0 && train_wall_x.settings.get<Ratio>("initial_layer_line_width_factor") > 1.0))
                 );
             SliceLayer& layer = mesh.layers[layer_nr];
-            coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
+            coord_t wall_line_width_0 = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0");
             coord_t wall_line_width_x = mesh.settings.get<coord_t>("wall_line_width_x");
             coord_t skin_line_width = mesh.settings.get<coord_t>("skin_line_width");
             coord_t infill_line_width = mesh.settings.get<coord_t>("infill_line_width");
@@ -722,7 +724,7 @@ void FffPolygonGenerator::processPerimeterGaps(SliceDataStorage& storage)
                 // gap between inner wall and skin/infill
                 if (fill_gaps_between_inner_wall_and_skin_or_infill && part.insets.size() > 0)
                 {
-                    const Polygons outer = part.insets.back().offset(-1 * line_width / 2 - perimeter_gaps_extra_offset);
+                    const Polygons outer = part.insets.back().offset(-1 * ((part.insets.size() > 1) ? wall_line_width_x : wall_line_width_0) / 2 - perimeter_gaps_extra_offset);
 
                     // accumulate area of skin and infill that will be printed
                     Polygons inner;
@@ -1271,7 +1273,6 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
     const coord_t avg_dist_between_points = mesh.settings.get<coord_t>("magic_fuzzy_skin_point_dist");
     const coord_t min_dist_between_points = avg_dist_between_points * 3 / 4; // hardcoded: the point distance may vary between 3/4 and 5/4 the supplied value
     const coord_t range_random_point_dist = avg_dist_between_points / 2;
-    const coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
     const bool outside_only = mesh.settings.get<bool>("magic_fuzzy_skin_outside_only");
     const int outside_only_heuristics = mesh.settings.get<int>("magic_fuzzy_skin_outside_only_heuristics");
     unsigned int start_layer_nr = (mesh.settings.get<EPlatformAdhesion>("adhesion_type") == EPlatformAdhesion::BRIM)? 1 : 0; // don't make fuzzy skin on first layer if there's a brim
@@ -1316,6 +1317,7 @@ void FffPolygonGenerator::processFuzzyWalls(SliceMeshStorage& mesh)
         {
             continue;
         }
+        const coord_t wall_line_width_0 = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0");
         Polygons outlines = layer.getOutlines(true);
         Polygons hull = outlines.approxConvexHull(0);
         for (SliceLayerPart& part : layer.parts)

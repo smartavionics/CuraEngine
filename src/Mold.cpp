@@ -61,7 +61,7 @@ void Mold::process(std::vector<Slicer*>& slicer_list)
                 continue;
             }
             coord_t width = mesh.settings.get<coord_t>("mold_width");
-            coord_t open_polyline_width = mesh.settings.get<coord_t>("wall_line_width_0");
+            coord_t open_polyline_width = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0");
             if (layer_nr == 0)
             {
                 const ExtruderTrain& train_wall_0 = mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr");

@@ -32,7 +32,7 @@ coord_t SkinInfillAreaComputation::getSkinLineWidth(const SliceMeshStorage& mesh
 
 coord_t SkinInfillAreaComputation::getWallLineWidth0(const SliceMeshStorage& mesh, const LayerIndex& layer_nr)
 {
-    coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
+    coord_t wall_line_width_0 = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0");
     if (layer_nr == 0)
     {
         const ExtruderTrain& train_wall_0 = mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr");

@@ -35,7 +35,7 @@ GCodePathConfig createPerimeterGapConfig(const SliceMeshStorage& mesh, int layer
 {
     // The perimeter gap config follows the skin config, but has a different line width:
     // wall_line_width_x divided by two because the gaps are between 0 and 1 times the wall line width
-    const coord_t perimeter_gaps_line_width = mesh.settings.get<coord_t>("wall_line_width_0") / 2;
+    const coord_t perimeter_gaps_line_width = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0") / 2;
     Velocity perimeter_gaps_speed = mesh.settings.get<Velocity>("speed_topbottom");
     if (mesh.settings.get<bool>("speed_equalize_flow_enabled"))
     {
@@ -54,10 +54,10 @@ GCodePathConfig createPerimeterGapConfig(const SliceMeshStorage& mesh, int layer
 PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh, const coord_t layer_thickness, const LayerIndex& layer_nr, const std::vector<Ratio>& line_width_factor_per_extruder)
 : inset0_config(
     PrintFeatureType::OuterWall
-    , mesh.settings.get<coord_t>("wall_line_width_0") * line_width_factor_per_extruder[mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr]
+    , mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0") * line_width_factor_per_extruder[mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr]
     , layer_thickness
     , mesh.settings.get<Ratio>("wall_0_material_flow") * ((layer_nr == 0) ? mesh.settings.get<Ratio>("material_flow_layer_0") : Ratio(1.0))
-    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("speed_wall_0"), mesh.settings.get<Acceleration>("acceleration_wall_0"), mesh.settings.get<Velocity>("jerk_wall_0")}
+    , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("speed_wall_0") * ((layer_nr & 1 && mesh.settings.get<bool>("wall_0_constant_flow")) ? ((float)mesh.settings.get<coord_t>("wall_line_width_0") / (float)mesh.settings.get<coord_t>("wall_line_width_02")) : 1.0f), mesh.settings.get<Acceleration>("acceleration_wall_0"), mesh.settings.get<Velocity>("jerk_wall_0")}
 )
 , insetX_config(
     PrintFeatureType::InnerWall
@@ -68,7 +68,7 @@ PathConfigStorage::MeshPathConfigs::MeshPathConfigs(const SliceMeshStorage& mesh
 )
 , bridge_inset0_config(
     PrintFeatureType::OuterWall
-    , mesh.settings.get<coord_t>("wall_line_width_0") * line_width_factor_per_extruder[mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr]
+    , mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0") * line_width_factor_per_extruder[mesh.settings.get<ExtruderTrain&>("wall_0_extruder_nr").extruder_nr]
     , layer_thickness
     , mesh.settings.get<Ratio>("bridge_wall_material_flow")
     , GCodePathConfig::SpeedDerivatives{mesh.settings.get<Velocity>("bridge_wall_speed"), mesh.settings.get<Acceleration>("bridge_wall_acceleration"), mesh.settings.get<Velocity>("bridge_wall_jerk")}

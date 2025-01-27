@@ -996,7 +996,7 @@ LayerPlan& FffGcodeWriter::processLayer(const SliceDataStorage& storage, LayerIn
     coord_t max_inner_wall_width = 0;
     for (const SliceMeshStorage& mesh : storage.meshes)
     {
-        coord_t inner_wall_width = mesh.settings.get<coord_t>((mesh.settings.get<size_t>("wall_line_count") > 1) ? "wall_line_width_x" : "wall_line_width_0");
+        coord_t inner_wall_width = mesh.settings.get<coord_t>((mesh.settings.get<size_t>("wall_line_count") > 1) ? "wall_line_width_x" : ((layer_nr & 1)? "wall_line_width_02" : "wall_line_width_0"));
         if (layer_nr == 0)
         {
             const ExtruderTrain& train = mesh.settings.get<ExtruderTrain&>((mesh.settings.get<size_t>("wall_line_count") > 1) ? "wall_0_extruder_nr" : "wall_x_extruder_nr");
@@ -1013,7 +1013,7 @@ LayerPlan& FffGcodeWriter::processLayer(const SliceDataStorage& storage, LayerIn
         :
         extruder_order_per_layer[layer_nr];
 
-    const coord_t first_outer_wall_line_width = scene.extruders[extruder_order.front()].settings.get<coord_t>("wall_line_width_0");
+    const coord_t first_outer_wall_line_width = scene.extruders[extruder_order.front()].settings.get<coord_t>((layer_nr & 1)? "wall_line_width_02" : "wall_line_width_0");
     LayerPlan& gcode_layer = *new LayerPlan(storage, layer_nr, z, layer_thickness, extruder_order.front(), fan_speed_layer_time_settings_per_extruder, comb_offset_from_outlines, first_outer_wall_line_width, avoid_distance, last_planned_position);
 
     if (include_helper_parts && layer_nr == 0)
@@ -1590,7 +1590,7 @@ void FffGcodeWriter::addMeshPartToGCode(const SliceDataStorage& storage, const S
     //After a layer part, make sure the nozzle is inside the comb boundary, so we do not retract on the perimeter.
     if (added_something && (!mesh_group_settings.get<bool>("magic_spiralize") || gcode_layer.getLayerNr() < static_cast<LayerIndex>(mesh.settings.get<size_t>("initial_bottom_layers"))))
     {
-        coord_t innermost_wall_line_width = mesh.settings.get<coord_t>((mesh.settings.get<size_t>("wall_line_count") > 1) ? "wall_line_width_x" : "wall_line_width_0");
+        coord_t innermost_wall_line_width = mesh.settings.get<coord_t>((mesh.settings.get<size_t>("wall_line_count") > 1) ? "wall_line_width_x" : ((gcode_layer.getLayerNr() & 1)? "wall_line_width_02" : "wall_line_width_0"));
         if (gcode_layer.getLayerNr() == 0)
         {
             innermost_wall_line_width *= mesh.settings.get<Ratio>("initial_layer_line_width_factor");
@@ -2167,7 +2167,7 @@ void FffGcodeWriter::processSpiralizedWall(const SliceDataStorage& storage, Laye
     std::vector<float> flows(wall_outline.size(), 1.0); // flow multiplier for each line segment
     std::vector<Point> shifts(wall_outline.size()); // per vertex shift to compensate for line width changes
 
-    const coord_t default_line_width = mesh.settings.get<coord_t>("wall_line_width_0");
+    const coord_t default_line_width = mesh.settings.get<coord_t>((layer_nr & 1)? "wall_line_width_02" : "wall_line_width_0");
     const double min_line_width = mesh.settings.get<Ratio>("spiralize_min_line_width");
     const double max_line_width = mesh.settings.get<Ratio>("spiralize_max_line_width");
 
@@ -2876,7 +2876,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
 
     // limit the amount the bridge skin can overlap the walls to a single wall width
     const size_t num_walls = mesh.settings.get<size_t>("wall_line_count");
-    const coord_t max_bridge_skin_expansion = (num_walls > 1) ? mesh.settings.get<coord_t>("wall_line_width_x") : mesh.settings.get<coord_t>("wall_line_width_0");
+    const coord_t max_bridge_skin_expansion = (num_walls > 1) ? mesh.settings.get<coord_t>("wall_line_width_x") : mesh.settings.get<coord_t>((layer_nr & 1)? "wall_line_width_02" : "wall_line_width_0");
 
     // collect the bridge skins so they can be printed after the non-bridge skins
     std::vector<std::vector<Polygons>> bridge_skins(bridge_regions.size());

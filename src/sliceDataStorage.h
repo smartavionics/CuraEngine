@@ -148,6 +148,7 @@ public:
 class SliceLayer
 {
 public:
+    LayerIndex layer_nr;//!< The index of this layer.
     coord_t printZ;     //!< The height at which this layer needs to be printed. Can differ from sliceZ due to the raft.
     coord_t thickness;  //!< The thickness of this layer. Can be different when using variable layer heights.
     size_t  top_layers; //!< The number of top skin layers that could be above this layer. Can be different when using variable layer heights.

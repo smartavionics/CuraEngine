@@ -79,7 +79,7 @@ void SliceLayer::getOutlines(Polygons& result, bool external_polys_only) const
 
 void SliceLayer::getInnermostWalls(Polygons& layer_walls, int max_inset, const SliceMeshStorage& mesh) const
 {
-    const coord_t half_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0") / 2;
+    const coord_t half_line_width_0 = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0") / 2;
     const coord_t half_line_width_x = mesh.settings.get<coord_t>("wall_line_width_x") / 2;
 
     for (const SliceLayerPart& part : parts)

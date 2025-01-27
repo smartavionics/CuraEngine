@@ -54,7 +54,7 @@ void WallsComputation::generateInsets(SliceLayerPart* part)
     }
 
     const coord_t wall_0_inset = settings.get<coord_t>("wall_0_inset");
-    coord_t line_width_0 = settings.get<coord_t>("wall_line_width_0");
+    coord_t line_width_0 = settings.get<coord_t>((layer_nr & 1)? "wall_line_width_02" : "wall_line_width_0");
     coord_t line_width_x = settings.get<coord_t>("wall_line_width_x");
     if (layer_nr == 0)
     {

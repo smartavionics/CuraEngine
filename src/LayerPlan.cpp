@@ -198,7 +198,7 @@ Polygons LayerPlan::computeCombBoundaryInside(const size_t max_inset)
             {
                 // we need to include the walls in the comb boundary otherwise it's not possible to tell if a travel move crosses a skin region
 
-                const coord_t line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
+                const coord_t line_width_0 = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0");
                 const coord_t line_width_x = mesh.settings.get<coord_t>("wall_line_width_x");
 
                 for (const SliceLayerPart& part : layer.parts)
@@ -583,7 +583,7 @@ GCodePath& LayerPlan::addTravel(const Point p, const bool force_retract, const c
         if (was_inside) // when the previous location was from printing something which is considered inside (not support or prime tower etc)
         {               // then move inside the printed part, so that we don't ooze on the outer wall while retraction, but on the inside of the print.
             assert (extruder != nullptr);
-            coord_t innermost_wall_line_width = extruder->settings.get<coord_t>((extruder->settings.get<size_t>("wall_line_count") > 1) ? "wall_line_width_x" : "wall_line_width_0");
+            coord_t innermost_wall_line_width = extruder->settings.get<coord_t>((extruder->settings.get<size_t>("wall_line_count") > 1) ? "wall_line_width_x" : ((layer_nr & 1) ? "wall_line_width_02" :  "wall_line_width_0"));
             if (layer_nr == 0)
             {
                 innermost_wall_line_width *= extruder->settings.get<Ratio>("initial_layer_line_width_factor");
@@ -759,7 +759,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
         // use the distance from the mid point of the line segment to the inside edge of the overhang mask to modify the overhang speed factor
         // the closer the line segment is to the inside edge of the overhang mask, the closer the overhang speed factor is to 1.0
         // the effect of this is to smooth the speed transition
-        const coord_t wall_line_width_0 = mesh.settings.get<coord_t>("wall_line_width_0");
+        const coord_t wall_line_width_0 = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0");
         // end is normal to the line mid point spaced a wall line width to the inside of the polygon
         const Point end(mid + normal(turn90CCW(p1 - mid), wall_line_width_0));
         if (!overhang_mask.inside(end, true))
