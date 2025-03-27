@@ -1285,7 +1285,7 @@ void LayerPlan::addWall(ConstPolygonRef wall, int start_idx, const SliceMeshStor
                 first_line = false;
                 travel_required = false;
             }
-            if (is_small_feature && distance_to_bridge_start <= 0)
+            if (is_small_feature && distance_to_bridge_start <= 0 && !lineOverhangs(p0, p1))
             {
                 constexpr bool spiralize = false;
                 addExtrusionMove(p1, non_bridge_config, SpaceFillType::Polygons, flow, spiralize, small_feature_speed_factor);
