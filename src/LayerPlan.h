@@ -592,6 +592,14 @@ public:
     void addPolygonsByOptimizer(const Polygons& polygons, const GCodePathConfig& config, WallOverlapComputation* wall_overlap_computation = nullptr, const ZSeamConfig& z_seam_config = ZSeamConfig(), coord_t wall_0_wipe_dist = 0, bool spiralize = false, const Ratio flow_ratio = 1.0_r, bool always_retract = false, bool reverse_order = false, const std::optional<Point> start_near_location = std::optional<Point>());
 
     /*!
+     * Test whether a line is considered to be overhanging
+     * \param p0 The start vertex of the line
+     * \param p1 The end vertex of the line
+     * \return true if the line is overhanging
+     */
+    bool lineOverhangs(const Point &p0, const Point& p1) const;
+
+    /*!
      * Add a single line that is part of a wall to the gcode.
      * \param p0 The start vertex of the line
      * \param p1 The end vertex of the line

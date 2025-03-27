@@ -732,6 +732,12 @@ void LayerPlan::addPolygonsByOptimizer(const Polygons& polygons, const GCodePath
     }
 }
 
+bool LayerPlan::lineOverhangs(const Point &p0, const Point& p1) const
+{
+    const Point mid(p0 + (p1 - p0)/2);
+    return (!overhang_mask.empty() && overhang_mask.inside(mid, true) && (overhang_mask.inside(p0, true) || overhang_mask.inside(p1, true)));
+}
+
 static constexpr float max_non_bridge_line_volume = MM2INT(100); // limit to accumulated "volume" of non-bridge lines which is proportional to distance x extrusion rate
 
 void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshStorage& mesh, const GCodePathConfig& non_bridge_config, const GCodePathConfig& bridge_config, float flow, float& non_bridge_line_volume, Ratio& speed_factor, const coord_t line_start_offset, std::vector<coord_t>& bridge_start_offsets, std::vector<coord_t>& bridge_lengths)
@@ -745,8 +751,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
     const Ratio bridge_wall_end_boost = mesh.settings.get<Ratio>("bridge_wall_end_boost");
     Ratio overhang_speed_factor = mesh.settings.get<Ratio>("wall_overhang_speed_factor");
     const Ratio post_bridge_speed_factor = std::max(std::min(Ratio(bridge_config.getSpeed() / non_bridge_config.getSpeed()), 1.0_r), 0.5_r);
-    const Point mid(p0 + (p1 - p0)/2);
-    const bool is_overhang = (!overhang_mask.empty() && overhang_mask.inside(mid, true) && (overhang_mask.inside(p0, true) || overhang_mask.inside(p1, true)));
+    const bool is_overhang = lineOverhangs(p0, p1);
     double fan_speed = GCodePathConfig::FAN_SPEED_DEFAULT;
     const bool two_passes = (layer_nr > 0 && non_bridge_config.type == PrintFeatureType::OuterWall) && mesh.settings.get<bool>("outer_inset_first") && mesh.settings.get<bool>("two_pass_outer_inset");
 
@@ -761,6 +766,7 @@ void LayerPlan::addWallLine(const Point& p0, const Point& p1, const SliceMeshSto
         // the effect of this is to smooth the speed transition
         const coord_t wall_line_width_0 = mesh.settings.get<coord_t>((layer_nr & 1) ? "wall_line_width_02" : "wall_line_width_0");
         // end is normal to the line mid point spaced a wall line width to the inside of the polygon
+        const Point mid(p0 + (p1 - p0)/2);
         const Point end(mid + normal(turn90CCW(p1 - mid), wall_line_width_0));
         if (!overhang_mask.inside(end, true))
         {
