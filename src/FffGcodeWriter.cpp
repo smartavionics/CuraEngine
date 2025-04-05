@@ -1708,8 +1708,10 @@ bool FffGcodeWriter::processMultiLayerInfill(const SliceDataStorage& storage, La
                 if (!infill_below_skin_per_density.empty())
                 {
                     const auto skin_edge_support_line_distance = mesh.settings.get<coord_t>("skin_edge_support_line_distance") * infill_depth_multiplier;
+                    const bool fill_below_all_skin = mesh.settings.get<bool>("skin_edge_support_fill_below_all_skin");
+                    const bool fill_below_skin = fill_below_all_skin || !infill_not_below_skin.empty();
 
-                    if (skin_edge_support_line_distance > 0 && mesh.settings.get<size_t>("skin_edge_support_layers") == 1 && !infill_not_below_skin.empty())
+                    if (skin_edge_support_line_distance > 0 && mesh.settings.get<size_t>("skin_edge_support_layers") == 1 && fill_below_skin)
                     {
                         // print infill as if it was sparse skin
                         const size_t wall_line_count = 0;
@@ -1947,9 +1949,10 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
                 const auto skin_edge_support_line_distance = mesh.settings.get<coord_t>("skin_edge_support_line_distance");
 
                 const size_t combined_infill_layers = std::max(uint64_t(1), round_divide(mesh.settings.get<coord_t>("infill_sparse_thickness"), std::max(mesh.settings.get<coord_t>("layer_height"), coord_t(1))));
-                const bool layer_has_infill_not_below_skin = (combined_infill_layers > 1 || !infill_not_below_skin.empty());
+                const bool fill_below_all_skin = mesh.settings.get<bool>("skin_edge_support_fill_below_all_skin");
+                const bool fill_below_skin = fill_below_all_skin || (combined_infill_layers > 1 || !infill_not_below_skin.empty());
 
-                if (skin_edge_support_line_distance > 0 && mesh.settings.get<size_t>("skin_edge_support_layers") == 1 && layer_has_infill_not_below_skin)
+                if (skin_edge_support_line_distance > 0 && mesh.settings.get<size_t>("skin_edge_support_layers") == 1 && fill_below_skin)
                 {
                     // print infill as if it was sparse skin
                     const size_t wall_line_count = (combined_infill_layers > 1) ? 1 : 0;
