@@ -1715,11 +1715,15 @@ bool FffGcodeWriter::processMultiLayerInfill(const SliceDataStorage& storage, La
                     {
                         // print infill as if it was sparse skin
                         const size_t wall_line_count = 0;
+                        // shift zig-zag infill in attempt to avoid bumps on the previous layer
+                        // FIXME - I expected constant to be 0.5 but it needs 0.535 to look right, why?
+                        const coord_t extra_shift = infill_line_width * (skin_edge_support_line_distance > 2 * infill_line_width ?
+                                                                         0.535*skin_edge_support_line_distance/infill_line_width : 1);
                         AngleDegrees skin_angle = mesh.skin_angles.at(gcode_layer.getLayerNr() % mesh.skin_angles.size());
                         Infill infill_comp(EFillMethod::ZIG_ZAG, true, connect_polygons, in_outline, outline_offset,
                                            infill_line_width, skin_edge_support_line_distance, std::max(infill_overlap, (coord_t)25), infill_multiplier,
                                            skin_angle, gcode_layer.z / mesh.settings.get<Ratio>("infill_scaling_z"),
-                                           infill_shift, max_resolution, max_deviation, wall_line_count, infill_origin,
+                                           infill_shift + extra_shift, max_resolution, max_deviation, wall_line_count, infill_origin,
                                            perimeter_gaps, connected_zigzags, use_endpieces);
                         infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, lightning_layer, &mesh);
                         // that's all the infill we need
@@ -1956,11 +1960,15 @@ bool FffGcodeWriter::processSingleLayerInfill(const SliceDataStorage& storage, L
                 {
                     // print infill as if it was sparse skin
                     const size_t wall_line_count = (combined_infill_layers > 1) ? 1 : 0;
+                    // shift zig-zag infill in attempt to avoid bumps on the previous layer
+                    // FIXME - I expected constant to be 0.5 but it needs 0.535 to look right, why?
+                    const coord_t extra_shift = infill_line_width * (skin_edge_support_line_distance > 2 * infill_line_width ?
+                                                                     0.535*skin_edge_support_line_distance/infill_line_width : 1);
                     AngleDegrees skin_angle = mesh.skin_angles.at(gcode_layer.getLayerNr() % mesh.skin_angles.size());
                     Infill infill_comp(EFillMethod::ZIG_ZAG, true, connect_polygons, in_outline, outline_offset,
                                        infill_line_width, skin_edge_support_line_distance, std::max(infill_overlap, (coord_t)25), infill_multiplier,
                                        skin_angle, gcode_layer.z / mesh.settings.get<Ratio>("infill_scaling_z"),
-                                       infill_shift, max_resolution, max_deviation, wall_line_count, infill_origin,
+                                       infill_shift + extra_shift, max_resolution, max_deviation, wall_line_count, infill_origin,
                                        perimeter_gaps, connected_zigzags, use_endpieces);
                     infill_comp.generate(infill_polygons_here, infill_lines_here, mesh.cross_fill_provider, lightning_layer, &mesh);
                     // that's all the infill we need
