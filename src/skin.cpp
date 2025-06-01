@@ -805,10 +805,13 @@ void SkinInfillAreaComputation::combineInfillLayers(SliceMeshStorage& mesh)
                                 // of the lower layer with the same or higher density index
                                 max_lower_density_idx = lower_layer_part.infill_area_per_combine_per_density.size() - 1;
                             }
+                            // shrink/expand lower layer after thickened area has been removed to avoid generating thin infill areas underneath sloping walls
+                            const coord_t shrink_expand = (combine_count_here + 1) * 2 * mesh.settings.get<coord_t>("infill_line_width");
                             for (size_t lower_density_idx = density_idx; lower_density_idx <= max_lower_density_idx && lower_density_idx < lower_layer_part.infill_area_per_combine_per_density.size(); lower_density_idx++)
                             {
                                 std::vector<Polygons>& lower_infill_area_per_combine = lower_layer_part.infill_area_per_combine_per_density[lower_density_idx];
                                 lower_infill_area_per_combine[0] = lower_infill_area_per_combine[0].difference(intersection); // remove thickened area from lower (single thickness) layer
+                                lower_infill_area_per_combine[0] = lower_infill_area_per_combine[0].offset(-shrink_expand).offset(shrink_expand);
                             }
                         }
                     }
