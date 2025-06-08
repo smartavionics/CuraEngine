@@ -1335,15 +1335,48 @@ std::vector<size_t> FffGcodeWriter::calculateMeshOrder(const SliceDataStorage& s
 {
     std::vector<std::pair<int, unsigned>> prioritised_meshes;
 
+    bool print_infill_meshes_first = false;
     int max_priority = 0;
     for (unsigned int mesh_idx = 0; mesh_idx < storage.meshes.size(); mesh_idx++)
     {
-        int priority = storage.meshes[mesh_idx].settings.get<int>("mesh_priority");
+        const Settings& mesh_settings = storage.meshes[mesh_idx].settings;
+        int priority = mesh_settings.get<int>("mesh_priority");
+
         if (priority > max_priority)
         {
             max_priority = priority;
         }
+
         prioritised_meshes.push_back(std::make_pair(priority, mesh_idx));
+
+        // if mesh hasn't been assigned a raised priority and it is an infill mesh and we are printing infill before walls
+        // we need to raise its priority so that it is printed early
+        if (priority == 0)
+        {
+            print_infill_meshes_first = print_infill_meshes_first || (mesh_settings.get<bool>("infill_mesh") && mesh_settings.get<bool>("infill_before_walls"));
+        }
+    }
+
+    if (print_infill_meshes_first)
+    {
+        // raise the priorities of the infill meshes that are to be printed before the walls
+        const int min_infill_mesh_priority = max_priority + 1;
+
+        for (unsigned int mesh_idx = 0; mesh_idx < prioritised_meshes.size(); mesh_idx++)
+        {
+            int &priority = prioritised_meshes[mesh_idx].first;
+            const Settings& mesh_settings = storage.meshes[prioritised_meshes[mesh_idx].second].settings;
+
+            if (priority == 0 && mesh_settings.get<bool>("infill_mesh") && mesh_settings.get<bool>("infill_before_walls"))
+            {
+                priority += min_infill_mesh_priority;
+
+                if (priority > max_priority)
+                {
+                    max_priority = priority;
+                }
+            }
+        }
     }
 
     if (max_priority > 0)
