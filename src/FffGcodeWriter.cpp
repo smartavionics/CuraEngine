@@ -2912,7 +2912,7 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
             bridge_regions.back().removeSmallAreas(bridge_skin_min_area, remove_bridge_skin_holes);
         }
 
-        if (layer_nr > 2 && bottom_layers > 2)
+        if (layer_nr > 2 && bottom_layers > 2 && mesh.settings.get<bool>("bridge_enable_third_layer"))
         {
             bridge_regions.emplace_back();
             getBridgeAndOverhangRegions(storage, layer_nr - 2, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions.back());
