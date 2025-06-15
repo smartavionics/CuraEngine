@@ -2822,73 +2822,76 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
 
     std::vector<Polygons> bridge_regions; // one element for each bridge layer
 
-    // the bridge wall mask for this layer tells us where the bridge regions are
-    // but we need to shrink it by 1/2 of the outer wall line width to get regions that match
-    // the part outline
-    const coord_t bridge_region_shrink = -mesh_config.inset0_config.getLineWidth() / 2;
-
-    bridge_regions.emplace_back(gcode_layer.getBridgeWallMask().offset(bridge_region_shrink));
-
-    // if infill regions in the layer below are "sparse" consider the skin in that region to be unsupported
-    for (const SliceMeshStorage& m : storage.meshes)
-    {
-        if (&mesh == &m || (!m.settings.get<bool>("support_mesh") && !m.settings.get<bool>("anti_overhang_mesh")))
+    auto add_area_of_sparse_infill_below = [&](int layer_offset) {
+        // if infill regions in the layer below are "sparse" consider the skin in that region to be unsupported
+        for (const SliceMeshStorage& m : storage.meshes)
         {
-            const Ratio sparse_infill_max_density = m.settings.get<Ratio>("bridge_sparse_infill_max_density");
-
-            if (sparse_infill_max_density > 0)
+            if (&mesh == &m || (!m.settings.get<bool>("support_mesh") && !m.settings.get<bool>("anti_overhang_mesh")))
             {
-                const coord_t infill_line_distance = m.settings.get<coord_t>("infill_line_distance");
-                const coord_t infill_line_width = m.settings.get<coord_t>("infill_line_width");
-                bool part_has_sparse_infill = true;
+                const Ratio sparse_infill_max_density = m.settings.get<Ratio>("bridge_sparse_infill_max_density");
 
-                if (infill_line_distance > 0)
+                if (sparse_infill_max_density > 0)
                 {
-                    float infill_density = (float)infill_line_width / infill_line_distance;
-                    switch(m.settings.get<EFillMethod>("infill_pattern"))
+                    const coord_t infill_line_distance = m.settings.get<coord_t>("infill_line_distance");
+                    const coord_t infill_line_width = m.settings.get<coord_t>("infill_line_width");
+                    bool part_has_sparse_infill = true;
+
+                    if (infill_line_distance > 0)
                     {
-                        case EFillMethod::LIGHTNING:
-                            infill_density *= 1.6f;
-                            break;
-
-                        case EFillMethod::GRID:
-                        case EFillMethod::TETRAHEDRAL:
-                        case EFillMethod::QUARTER_CUBIC:
-                            infill_density *= 2.0f;
-                            break;
-
-                        case EFillMethod::TRIANGLES:
-                        case EFillMethod::TRIHEXAGON:
-                        case EFillMethod::CUBIC:
-                        case EFillMethod::CUBICSUBDIV:
-                            infill_density *= 3.0f;
-                            break;
-
-                        default:
-                            break;
-                    }
-                    part_has_sparse_infill = infill_density <= sparse_infill_max_density;
-                }
-
-                if (part_has_sparse_infill)
-                {
-                    for (const SliceLayerPart& prev_layer_part : m.layers[layer_nr - 1].parts)
-                    {
-                        Polygons skins_below;
-                        for (const SkinPart& sp : prev_layer_part.skin_parts)
+                        float infill_density = (float)infill_line_width / infill_line_distance;
+                        switch(m.settings.get<EFillMethod>("infill_pattern"))
                         {
-                            skins_below.add(sp.outline);
+                            case EFillMethod::LIGHTNING:
+                                infill_density *= 1.6f;
+                                break;
+
+                            case EFillMethod::GRID:
+                            case EFillMethod::TETRAHEDRAL:
+                            case EFillMethod::QUARTER_CUBIC:
+                                infill_density *= 2.0f;
+                                break;
+
+                            case EFillMethod::TRIANGLES:
+                            case EFillMethod::TRIHEXAGON:
+                            case EFillMethod::CUBIC:
+                            case EFillMethod::CUBICSUBDIV:
+                                infill_density *= 3.0f;
+                                break;
+
+                            default:
+                                break;
                         }
-                        if (!skins_below.size() || skins_below.intersection(skin_part.outline).area() < prev_layer_part.outline.intersection(skin_part.outline).area() * 0.5)
+                        part_has_sparse_infill = infill_density <= sparse_infill_max_density;
+                    }
+
+                    if (part_has_sparse_infill)
+                    {
+                        for (const SliceLayerPart& prev_layer_part : m.layers[layer_nr + layer_offset].parts)
                         {
-                            // less than 50% of the part below's area is skin so consider all of that part's area to be sparse infill
-                            bridge_regions.back().add(prev_layer_part.outline);
+                            Polygons skins_below;
+                            for (const SkinPart& sp : prev_layer_part.skin_parts)
+                            {
+                                skins_below.add(sp.outline);
+                            }
+                            if (!skins_below.size() || skins_below.intersection(skin_part.outline).area() < prev_layer_part.outline.intersection(skin_part.outline).area() * 0.5)
+                            {
+                                // less than 50% of the part below's area is skin so consider all of that part's area to be sparse infill
+                                bridge_regions.back().add(prev_layer_part.outline);
+                            }
                         }
                     }
                 }
             }
         }
-    }
+    };
+
+    // the bridge wall mask for this layer tells us where the bridge regions are
+    // but we need to shrink it by 1/2 of the outer wall line width to get regions that match
+    // the part outline
+    const coord_t bridge_region_shrink = -mesh_config.inset0_config.getLineWidth() / 2;
+    bridge_regions.emplace_back(gcode_layer.getBridgeWallMask().offset(bridge_region_shrink));
+
+    add_area_of_sparse_infill_below(-1);
 
     bridge_regions.back() = bridge_regions.back().unionPolygons();
     bridge_regions.back().removeSmallAreas(bridge_skin_min_area, remove_bridge_skin_holes);
