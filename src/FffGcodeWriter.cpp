@@ -3166,7 +3166,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
                 break;
 
             case 2:
-                if (bottom_layers > 2)
+                if (bottom_layers > 2 && mesh.settings.get<bool>("bridge_enable_third_layer"))
                 {
                     // orientate second bridge skin at +45 deg to first
                     skin_angle = angle + 45;
