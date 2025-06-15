@@ -2906,6 +2906,8 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         {
             bridge_regions.emplace_back();
             getBridgeAndOverhangRegions(storage, layer_nr - 1, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions.back());
+            add_area_of_sparse_infill_below(-2);
+            bridge_regions.back() = bridge_regions.back().unionPolygons();
             bridge_regions.back() = bridge_regions.back().offset(bridge_region_shrink).unionPolygons().difference(bridge_regions[0]);
             bridge_regions.back().removeSmallAreas(bridge_skin_min_area, remove_bridge_skin_holes);
         }
@@ -2914,6 +2916,8 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
         {
             bridge_regions.emplace_back();
             getBridgeAndOverhangRegions(storage, layer_nr - 2, mesh, extruder_nr, mesh_config, skin_part.outline, &bridge_regions.back());
+            add_area_of_sparse_infill_below(-3);
+            bridge_regions.back() = bridge_regions.back().unionPolygons();
             bridge_regions.back() = bridge_regions.back().offset(bridge_region_shrink).unionPolygons().difference(bridge_regions[0]).difference(bridge_regions[1]);
             bridge_regions.back().removeSmallAreas(bridge_skin_min_area, remove_bridge_skin_holes);
         }
