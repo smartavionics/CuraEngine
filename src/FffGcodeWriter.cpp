@@ -3182,6 +3182,17 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             case 3:
                 // orientate third bridge skin at 135 (same result as -45) deg to first
                 skin_angle = angle + 135;
+                // however, if there is a further skin layer above, we want to avoid printing the 3rd skin
+                // layer lines in the same direction as the skin lines above
+                if (bottom_layers > 3)
+                {
+                    AngleDegrees skin_angle_on_layer_above = (mesh.skin_angles.size()) ? mesh.skin_angles[(layer_nr + 1) % mesh.skin_angles.size()] : AngleDegrees(45);
+                    if (fabs(fmod(skin_angle, 180.0) - skin_angle_on_layer_above) < 45)
+                    {
+                        // orientate third bridge skin at 90 deg to first
+                        skin_angle = angle + 90;
+                    }
+                }
                 pattern = mesh.settings.get<EFillMethod>("bridge_skin_pattern3");
                 break;
         }
