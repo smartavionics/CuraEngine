@@ -3126,10 +3126,10 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             }
             else
             {
-                // fall back to use the default angle for the skin on the first bridge layer
+                // fall back to use the default angle for the skin on this layer
                 if (mesh.skin_angles.size() > 0)
                 {
-                    angle = mesh.skin_angles[(layer_nr - (bridge_layer_nr - 1)) % mesh.skin_angles.size()];
+                    angle = mesh.skin_angles[layer_nr % mesh.skin_angles.size()];
                 }
                 else
                 {
