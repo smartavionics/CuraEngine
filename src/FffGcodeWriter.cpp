@@ -3062,6 +3062,45 @@ void FffGcodeWriter::processTopBottomWithBridges(const SliceDataStorage& storage
                         line_angle = longest_supported_line.angle;
                     }
 
+                    const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
+
+                    // on second and third layers, use the calculated line angle if it is within 30 degrees of the normal skin angle
+                    // otherwise, use the skin angle.
+                    if (n == 1)
+                    {
+                        line_angle = line_angle + 45;
+                        if (bottom_layers > 2 && mesh.skin_angles.size() > 0)
+                        {
+                            const AngleDegrees non_bridge_skin_angle = mesh.skin_angles[layer_nr % mesh.skin_angles.size()];
+                            if (fmod(fabs((double)line_angle - (double)non_bridge_skin_angle), 180) > 30)
+                            {
+                                //std::cerr << layer_nr << ": n = 1, using " << non_bridge_skin_angle << " instead of " << line_angle << " (" << fabs((double)line_angle - (double)non_bridge_skin_angle) << ")\n";
+                                line_angle = non_bridge_skin_angle;
+                            }
+                            else
+                            {
+                                //std::cerr << layer_nr << ": n = 1, keeping " << line_angle << " (" << fabs((double)line_angle - (double)non_bridge_skin_angle) << ")\n";
+                            }
+                        }
+                    }
+                    else if (n == 2)
+                    {
+                        line_angle = line_angle + 135;
+                        if (bottom_layers > 3 && mesh.skin_angles.size() > 0)
+                        {
+                            const AngleDegrees non_bridge_skin_angle = mesh.skin_angles[layer_nr % mesh.skin_angles.size()];
+                            if (fmod(fabs((double)line_angle - (double)non_bridge_skin_angle), 180) > 30)
+                            {
+                                //std::cerr << layer_nr << ": n = 2, using " << non_bridge_skin_angle << " instead of " << line_angle << " (" << fabs((double)line_angle - (double)non_bridge_skin_angle) << ")\n";
+                                line_angle = non_bridge_skin_angle;
+                            }
+                            else
+                            {
+                                //std::cerr << layer_nr << ": n = 2, keeping " << line_angle << " (" << fabs((double)line_angle - (double)non_bridge_skin_angle) << ")\n";
+                            }
+                        }
+                    }
+
                     Polygons ignored_perimeter_gaps;
                     processTopBottom(storage, gcode_layer, mesh, extruder_nr, mesh_config, sp, ignored_perimeter_gaps, added_something, n + 1, (found_line_angle) ? &line_angle : nullptr);
                 }
