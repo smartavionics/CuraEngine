@@ -3089,7 +3089,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
 
     const size_t layer_nr = gcode_layer.getLayerNr();
 
-    EFillMethod pattern = (layer_nr == 0) ?
+    EFillMethod skin_pattern = (layer_nr == 0) ?
         mesh.settings.get<EFillMethod>("top_bottom_pattern_0") :
         mesh.settings.get<EFillMethod>("top_bottom_pattern");
 
@@ -3100,7 +3100,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     }
 
     // if only the first layer is hilbert curve, force it to have angle 0 if the user didn't specify any skin angles
-    if (layer_nr == 0 && pattern == EFillMethod::HILBERT && mesh.settings.get<EFillMethod>("top_bottom_pattern") != EFillMethod::HILBERT && mesh.settings.get<std::vector<AngleDegrees>>("skin_angles").empty())
+    if (layer_nr == 0 && skin_pattern == EFillMethod::HILBERT && mesh.settings.get<EFillMethod>("top_bottom_pattern") != EFillMethod::HILBERT && mesh.settings.get<std::vector<AngleDegrees>>("skin_angles").empty())
     {
         skin_angle = 0;
     }
@@ -3115,7 +3115,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
 
     // helper function that detects skin regions that have no support and modifies their print settings (config, line angle, density, etc.)
 
-    auto handle_bridge_skin = [&](const GCodePathConfig* config, const float density)
+    auto handle_bridge_skin = [&](const GCodePathConfig* config, const float density, const EFillMethod pattern)
     {
         AngleDegrees angle = 0;
 
@@ -3142,7 +3142,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             skin_config = config;
             skin_density = density;
 
-            pattern = mesh.settings.get<EFillMethod>("bridge_skin_pattern");
+            skin_pattern = pattern;
         }
         else
         {
@@ -3155,7 +3155,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             }
             angle = int_angle;
 
-            pattern = EFillMethod::LINES;
+            skin_pattern = EFillMethod::LINES;
         }
 
         switch (bridge_layer_nr)
@@ -3209,13 +3209,13 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             case -1:
                 // skin could be a bridge to be detected by legacy code, fall through
             case 1:
-                handle_bridge_skin(&mesh_config.bridge_skin_config, mesh.settings.get<Ratio>("bridge_skin_density"));
+                handle_bridge_skin(&mesh_config.bridge_skin_config, mesh.settings.get<Ratio>("bridge_skin_density"), mesh.settings.get<EFillMethod>("bridge_skin_pattern"));
                 break;
             case 2:
-                handle_bridge_skin(&mesh_config.bridge_skin_config2, mesh.settings.get<Ratio>("bridge_skin_density_2"));
+                handle_bridge_skin(&mesh_config.bridge_skin_config2, mesh.settings.get<Ratio>("bridge_skin_density_2"), mesh.settings.get<EFillMethod>("bridge_skin_pattern2"));
                 break;
             case 3:
-                handle_bridge_skin(&mesh_config.bridge_skin_config3, mesh.settings.get<Ratio>("bridge_skin_density_3"));
+                handle_bridge_skin(&mesh_config.bridge_skin_config3, mesh.settings.get<Ratio>("bridge_skin_density_3"), mesh.settings.get<EFillMethod>("bridge_skin_pattern3"));
                 break;
         }
     }
@@ -3280,7 +3280,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     Polygons* perimeter_gaps_output = (generate_perimeter_gaps) ? &concentric_perimeter_gaps : nullptr;
 
     const bool monotonic = mesh.settings.get<bool>("skin_monotonic");
-    processSkinPrintFeature(storage, gcode_layer, mesh, extruder_nr, skin_part.inner_infill, *skin_config, pattern, skin_angle, skin_overlap, skin_density, monotonic, perimeter_gaps_output, added_something, fan_speed);
+    processSkinPrintFeature(storage, gcode_layer, mesh, extruder_nr, skin_part.inner_infill, *skin_config, skin_pattern, skin_angle, skin_overlap, skin_density, monotonic, perimeter_gaps_output, added_something, fan_speed);
 }
 
 void FffGcodeWriter::processSkinPrintFeature(const SliceDataStorage& storage, LayerPlan& gcode_layer, const SliceMeshStorage& mesh, const size_t extruder_nr, const Polygons& area, const GCodePathConfig& config, EFillMethod pattern, const AngleDegrees skin_angle, const coord_t skin_overlap, const Ratio skin_density, const bool monotonic, Polygons* perimeter_gaps_output, bool& added_something, double fan_speed) const
