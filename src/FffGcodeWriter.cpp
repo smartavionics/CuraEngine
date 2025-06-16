@@ -3111,8 +3111,6 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
     // for bridge skins, overlap has already been applied
     const coord_t skin_overlap = (bridge_layer_nr < 1) ? mesh.settings.get<coord_t>("skin_overlap_mm") : 0;
 
-    const size_t bottom_layers = mesh.settings.get<size_t>("bottom_layers");
-
     // helper function that detects skin regions that have no support and modifies their print settings (config, line angle, density, etc.)
 
     auto handle_bridge_skin = [&](const GCodePathConfig* config, const float density, const EFillMethod pattern)
@@ -3141,7 +3139,6 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             // assign bridge skin parameters
             skin_config = config;
             skin_density = density;
-
             skin_pattern = pattern;
         }
         else
@@ -3158,44 +3155,7 @@ void FffGcodeWriter::processTopBottom(const SliceDataStorage& storage, LayerPlan
             skin_pattern = EFillMethod::LINES;
         }
 
-        switch (bridge_layer_nr)
-        {
-            default:
-            case 1:
-                skin_angle = angle;
-                break;
-
-            case 2:
-                if (bottom_layers > 2 && mesh.settings.get<bool>("bridge_enable_third_layer"))
-                {
-                    // orientate second bridge skin at +45 deg to first
-                    skin_angle = angle + 45;
-                }
-                else
-                {
-                    // orientate second bridge skin at 90 deg to first
-                    skin_angle = angle + 90;
-                }
-                pattern = mesh.settings.get<EFillMethod>("bridge_skin_pattern2");
-                break;
-
-            case 3:
-                // orientate third bridge skin at 135 (same result as -45) deg to first
-                skin_angle = angle + 135;
-                // however, if there is a further skin layer above, we want to avoid printing the 3rd skin
-                // layer lines in the same direction as the skin lines above
-                if (bottom_layers > 3)
-                {
-                    AngleDegrees skin_angle_on_layer_above = (mesh.skin_angles.size()) ? mesh.skin_angles[(layer_nr + 1) % mesh.skin_angles.size()] : AngleDegrees(45);
-                    if (fabs(fmod(skin_angle, 180.0) - skin_angle_on_layer_above) < 45)
-                    {
-                        // orientate third bridge skin at 90 deg to first
-                        skin_angle = angle + 90;
-                    }
-                }
-                pattern = mesh.settings.get<EFillMethod>("bridge_skin_pattern3");
-                break;
-        }
+        skin_angle = angle;
     };
 
     if (layer_nr > 0)
