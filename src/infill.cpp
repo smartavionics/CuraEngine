@@ -553,10 +553,10 @@ void Infill::generateTroctInfill(Polygons& result, const double& infill_rotation
     Polygons pi = po.intersection(outline);
     // Hack to add intersection to result. There doesn't seem
     // to be a direct way to do this
-    for (const auto poly : pi)
+    for (const auto& poly : pi)
     {
         PolygonRef p = result.newPoly(); //  = result.newPoly()
-        for (const auto p0 : poly)
+        for (const auto& p0 : poly)
         {
             p.add(matrix.unapply(Point(p0.X, p0.Y)));
         }
