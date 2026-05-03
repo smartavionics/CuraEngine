@@ -5,6 +5,8 @@
 #include "Slice.h"
 #include "utils/logoutput.h"
 
+#include <algorithm>
+
 namespace cura
 {
 
